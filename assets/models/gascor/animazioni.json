@@ -1,24 +1,47 @@
 {
   "character": "gascor",
-  "model": "gascor-animated.glb",
-  "base": false,
-  "skeleton_bones": 17,
-  "status": "prototipo",
+  "model": "gascor.glb",
+  "versione": 3,
+  "pipeline": "Meshy: concept in posa A senza armi (dall'illustrazione) -> image-to-3d 4K -> remesh 50k -> rig automatico; spada e scudo ricavati dall'illustrazione e agganciati alle mani; 18 clip trasferite da Anteos (retarget) con tools/gascor/assemble_meshy.py",
+  "skeleton_bones": 24,
+  "fps": 24,
   "clips": {
     "idle": "Riposo",
-    "walk": "Camminata",
-    "thrust": "Affondo",
-    "parry": "Parata"
+    "walk": "Camminata"
   },
-  "walk_in_place": true,
+  "pedine": {
+    "advance": "Avanzare",
+    "guard": "In guardia",
+    "charge": "Carica",
+    "cleave": "Fendente",
+    "left": "Taglio Sx",
+    "right": "Taglio Dx",
+    "parry_l": "Parata Sx",
+    "parry_r": "Parata Dx",
+    "dodge": "Schivata",
+    "roll": "Rotolare",
+    "kick": "Calcio",
+    "down": "A terra",
+    "rise": "Rialzarsi",
+    "unbalanced": "Sbilanciato",
+    "run": "Correre",
+    "thrust": "Affondo"
+  },
+  "status": "prototipo",
   "integrated_in_match": false,
-  "versione": 2,
-  "durata_frame": {
-    "Riposo": 60,
-    "Camminata": 32,
-    "Affondo": 46,
-    "Parata": 36
+  "meshy_tasks": {
+    "concept (image-to-image)": "01a154c8-bebd-7696-a8fc-0649e4dc1776",
+    "scudo (immagine)": "01a154c8-cb37-7360-8dbf-4151ad5298f7",
+    "spada (immagine)": "01a154c8-d54e-779f-99fa-02431456c2aa",
+    "modello (image-to-3d)": "01a154c9-9fd4-750d-b3da-1152ead22784",
+    "scudo (image-to-3d)": "01a154c9-a7fe-721e-9be5-b54fa5f5d034",
+    "spada (image-to-3d)": "01a154c9-aff3-7009-9494-153cd16bee19",
+    "remesh 50k": "01a154cc-2dee-7082-8804-0bfe14b8d73b",
+    "rig": "01a154cf-9eba-77c9-af40-063fe3dd9135"
   },
-  "fps": 24,
-  "note": "v2: IK su gambe e braccia con piedi piantati, peso su bacino e busto, anticipazione e rinculo; spada, scudo e pugni rigidi sulle mani. Generato da tools/gascor/rig_model.py"
+  "crediti_meshy": 127,
+  "versione_precedente": {
+    "model": "gascor-animated.glb",
+    "note": "v2: statua Meshy con rig e animazioni procedurali (tools/gascor/rig_model.py), non più usata dalla prova 3D"
+  }
 }

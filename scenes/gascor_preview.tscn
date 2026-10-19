@@ -4,5 +4,11 @@
 
 [node name="GascorPreview" type="Node3D"]
 script = ExtResource("1")
+model_path = "res://assets/models/gascor/gascor.glb"
+title_text = "GASCOR  /  IL PRODE"
+subtitle_text = "Prova 3D Meshy · mosse di Anteos trasferite · trascina per ruotare"
+card_path = "res://assets/modern/gascor/gascor-concept-meshy.webp"
+card_label = "Concept generato (posa A)"
+looping = PackedStringArray("Riposo", "Camminata", "In guardia", "Avanzare", "Correre", "Carica")
 other_scene = "res://scenes/anteos_preview.tscn"
-other_label = "Confronta: Anteos (Meshy)"
+other_label = "Vai ad Anteos"

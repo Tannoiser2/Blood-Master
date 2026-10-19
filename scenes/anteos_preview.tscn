@@ -11,4 +11,4 @@ card_path = "res://assets/modern/anteos/anteos-concept-meshy.webp"
 card_label = "Concept generato (posa A)"
 looping = PackedStringArray("Riposo", "Camminata", "In guardia", "Avanzare", "Correre", "Carica")
 other_scene = "res://scenes/gascor_preview.tscn"
-other_label = "Confronta: Gascor"
+other_label = "Vai a Gascor"

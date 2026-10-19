@@ -8,7 +8,7 @@ func run():
 	var ap=scene.animation_player
 	assert(ap!=null,"Missing AnimationPlayer")
 	print("ANIMATIONS ",ap.get_animation_list())
-	for name in ["Riposo","Camminata","Affondo","Parata"]:
+	for name in ["Riposo","Camminata","Affondo","Parata Sx"]:
 		assert(ap.has_animation(name),"Missing animation "+name)
 		ap.play(name);ap.seek(0.75,true);ap.pause()
 		await create_timer(.3).timeout
