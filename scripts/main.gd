@@ -7,6 +7,8 @@ const INK=Color("e9e5da")
 const MUTED=Color("9eafad")
 var game=BloodRules.new()
 var board: ArenaBoard
+var board3d: ArenaBoard3D
+var minis_3d=false
 var page: VBoxContainer
 var status: Label
 var sidebar: VBoxContainer
@@ -170,11 +172,14 @@ func _build_game() -> void:
 	roster_box=VBoxContainer.new();roster_box.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(roster_box)
 	var middle=VBoxContainer.new();middle.size_flags_horizontal=Control.SIZE_EXPAND_FILL;body.add_child(middle)
 	board=ArenaBoard.new();board.game=game;board.size_flags_vertical=Control.SIZE_EXPAND_FILL;board.cell_clicked.connect(_cell_clicked);middle.add_child(board)
+	board3d=ArenaBoard3D.new();board3d.game=game;board3d.size_flags_vertical=Control.SIZE_EXPAND_FILL;board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;middle.add_child(board3d)
+	board.visible=not minis_3d
 	var toolbar=HBoxContainer.new();middle.add_child(toolbar)
-	toolbar.add_child(button("Inquadra",func():board.fit()))
+	toolbar.add_child(button("Inquadra",func():board.fit();board3d.fit()))
+	var minis=CheckButton.new();minis.text="Miniature 3D";minis.button_pressed=minis_3d;minis.toggled.connect(func(v):minis_3d=v;board.visible=not v;board3d.visible=v;_refresh());toolbar.add_child(minis)
 	var grid=CheckButton.new();grid.text="Griglia";grid.toggled.connect(func(v):board.show_grid=v;board.queue_redraw());toolbar.add_child(grid)
 	var auto=CheckButton.new();auto.text="Estrazione automatica";auto.button_pressed=auto_draw;auto.toggled.connect(func(v):auto_draw=v;_drive());toolbar.add_child(auto)
-	toolbar.add_child(spacer());toolbar.add_child(button("−",func():board.zoom=maxf(.8,board.zoom-.15);board.queue_redraw()));toolbar.add_child(button("+",func():board.zoom=minf(3.5,board.zoom+.15);board.queue_redraw()))
+	toolbar.add_child(spacer());toolbar.add_child(button("−",func():board.zoom=maxf(.8,board.zoom-.15);board.queue_redraw();board3d.zoom=maxf(.6,board3d.zoom/1.15);board3d.fit_zoom()));toolbar.add_child(button("+",func():board.zoom=minf(3.5,board.zoom+.15);board.queue_redraw();board3d.zoom=minf(3.0,board3d.zoom*1.15);board3d.fit_zoom()))
 	var right_scroll=ScrollContainer.new();right_scroll.custom_minimum_size.x=355;body.add_child(right_scroll)
 	sidebar=VBoxContainer.new();sidebar.custom_minimum_size.x=335;sidebar.size_flags_horizontal=Control.SIZE_EXPAND_FILL;right_scroll.add_child(sidebar)
 	var journal=PanelContainer.new();journal.custom_minimum_size.y=100;page.add_child(journal)
@@ -214,6 +219,7 @@ func _refresh() -> void:
 		"finished":_finish_panel()
 		"net_reveal":sidebar.add_child(label("Tutti hanno scelto.\nApertura delle mosse…",21,GOLD))
 	board.queue_redraw()
+	if board3d:board3d.copy_from(board)
 func _human(i: int) -> bool:
 	if i<0:return false
 	var p=game.state.fighters[i]
@@ -305,6 +311,8 @@ func _finish_panel() -> void:
 	var winner=int(game.state.winner)
 	sidebar.add_child(label("Lama Lucente" if winner==0 else ("Ombra Oscura" if winner==1 else "Pace nell’arena"),27,GOLD))
 	_wrap("La battaglia si conclude. Puoi consultare le schede e la cronaca prima di preparare un nuovo scontro.")
+	sidebar.add_child(button("Replay 3D dello scontro",func():
+		minis_3d=true;board.visible=false;board3d.visible=true;board3d.replay()))
 	sidebar.add_child(button("Nuovo scontro",_show_menu,true))
 func _facing_controls() -> void:
 	var row=HBoxContainer.new();sidebar.add_child(row)
@@ -364,6 +372,8 @@ func _drive() -> void:
 	if busy or not showing_game or (room_code!="" and not net_host):return
 	busy=true
 	await get_tree().create_timer(speed).timeout
+	while board3d!=null and is_instance_valid(board3d) and board3d.is_visible_in_tree() and board3d.busy():
+		await get_tree().create_timer(.1).timeout   # le miniature finiscono la mossa prima della prossima estrazione
 	busy=false
 	if not showing_game:return
 	if room_code!="":

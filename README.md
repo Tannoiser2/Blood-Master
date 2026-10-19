@@ -4,17 +4,28 @@ Gioca: https://tannoiser2.github.io/Blood-Master/
 
 Trasposizione autorizzata dall’autore, sviluppata con Godot 4.7.
 Il menu offre partite contro IA, sullo stesso dispositivo e online con codice
-stanza Firebase, oltre alla prova 3D animata di Gascor senza basetta.
+stanza Firebase, le prove 3D di Gascor e Anteos e un duello 3D di prova.
 
 Questa è una versione in sviluppo: la verifica completa delle magie, degli
-scenari e della fedeltà al regolamento è ancora in corso. Il prototipo 3D di
-Gascor è una prova separata; le sue animazioni non sono ancora collegate alla
-partita. Le scansioni e la grafica originale restano la presentazione del gioco.
+scenari e della fedeltà al regolamento è ancora in corso. Le scansioni e la
+grafica originale restano la presentazione del gioco.
+
+## Miniature 3D
+
+Durante la partita il tasto "Miniature 3D" sotto la mappa sostituisce le pedine
+con miniature animate (Gascor e Anteos; gli altri personaggi restano pedine in
+piedi). Quando una tessera viene estratta la miniatura esegue la mossa
+corrispondente, si sposta sulla nuova cella e rispetta il facing; chi viene
+colpito reagisce. A fine scontro "Replay 3D" ripropone tutte le animazioni di
+seguito, senza pause fra i turni. Tasto destro: ruota la vista · tasto centrale:
+sposta · rotellina: zoom · "Inquadra" riattiva la camera che segue lo scontro.
 
 ## Sviluppo
 
 Aprire project.godot in Godot 4.7. La scena principale è scenes/main.tscn.
-La scena scenes/gascor_preview.tscn contiene la prova 3D.
+Le prove 3D sono in scenes/gascor_preview.tscn, scenes/anteos_preview.tscn e
+scenes/duel_3d.tscn; la mappa 3D è scripts/board3d.gd. I modelli si rigenerano con
+tools/anteos/assemble.py e tools/gascor/assemble_meshy.py (pipeline Meshy).
 Le fonti ad alta risoluzione e i file Blender rimangono locali in source_art.
 
 Ogni aggiornamento di main verifica le regole, esporta la versione web senza
