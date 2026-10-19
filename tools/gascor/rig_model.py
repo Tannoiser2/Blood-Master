@@ -129,7 +129,9 @@ def aim(name,point):
  upd();p=P[name];h=p.head.copy();q=(p.tail-p.head).rotation_difference(point-h);setrot(name,q@p.matrix.to_quaternion())
 def pole_of(up,lo):
  S,E,T=HEAD[up],HEAD[lo],TAIL[lo];u=(T-S).normalized();v=E-S;v=v-u*v.dot(u);return v.normalized() if v.length>1e-4 else V((0,-1,0))
-POLE={'leg.R':pole_of('thigh.R','shin.R'),'leg.L':pole_of('thigh.L','shin.L'),'arm.R':pole_of('upper_arm.R','forearm.R'),'arm.L':pole_of('upper_arm.L','forearm.L')}
+# Ginocchia sempre in avanti (-Y), leggermente in fuori: la posa di riposo è quasi
+# dritta e la sua piccola piega punta all'indietro, quindi non va usata come polo.
+POLE={'leg.R':V((-.15,-1,0)).normalized(),'leg.L':V((.15,-1,0)).normalized(),'arm.R':pole_of('upper_arm.R','forearm.R'),'arm.L':pole_of('upper_arm.L','forearm.L')}
 def ik(up,lo,target,pole):
  upd();S=P[up].head.copy();a=(TAIL[up]-HEAD[up]).length;b=(TAIL[lo]-HEAD[lo]).length
  T=V(target);d=T-S;dist=max(abs(a-b)+1e-3,min(d.length,(a+b)*.998));u=d.normalized()
@@ -209,7 +211,7 @@ def walk(f):
  yR,zR,pR=foot_cycle(p%1);yL,zL,pL=foot_cycle((p+.5)%1)
  c=(ANKLE['R'].y+ANKLE['L'].y)/2
  ank={'R':(ANKLE['R'].x+.06,c+yR,ANKLE['R'].z+zR),'L':(ANKLE['L'].x-.08,c+yL,ANKLE['L'].z+zL)}
- bob=-.045-.026*math.cos(2*t)            # più basso al contatto, più alto a metà appoggio
+ bob=-.022-.022*math.cos(2*t)            # più basso al contatto, più alto a metà appoggio
  sway=-.03*math.cos(t)                  # il peso passa sulla gamba d'appoggio
  pose(root=(sway,-.02,bob),
       pelvis=(4,4*math.cos(t),9*math.cos(t)),
