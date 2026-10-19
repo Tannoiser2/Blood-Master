@@ -137,7 +137,7 @@ func _mini(i: int) -> Dictionary:
 	if path!="":
 		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;root.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
 		info.ap=_find_animation(model)
-		if info.ap:_damp_root_motion(info.ap)
+		if info.ap:_extract_root_motion(info)
 		for n in ["In guardia","Riposo","Avanzare","Correre","Carica"]:
 			if info.ap and info.ap.has_animation(n):info.ap.get_animation(n).loop_mode=Animation.LOOP_LINEAR
 		if info.ap:info.ap.play("In guardia")
@@ -167,22 +167,57 @@ func token_color(m: Dictionary) -> Color:
 func _set_rim(i: int,move_id: String) -> void:
 	var p=game.state.fighters[i];var m=game.definition(p).moves.get(move_id,{})
 	minis[i].rim.albedo_color=token_color(m)
-const ATTACK_CLIPS=["Affondo","Fendente","Taglio Sx","Taglio Dx","Calcio","Carica"]
-var _damped={}
-func _damp_root_motion(ap: AnimationPlayer) -> void:
-	# Negli attacchi il bacino avanza fino a ~1 m: sulla mappa la cella accanto è a 1,04 m,
-	# quindi riduco al 70% lo spostamento orizzontale (X/Z) mantenendo quello verticale.
-	for clip in ATTACK_CLIPS:
-		if not ap.has_animation(clip):continue
-		var anim=ap.get_animation(clip)
-		if _damped.has(anim.get_instance_id()):continue
-		_damped[anim.get_instance_id()]=true
+# --- Movimento senza pattinamento ------------------------------------------------
+# Le clip Meshy spostano il bacino (affondo, calcio, carica, capriola fino a 2,7 m):
+# la figura usciva dalla basetta e poi rientrava di scatto. Al caricamento tolgo lo
+# spostamento orizzontale del bacino da tutte le clip (la figura resta centrata sulla
+# basetta) e lo conservo come profilo: quando la miniatura cambia cella si sposta
+# l'intera miniatura seguendo quel profilo, oppure, per camminata e corsa (clip sul
+# posto), alla velocità reale dei piedi misurata in Blender.
+const STEP_SPEED={"Avanzare":.72,"Camminata":1.50,"Correre":3.49}   # velocità dei piedi / altezza del bacino (1/s)
+var _motion={}             # id dell'Animation -> {"net": Vector3, "times": PackedFloat32Array, "prog": PackedFloat32Array}
+func _find_skeleton(n: Node) -> Skeleton3D:
+	if n is Skeleton3D:return n
+	for c in n.get_children():
+		var f=_find_skeleton(c)
+		if f:return f
+	return null
+func _extract_root_motion(info: Dictionary) -> void:
+	var skel=_find_skeleton(info.model)
+	if skel==null:return
+	var hips=skel.find_bone("Hips")
+	if hips<0:return
+	var M: Basis=info.root.global_transform.basis.inverse()*skel.global_transform.basis   # spazio scheletro -> spazio miniatura
+	info.hips_h=(M*skel.get_bone_global_rest(hips).origin).y
+	for name in info.ap.get_animation_list():
+		var anim=info.ap.get_animation(name)
+		var key=anim.get_instance_id()
+		if _motion.has(key):continue
+		var m={"net":Vector3.ZERO,"times":PackedFloat32Array(),"prog":PackedFloat32Array()};_motion[key]=m
 		for t in anim.get_track_count():
 			if anim.track_get_type(t)!=Animation.TYPE_POSITION_3D or not str(anim.track_get_path(t)).ends_with(":Hips"):continue
-			var first: Vector3=anim.track_get_key_value(t,0)
-			for k in anim.track_get_key_count(t):
+			var n=anim.track_get_key_count(t)
+			if n<2:break
+			var v0: Vector3=anim.track_get_key_value(t,0)
+			var deltas=[]
+			for k in n:
+				var d: Vector3=M*(anim.track_get_key_value(t,k)-v0);d.y=0;deltas.append(d)
 				var v: Vector3=anim.track_get_key_value(t,k)
-				anim.track_set_key_value(t,k,Vector3(first.x+(v.x-first.x)*.7,v.y,first.z+(v.z-first.z)*.7))
+				anim.track_set_key_value(t,k,v-M.inverse()*d)       # bacino fermo in orizzontale
+			m.net=deltas[n-1]
+			var dir=m.net.normalized();var best=0.0
+			for k in n:
+				best=maxf(best,clampf(deltas[k].dot(dir)/maxf(m.net.length(),.001),0,1))  # avanzamento monotono 0..1
+				m.times.append(anim.track_get_key_time(t,k));m.prog.append(best)
+			break
+func _progress(m: Dictionary,time: float) -> float:
+	var ts: PackedFloat32Array=m.times
+	if ts.is_empty():return 0.0
+	var i=ts.bsearch(time)
+	if i<=0:return m.prog[0]
+	if i>=ts.size():return 1.0
+	var a=(time-ts[i-1])/maxf(ts[i]-ts[i-1],.0001)
+	return lerpf(m.prog[i-1],m.prog[i],a)
 func _find_animation(n: Node) -> AnimationPlayer:
 	if n is AnimationPlayer:return n
 	for c in n.get_children():
@@ -293,23 +328,47 @@ func _play_step(step: Array,fluid: bool) -> void:
 
 func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 	var ap=info.ap;var root=info.root
-	var length=1.2
-	if ap and ap.has_animation(t.clip):length=ap.get_animation(t.clip).length
+	var anim: Animation=ap.get_animation(t.clip) if ap and ap.has_animation(t.clip) else null
+	var length=anim.length if anim else 1.2
 	if t.clip in ["In guardia","Avanzare","Correre","Carica"]:length=minf(length,1.6)
 	length=minf(length,3.2)
 	var turn=.22 if absf(angle_difference(root.rotation.y,t.yaw))>.05 else 0.0
+	var dist=t.from.distance_to(t.to)
+	var m=_motion.get(anim.get_instance_id(),{}) if anim else {}
+	var mode="fermo"
+	if dist>.05:
+		if anim and STEP_SPEED.has(t.clip) and info.has("hips_h"):
+			mode="passi";length=dist/(STEP_SPEED[t.clip]*info.hips_h)    # stessa velocità dei piedi
+		elif not m.is_empty() and m.net.length()>.15:
+			mode="profilo"                                                  # la clip avanza da sola
+		else:
+			mode="lineare"
+	var loops=1
+	if mode=="profilo":
+		loops=maxi(1,roundi(dist/m.net.length()));length=anim.length*loops
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(root,"rotation:y",root.rotation.y+angle_difference(root.rotation.y,t.yaw),turn)
 	tw.tween_callback(func():
 		_set_rim(t.i,t.move)
-		if ap and ap.has_animation(t.clip):ap.play(t.clip,.12 if fluid else .18)
+		if anim:
+			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
+			ap.play(t.clip,.12 if fluid else .18)
 		if t.get("hit",0)>0:_float(root.position,"-%d" % t.hit))
-	if t.from.distance_to(t.to)>.05:
-		root.position=t.from
-		tw.tween_property(root,"position",t.to,maxf(.5,length*.85))
-	else:
+	if mode=="fermo":
 		tw.tween_interval(length)
+	else:
+		root.position=t.from
+		var from: Vector3=t.from;var to: Vector3=t.to
+		if mode=="profilo":
+			var clip_len=anim.length
+			tw.tween_method(func(x: float):
+				var k=floorf(x/clip_len);var p=(k+_progress(m,x-k*clip_len))/loops
+				root.position=from.lerp(to,minf(p,1.0)),0.0,length,length)
+		else:
+			tw.tween_property(root,"position",to,length)
+		if mode=="profilo" and anim and not t.clip in ["Carica"]:
+			tw.tween_callback(func():anim.loop_mode=Animation.LOOP_NONE)
 	return turn+length
 
 func _float(at: Vector3,text: String) -> void:

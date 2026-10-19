@@ -1,9 +1,12 @@
 {
   "titolo": "Blood Master",
   "sottotitolo": "Edizione Deluxe · in sviluppo",
-  "descrizione": "Combattimenti nell’arena con mosse segrete, personaggi originali, IA e multiplayer online. Versione in sviluppo, con prova animata 3D di Gascor.",
+  "descrizione": "Combattimenti nell’arena con mosse segrete, personaggi originali, IA e multiplayer online. Versione in sviluppo, con miniature 3D animate sulla mappa e replay dello scontro.",
   "online": true,
   "sezione": "originale",
-  "generi": ["Fantasy", "Strategici"],
+  "generi": [
+    "Fantasy",
+    "Strategici"
+  ],
   "ordine": 40
 }

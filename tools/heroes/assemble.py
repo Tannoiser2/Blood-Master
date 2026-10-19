@@ -16,13 +16,14 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[2]
 CID = sys.argv[-1]
 # length: lunghezza dell'arma (m); grip: posizione della mano destra misurata dal fondo,
-# in frazione della lunghezza; left: distanza della mano sinistra verso il fondo (m);
+# in frazione della lunghezza; shaft: tratto dell'asta (m, negativo = verso il fondo) dove
+# può stare la mano sinistra; heavy: fendente con la clip a due mani del martello;
 # kind: 'sword' trova la guardia, 'pole' trova la testa dalla larghezza degli estremi.
 CFG = {
-    'ut':      dict(name='Ut', kind='sword', length=1.50, grip=.235, left=.15),
-    'shannon': dict(name='Shannon', kind='pole', length=2.05, grip=.50, left=.42),
-    'nuchra':  dict(name='Nuchra', kind='pole', length=1.30, grip=.40, left=.32),
-    'ramok':   dict(name='Ramok', kind='pole', length=2.05, grip=.50, left=.42),
+    'ut':      dict(name='Ut', kind='sword', length=1.50, grip=.235, shaft=(-.20, -.12), heavy=True),
+    'shannon': dict(name='Shannon', kind='pole', length=2.05, grip=.50, shaft=(-.85, -.25), heavy=False),
+    'nuchra':  dict(name='Nuchra', kind='pole', length=1.30, grip=.40, shaft=(-.48, -.18), heavy=True),
+    'ramok':   dict(name='Ramok', kind='pole', length=2.05, grip=.50, shaft=(-.85, -.25), heavy=True),
 }[CID]
 SRC = root / f'source_art/{CID}/meshy'
 ANTEOS = root / 'source_art/anteos/anteos.blend'
@@ -103,18 +104,20 @@ for b in arm.data.bones:
     if b.parent is None:
         walk(b)
 hips = order[0].name
-ratio = arm.data.bones[hips].head_local.z / src.data.bones[hips].head_local.z
-print('RETARGET ratio bacino', round(ratio, 3), flush=True)
 for p in arm.pose.bones:
     p.rotation_mode = 'QUATERNION'
-for act in clips:
-    set_action(src, act)
-    new = bpy.data.actions.new(act.name); new.use_fake_user = True
+
+
+def retarget(srco, act, name):
+    """Ogni osso del bersaglio prende l'orientamento assoluto dell'osso omonimo della sorgente."""
+    ratio = arm.data.bones[hips].head_local.z / srco.data.bones[hips].head_local.z
+    set_action(srco, act)
+    new = bpy.data.actions.new(name); new.use_fake_user = True
     set_action(arm, new)
     last = {}
     for f in range(int(act.frame_range[0]), int(act.frame_range[1]) + 1):
         bpy.context.scene.frame_set(f)
-        S = {b.name: src.pose.bones[b.name].matrix.copy() for b in order}
+        S = {b.name: srco.pose.bones[b.name].matrix.copy() for b in order}
         pm = {}
         for b in order:
             pb = arm.pose.bones[b.name]; R = S[b.name].to_quaternion()
@@ -133,16 +136,38 @@ for act in clips:
             pb.keyframe_insert('rotation_quaternion', frame=f)
             if b.parent is None:
                 pb.keyframe_insert('location', frame=f)
-    print('CLIP', act.name, flush=True)
-for a in clips:
-    a.name = a.name + '__anteos'
-for a in bpy.data.actions:
-    if a.name.endswith('.001'):
-        a.name = a.name[:-4]
+    set_action(arm, new)
+    print('CLIP', name, flush=True)
+    return new
+
+
+for act in clips:
+    act.name = act.name + '__anteos'
+for act in clips:
+    retarget(src, act, act.name[:-8])
 for o in (src, a_sword):
     bpy.data.objects.remove(o)
-for a in [a for a in bpy.data.actions if a.name.endswith('__anteos')]:
+for a in clips:
     bpy.data.actions.remove(a)
+
+# clip a due mani dal catalogo Meshy, generate sul rig di Ut e trasferite a tutti
+EXTRA = {'Parata Sx': 'anim_parata2h.glb', 'Parata Dx': 'anim_parata2h.glb'}  # Two-handed Parry (149)
+if CFG['heavy']:
+    EXTRA['Fendente'] = 'anim_martello.glb'                                    # Heavy Hammer Swing (128)
+for name, fname in EXTRA.items():
+    objs = imported(root / 'source_art/ut/meshy' / fname)
+    sa = next(o for o in objs if o.type == 'ARMATURE'); act = sa.animation_data.action
+    for pbn in sa.pose.bones:
+        pbn.rotation_mode = 'QUATERNION'
+    old = bpy.data.actions.get(name)
+    if old:
+        old.name = name + '__vecchia'
+    retarget(sa, act, name)
+    if old:
+        bpy.data.actions.remove(old)
+    bpy.data.actions.remove(act)
+    for o in objs:
+        bpy.data.objects.remove(o)
 rest(arm); bpy.context.view_layer.update()
 
 # --- Arma: asse lungo, testa riconosciuta, origine sulla presa della mano destra ---
@@ -177,44 +202,89 @@ w.matrix_world = bone_frame(arm, 'RightHand') @ Matrix.Translation(REL_SWORD.tra
 w.name = 'Arma'
 bpy.context.view_layer.update()
 
-# --- Mano sinistra sull'asta: IK analitico a due ossa, scritto nelle clip ---------
-# (le ossa importate da Meshy hanno code lunghissime, quindi niente vincolo IK di Blender:
-# spalla, gomito e polso sono le teste di LeftArm, LeftForeArm e LeftHand)
+# --- Presa a due mani: arma raddrizzata e mano sinistra sull'asta -----------------
+# Le ossa importate da Meshy hanno code lunghissime, quindi niente vincoli IK di Blender:
+# lavoro sulle teste delle ossa (spalla, gomito, polso) e scrivo il risultato nelle clip.
+# 1) fuori dagli attacchi l'arma non punta mai all'indietro (né verso terra, per aste e
+#    asce, che in guardia puntano avanti e in alto): la correggo ruotando il polso
+#    destro, al massimo di 120°;
+# 2) la mano sinistra afferra l'asta nel punto più comodo per la spalla (entro il tratto
+#    CFG['shaft'] dietro la mano destra) con un IK a due ossa: gomito in basso e in fuori;
+# 3) il palmo sinistro si chiude attorno all'asta.
 from mathutils import Quaternion
-GRIP_L = -Vector(u) * CFG['left']          # punto della presa sinistra, nello spazio dell'arma
-AW = arm.matrix_world; AWi = AW.inverted()
+CALM = ('Riposo', 'Camminata', 'Avanzare', 'Correre', 'In guardia', 'Carica', 'Schivata', 'Rialzarsi', 'Sbilanciato')
+AW = arm.matrix_world; AWi = AW.inverted(); UNIT = 1 / AW.to_scale()[0]   # metri -> unità armatura
+UP = Vector((0, 0, 1))
+U_W = Vector(u)                                   # verso la testa dell'arma, spazio dell'arma
 def head(n):
-    return arm.pose.bones[n].head.copy()   # spazio armatura
+    return arm.pose.bones[n].head.copy()          # spazio armatura
 def turn(name, R, pivot):
     pb = arm.pose.bones[name]; M = pb.matrix.copy()
     T = Matrix.Translation(pivot) @ R.to_matrix().to_4x4() @ Matrix.Translation(-pivot)
     pb.matrix = T @ M; bpy.context.view_layer.update()
-def two_bone(target):
+def weapon_dir():
+    return (AWi.to_3x3() @ w.matrix_world.to_3x3() @ U_W).normalized()
+def grip_origin():
+    return AWi @ w.matrix_world.translation
+def two_bone(target, pole_pref):
     S, E, W = head('LeftArm'), head('LeftForeArm'), head('LeftHand')
-    a, b = (E - S).length, (W - E).length
-    d = target - S; dl = min(max(d.length, abs(a - b) + 1e-3), (a + b) * .999)
+    a_, b_ = (E - S).length, (W - E).length
+    d = target - S; dl = min(max(d.length, abs(a_ - b_) + 1e-3), (a_ + b_) * .999)
     dn = d.normalized()
-    pole = (E - S) - dn * (E - S).dot(dn)                 # il gomito resta dalla sua parte
+    pole = pole_pref - dn * pole_pref.dot(dn)
     if pole.length < 1e-6:
-        pole = Vector((0, 0, -1)) - dn * dn.z
+        pole = (E - S) - dn * (E - S).dot(dn)
     pole.normalize()
-    x = (a * a - b * b + dl * dl) / (2 * dl); h = math.sqrt(max(a * a - x * x, 0))
+    x = (a_ * a_ - b_ * b_ + dl * dl) / (2 * dl); h = math.sqrt(max(a_ * a_ - x * x, 0))
     E2 = S + dn * x + pole * h
     turn('LeftArm', (E - S).rotation_difference(E2 - S), S)
     E, W = head('LeftForeArm'), head('LeftHand')
-    W2 = S + dn * dl
-    turn('LeftForeArm', (W - E).rotation_difference(W2 - E), E)
+    turn('LeftForeArm', (W - E).rotation_difference(S + dn * dl - E), E)
+    return a_ + b_
+BONES = ('RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand')
 for act in list(bpy.data.actions):
     set_action(arm, act)
     f0, f1 = int(act.frame_range[0]), int(act.frame_range[1])
     frames = {}
     for f in range(f0, f1 + 1):
         bpy.context.scene.frame_set(f)
-        g = AWi @ (w.matrix_world @ GRIP_L)                  # presa, spazio armatura
-        hand_len = .07 / AW.to_scale()[0]                   # 7 cm in unità dell'armatura
-        S = head('LeftArm'); tgt = g - (g - S).normalized() * hand_len   # il polso sta un palmo prima dell'asta
-        two_bone(tgt)
-        frames[f] = {n: arm.pose.bones[n].rotation_quaternion.copy() for n in ('LeftArm', 'LeftForeArm')}
+        left = head('LeftUpLeg') - head('RightUpLeg'); left.z = 0; left.normalize()
+        fwd = left.cross(UP)
+        # 1) arma raddrizzata
+        D = weapon_dir()
+        if act.name in CALM:
+            Dt = D.copy()
+            if D.dot(fwd) < 0:
+                Dt -= fwd * 2 * D.dot(fwd)
+            if CFG['kind'] == 'pole':
+                # aste e asce in guardia: verso l'avversario e un po' in alto
+                Dt = Dt.normalized() * .35 + fwd * .75 + UP * (.25 if CFG['length'] > 1.6 else .7)
+            R = D.rotation_difference(Dt.normalized())
+            if R.angle > math.radians(120):
+                R = Quaternion(R.axis, math.radians(120))
+            if R.angle > 1e-3:
+                turn('RightHand', R, head('RightHand'))
+            D = weapon_dir()
+        # 2) punto della presa: quello a distanza più comoda dalla spalla sinistra
+        S = head('LeftArm'); reach = (head('LeftForeArm') - S).length + (head('LeftHand') - head('LeftForeArm')).length
+        g0 = grip_origin(); lo, hi = CFG['shaft']
+        best = None
+        for k in range(13):
+            sm = lo + (hi - lo) * k / 12
+            g = g0 + D * sm * UNIT
+            score = abs((g - S).length - .82 * reach)
+            if best is None or score < best[0]:
+                best = (score, g)
+        g = best[1]
+        tgt = g - (g - S).normalized() * .07 * UNIT     # il polso sta un palmo prima dell'asta
+        two_bone(tgt, -UP * 1.0 + left * .6 - fwd * .2)
+        # 3) palmo attorno all'asta: la mano prosegue l'avambraccio ma perpendicolare all'asta
+        E, Wr = head('LeftForeArm'), head('LeftHand')
+        fa = (Wr - E).normalized(); hd = fa - D * fa.dot(D)
+        if hd.length > 1e-4:
+            pbh = arm.pose.bones['LeftHand']; hy = pbh.matrix.col[1].xyz.normalized()
+            turn('LeftHand', hy.rotation_difference((hd.normalized() + fa * .3).normalized()), Wr)
+        frames[f] = {n: arm.pose.bones[n].rotation_quaternion.copy() for n in BONES}
     last = {}
     for f, qs in sorted(frames.items()):
         for n, q in qs.items():
