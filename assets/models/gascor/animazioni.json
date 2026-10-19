@@ -4,7 +4,21 @@
   "base": false,
   "skeleton_bones": 17,
   "status": "prototipo",
-  "clips": {"idle":"Riposo", "walk":"Camminata", "thrust":"Affondo", "parry":"Parata"},
+  "clips": {
+    "idle": "Riposo",
+    "walk": "Camminata",
+    "thrust": "Affondo",
+    "parry": "Parata"
+  },
   "walk_in_place": true,
-  "integrated_in_match": false
+  "integrated_in_match": false,
+  "versione": 2,
+  "durata_frame": {
+    "Riposo": 60,
+    "Camminata": 32,
+    "Affondo": 46,
+    "Parata": 36
+  },
+  "fps": 24,
+  "note": "v2: IK su gambe e braccia con piedi piantati, peso su bacino e busto, anticipazione e rinculo; spada, scudo e pugni rigidi sulle mani. Generato da tools/gascor/rig_model.py"
 }
