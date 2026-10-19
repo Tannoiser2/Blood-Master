@@ -22,7 +22,7 @@ CID = sys.argv[-1]
 CFG = {
     'ut':      dict(name='Ut', kind='sword', length=1.50, grip=.235, shaft=(-.20, -.12), heavy=True),
     'shannon': dict(name='Shannon', kind='pole', length=2.05, grip=.50, shaft=(-.85, -.25), heavy=False),
-    'nuchra':  dict(name='Nuchra', kind='pole', length=1.30, grip=.40, shaft=(-.48, -.18), heavy=True),
+    'nuchra':  dict(name='Nuchra', kind='pole', length=1.30, grip=.40, shaft=(-.48, -.18), heavy=True, sep=-.17, gshift=(0, .08, 0)),
     'ramok':   dict(name='Ramok', kind='pole', length=2.05, grip=.50, shaft=(-.85, -.25), heavy=True),
 }[CID]
 SRC = root / f'source_art/{CID}/meshy'
@@ -202,34 +202,29 @@ w.matrix_world = bone_frame(arm, 'RightHand') @ Matrix.Translation(REL_SWORD.tra
 w.name = 'Arma'
 bpy.context.view_layer.update()
 
-# --- Presa a due mani: arma raddrizzata e mano sinistra sull'asta -----------------
-# Le ossa importate da Meshy hanno code lunghissime, quindi niente vincoli IK di Blender:
-# lavoro sulle teste delle ossa (spalla, gomito, polso) e scrivo il risultato nelle clip.
-# 1) fuori dagli attacchi l'arma non punta mai all'indietro (né verso terra, per aste e
-#    asce, che in guardia puntano avanti e in alto): la correggo ruotando il polso
-#    destro, al massimo di 120°;
-# 2) la mano sinistra afferra l'asta nel punto più comodo per la spalla (entro il tratto
-#    CFG['shaft'] dietro la mano destra) con un IK a due ossa: gomito in basso e in fuori;
-# 3) il palmo sinistro si chiude attorno all'asta.
+# --- Presa a due mani guidata dall'arma ----------------------------------------
+# Le clip di Anteos sono di spada e scudo: la mano destra fa gesti da spada a una mano e
+# l'asta finiva dietro il corpo. Qui è l'arma a guidare: per ogni mossa la sua posizione
+# è definita rispetto al busto (guardia avanti all'anca, fendente dall'alto, tagli ad
+# arco, parata di traverso), con i colpi nello stesso istante in cui colpisce la clip
+# originale. Poi due IK a due ossa portano entrambe le mani sull'asta, gomiti in basso
+# e in fuori. Gambe, busto e testa restano quelli della clip.
+# Le ossa importate da Meshy hanno code lunghissime: lavoro sulle teste delle ossa.
 from mathutils import Quaternion
-CALM = ('Riposo', 'Camminata', 'Avanzare', 'Correre', 'In guardia', 'Carica', 'Schivata', 'Rialzarsi', 'Sbilanciato')
-AW = arm.matrix_world; AWi = AW.inverted(); UNIT = 1 / AW.to_scale()[0]   # metri -> unità armatura
-UP = Vector((0, 0, 1))
-U_W = Vector(u)                                   # verso la testa dell'arma, spazio dell'arma
+AW = arm.matrix_world; AWi = AW.inverted(); UNIT = 1 / AW.to_scale()[0]
 def head(n):
     return arm.pose.bones[n].head.copy()          # spazio armatura
+def hw(n):
+    return AW @ arm.pose.bones[n].head            # mondo
 def turn(name, R, pivot):
     pb = arm.pose.bones[name]; M = pb.matrix.copy()
     T = Matrix.Translation(pivot) @ R.to_matrix().to_4x4() @ Matrix.Translation(-pivot)
     pb.matrix = T @ M; bpy.context.view_layer.update()
-def weapon_dir():
-    return (AWi.to_3x3() @ w.matrix_world.to_3x3() @ U_W).normalized()
-def grip_origin():
-    return AWi @ w.matrix_world.translation
-def two_bone(target, pole_pref):
-    S, E, W = head('LeftArm'), head('LeftForeArm'), head('LeftHand')
+def two_bone(side, target, pole_pref):
+    A, F, H = side + 'Arm', side + 'ForeArm', side + 'Hand'
+    S, E, W = head(A), head(F), head(H)
     a_, b_ = (E - S).length, (W - E).length
-    d = target - S; dl = min(max(d.length, abs(a_ - b_) + 1e-3), (a_ + b_) * .999)
+    d = target - S; dl = min(max(d.length, abs(a_ - b_) + 1e-3), (a_ + b_) * .995)
     dn = d.normalized()
     pole = pole_pref - dn * pole_pref.dot(dn)
     if pole.length < 1e-6:
@@ -237,63 +232,136 @@ def two_bone(target, pole_pref):
     pole.normalize()
     x = (a_ * a_ - b_ * b_ + dl * dl) / (2 * dl); h = math.sqrt(max(a_ * a_ - x * x, 0))
     E2 = S + dn * x + pole * h
-    turn('LeftArm', (E - S).rotation_difference(E2 - S), S)
-    E, W = head('LeftForeArm'), head('LeftHand')
-    turn('LeftForeArm', (W - E).rotation_difference(S + dn * dl - E), E)
-    return a_ + b_
-BONES = ('RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand')
+    turn(A, (E - S).rotation_difference(E2 - S), S)
+    E, W = head(F), head(H)
+    turn(F, (W - E).rotation_difference(S + dn * dl - E), E)
+
+rest(arm); bpy.context.view_layer.update()
+K_inv = ((AW @ arm.pose.bones['RightHand'].matrix).inverted() @ w.matrix_world).inverted()  # arma -> mano
+ARM_LEN = (hw('LeftForeArm') - hw('LeftArm')).length + (hw('LeftHand') - hw('LeftForeArm')).length
+KS = ARM_LEN / .55                                 # pose disegnate per un braccio di 55 cm
+LOC = Matrix((Vector(u), sG, Vector(u).cross(sG))).transposed()   # assi dell'arma nel suo spazio
+STYLE = 'lancia' if CFG['length'] > 1.6 else 'pesante'
+SEP = CFG.get('sep', {'lancia': .38, 'pesante': -.13 if CFG['kind'] == 'sword' else -.28}[STYLE])   # mano sinistra lungo l'asta
+F_, L_, U_ = 'f', 'l', 'u'
+# pose: (presa della mano destra (avanti, sinistra, su) dal centro delle spalle, direzione
+# della testa dell'arma, normale del piano in cui sta la lama)
+POSES = {
+ 'lancia': {
+  'riposo':      ((0.00, -.20, -.45), (1, .25, .35), 'l'),
+  'guardia':     ((0.00, -.20, -.42), (1, .20, .30), 'l'),
+  'affondo_c':   ((-.12, -.22, -.38), (1, .15, .20), 'l'),
+  'affondo':     ((0.30, -.10, -.30), (1, .05, .12), 'l'),
+  'fendente_c':  ((0.05, -.15, -.05), (.40, .15, 1), 'l'),
+  'fendente':    ((0.05, -.08, -.28), (1, .10, -.35), 'l'),
+  'taglio_d':    ((0.15, 0.10, -.35), (.55, -.80, .10), 'u'),
+  'taglio_m':    ((0.12, 0.00, -.30), (1, 0, .05), 'u'),
+  'taglio_s':    ((0.05, -.15, -.30), (.50, .85, .05), 'u'),
+  'parata':      ((0.25, -.25, 0.05), (.15, 1, .25), 'f'),
+ },
+ 'pesante': {
+  'riposo':      ((0.24, -.10, -.40), (.55, .05, .85), 'l'),     # guardia bassa, arma davanti
+  'guardia':     ((0.28, -.08, -.32), (.80, .05, .80), 'l'),
+  'affondo_c':   ((0.12, -.15, -.30), (1, .05, .15), 'l'),
+  'affondo':     ((0.45, -.05, -.20), (1, 0, .05), 'l'),
+  'fendente_c':  ((0.05, -.08, 0.28), (-.70, .05, .70), 'l'),
+  'fendente':    ((0.45, -.03, -.30), (.80, 0, -.60), 'l'),
+  'taglio_d':    ((0.15, -.25, -.15), (.20, -1, .20), 'u'),
+  'taglio_m':    ((0.42, 0.00, -.25), (1, 0, 0), 'u'),
+  'taglio_s':    ((0.20, 0.25, -.20), (.10, 1, .10), 'u'),
+  'parata':      ((0.30, -.20, 0.15), (.10, 1, .35), 'f'),
+ }}[STYLE]
+if CFG.get('gshift'):                              # presa spostata verso il centro (corporature larghe)
+    POSES = {k: (tuple(a + b for a, b in zip(v[0], CFG['gshift'])),) + v[1:] for k, v in POSES.items()}
+FIXED = {'Riposo': 'riposo', 'Camminata': 'riposo', 'Correre': 'riposo'}
+def schedule(name, ts):
+    """Pose chiave (frazione della clip, posa); ts = istante del colpo nella clip originale."""
+    seq = {'Affondo': [(ts - .2, 'affondo_c'), (ts, 'affondo'), (ts + .12, 'affondo')],
+           'Fendente': [(ts - .22, 'fendente_c'), (ts, 'fendente'), (ts + .12, 'fendente')],
+           'Taglio Sx': [(ts - .2, 'taglio_d'), (ts, 'taglio_m'), (ts + .14, 'taglio_s')],
+           'Taglio Dx': [(ts - .2, 'taglio_s'), (ts, 'taglio_m'), (ts + .14, 'taglio_d')],
+           'Parata Sx': [(.25, 'parata'), (.75, 'parata')],
+           'Parata Dx': [(.25, 'parata'), (.75, 'parata')]}.get(name)
+    if name in FIXED:
+        return [(0, FIXED[name]), (1, FIXED[name])]
+    if seq is None:
+        return [(0, 'guardia'), (1, 'guardia')]
+    keys = [(0, 'guardia')] + [(min(max(t, .05), .95), p) for t, p in seq] + [(1, 'guardia')]
+    out = []
+    for t, p in keys:                                  # tempi crescenti
+        if out and t <= out[-1][0]:
+            t = out[-1][0] + .01
+        out.append((min(t, 1), p))
+    return out
+def body_frame():
+    c = (hw('LeftArm') + hw('RightArm')) / 2
+    left = (hw('LeftArm') - hw('RightArm')).normalized()
+    up = (hw('neck') - hw('Spine')); up = (up - left * up.dot(left)).normalized()
+    return c, left.cross(up), left, up                 # centro, avanti, sinistra, su
+def pose_at(sched, x):
+    for (t0, p0), (t1, p1) in zip(sched, sched[1:]):
+        if x <= t1:
+            k = 0 if t1 <= t0 else (x - t0) / (t1 - t0)
+            return POSES[p0], POSES[p1], k * k * (3 - 2 * k)
+    return POSES[sched[-1][1]], POSES[sched[-1][1]], 0
+def vec(t, F, Lf, Up):
+    return F * t[0] + Lf * t[1] + Up * t[2]
+def strike_time(act):
+    """Istante (frazione) in cui la mano destra della clip va più veloce rispetto al busto."""
+    f0, f1 = int(act.frame_range[0]), int(act.frame_range[1]); prev = None; best = (0, .5)
+    for f in range(f0, f1 + 1):
+        bpy.context.scene.frame_set(f)
+        c, F, Lf, Up = body_frame(); r = hw('RightHand') - c
+        loc = Vector((r.dot(F), r.dot(Lf), r.dot(Up)))
+        x = (f - f0) / max(f1 - f0, 1)
+        if prev is not None and .15 < x < .85:
+            v = (loc - prev).length
+            if v > best[0]:
+                best = (v, x)
+        prev = loc
+    return best[1]
+BONES = ('RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand')
 for act in list(bpy.data.actions):
     set_action(arm, act)
     f0, f1 = int(act.frame_range[0]), int(act.frame_range[1])
+    sched = schedule(act.name, strike_time(act))
     frames = {}
     for f in range(f0, f1 + 1):
         bpy.context.scene.frame_set(f)
-        left = head('LeftUpLeg') - head('RightUpLeg'); left.z = 0; left.normalize()
-        fwd = left.cross(UP)
-        # 1) arma raddrizzata
-        D = weapon_dir()
-        if act.name in CALM:
-            Dt = D.copy()
-            if D.dot(fwd) < 0:
-                Dt -= fwd * 2 * D.dot(fwd)
-            if CFG['kind'] == 'pole':
-                # aste e asce in guardia: verso l'avversario e un po' in alto
-                Dt = Dt.normalized() * .35 + fwd * .75 + UP * (.25 if CFG['length'] > 1.6 else .7)
-            R = D.rotation_difference(Dt.normalized())
-            if R.angle > math.radians(120):
-                R = Quaternion(R.axis, math.radians(120))
-            if R.angle > 1e-3:
-                turn('RightHand', R, head('RightHand'))
-            D = weapon_dir()
-        # 2) punto della presa: quello a distanza più comoda dalla spalla sinistra
-        S = head('LeftArm'); reach = (head('LeftForeArm') - S).length + (head('LeftHand') - head('LeftForeArm')).length
-        g0 = grip_origin(); lo, hi = CFG['shaft']
-        best = None
-        for k in range(13):
-            sm = lo + (hi - lo) * k / 12
-            g = g0 + D * sm * UNIT
-            score = abs((g - S).length - .82 * reach)
-            if best is None or score < best[0]:
-                best = (score, g)
-        g = best[1]
-        tgt = g - (g - S).normalized() * .07 * UNIT     # il polso sta un palmo prima dell'asta
-        two_bone(tgt, -UP * 1.0 + left * .6 - fwd * .2)
-        # 3) palmo attorno all'asta: la mano prosegue l'avambraccio ma perpendicolare all'asta
-        E, Wr = head('LeftForeArm'), head('LeftHand')
+        c, F, Lf, Up = body_frame()
+        P0, P1, k = pose_at(sched, (f - f0) / max(f1 - f0, 1))
+        g = c + vec(P0[0], F, Lf, Up).lerp(vec(P1[0], F, Lf, Up), k) * KS
+        d0 = vec(P0[1], F, Lf, Up).normalized(); d1 = vec(P1[1], F, Lf, Up).normalized()
+        d = d0.slerp(d1, k) if d0.dot(d1) > -.99 else (d0 if k < .5 else d1)
+        nrm = {'l': Lf, 'u': Up, 'f': F}
+        n = nrm[P0[2]].lerp(nrm[P1[2]], k)
+        e = n.cross(d)
+        if e.length < 1e-3:
+            e = Up.cross(d)
+        e.normalize()
+        Wm = Matrix.Translation(g) @ (Matrix((d, e, d.cross(e))).transposed() @ LOC.transposed()).to_4x4()
+        Hm = AWi @ Wm @ K_inv                               # mano destra voluta, spazio armatura
+        two_bone('Right', Hm.translation, AWi.to_3x3() @ (-Up - Lf * .6 - F * .2))
+        pb = arm.pose.bones['RightHand']; M = Hm.normalized(); M.translation = pb.head
+        pb.matrix = M; bpy.context.view_layer.update()
+        gl = AWi @ (g + d * SEP)                            # presa sinistra
+        S = head('LeftArm'); tgt = gl - (gl - S).normalized() * .07 * UNIT
+        two_bone('Left', tgt, AWi.to_3x3() @ (-Up + Lf * .6 - F * .2))
+        E, Wr = head('LeftForeArm'), head('LeftHand'); D = (AWi.to_3x3() @ d).normalized()
         fa = (Wr - E).normalized(); hd = fa - D * fa.dot(D)
         if hd.length > 1e-4:
             pbh = arm.pose.bones['LeftHand']; hy = pbh.matrix.col[1].xyz.normalized()
             turn('LeftHand', hy.rotation_difference((hd.normalized() + fa * .3).normalized()), Wr)
-        frames[f] = {n: arm.pose.bones[n].rotation_quaternion.copy() for n in BONES}
+        frames[f] = {nm: arm.pose.bones[nm].rotation_quaternion.copy() for nm in BONES}
     last = {}
     for f, qs in sorted(frames.items()):
-        for n, q in qs.items():
-            if n in last and last[n].dot(q) < 0:
-                q.negate()                                     # quaternioni continui
-            last[n] = q
-            pb = arm.pose.bones[n]; pb.rotation_quaternion = q
+        for nm, q in qs.items():
+            if nm in last and last[nm].dot(q) < 0:
+                q.negate()
+            last[nm] = q
+            pb = arm.pose.bones[nm]; pb.rotation_quaternion = q
             pb.keyframe_insert('rotation_quaternion', frame=f)
-    print('PRESA', act.name, flush=True)
+    print('PRESA', act.name, [p for _, p in sched], flush=True)
 for a in bpy.data.actions:
     a.use_fake_user = True
 rest(arm); bpy.context.view_layer.update()

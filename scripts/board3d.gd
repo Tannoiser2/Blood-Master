@@ -199,11 +199,13 @@ func _extract_root_motion(info: Dictionary) -> void:
 			var n=anim.track_get_key_count(t)
 			if n<2:break
 			var v0: Vector3=anim.track_get_key_value(t,0)
+			var rest_o: Vector3=skel.get_bone_rest(hips).origin
 			var deltas=[]
 			for k in n:
-				var d: Vector3=M*(anim.track_get_key_value(t,k)-v0);d.y=0;deltas.append(d)
 				var v: Vector3=anim.track_get_key_value(t,k)
-				anim.track_set_key_value(t,k,v-M.inverse()*d)       # bacino fermo in orizzontale
+				var d: Vector3=M*(v-v0);d.y=0;deltas.append(d)
+				var c: Vector3=M*(v-rest_o);c.y=0
+				anim.track_set_key_value(t,k,v-M.inverse()*c)       # bacino sempre sopra il centro della basetta
 			m.net=deltas[n-1]
 			var dir=m.net.normalized();var best=0.0
 			for k in n:
