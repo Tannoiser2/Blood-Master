@@ -93,9 +93,11 @@ func _action_spread() -> float:
 		if minis[i].root.visible:r=maxf(r,minis[i].root.position.distance_to(c))
 	return r
 func _process(delta: float) -> void:
+	if camera and is_visible_in_tree():
+		for i in minis:minis[i].bar.global_basis=camera.global_basis
 	if not follow or minis.is_empty() or not is_visible_in_tree():return
-	target=target.lerp(_action_center()+Vector3(0,.8,0),clampf(delta*2.0,0,1))
-	dist=lerpf(dist,clampf(6.5+_action_spread()*1.6,6.5,16.0),clampf(delta*1.5,0,1))
+	target=target.lerp(_action_center()+Vector3(0,.45,0),clampf(delta*2.0,0,1))
+	dist=lerpf(dist,clampf(4.2+_action_spread()*1.7,4.2,15.0),clampf(delta*1.5,0,1))
 	# guarda lo scontro di fianco: perpendicolare alla linea fra i due combattenti più vicini
 	var best=1e9;var axis=Vector3.ZERO;var keys=minis.keys()
 	for a_i in keys.size():
@@ -120,15 +122,17 @@ func _mini(i: int) -> Dictionary:
 	var p=game.state.fighters[i];var d=game.definition(p)
 	var root=Node3D.new();viewport.add_child(root)
 	var team=TEAL if int(p.team)==0 else RED
-	var base=MeshInstance3D.new();var cyl=CylinderMesh.new();cyl.top_radius=.42;cyl.bottom_radius=.45;cyl.height=.05;cyl.radial_segments=32;base.mesh=cyl;base.position.y=.025
-	var bm=StandardMaterial3D.new();bm.albedo_color=Color("1d2628");bm.roughness=.7;base.material_override=bm;root.add_child(base)
-	var ring=MeshInstance3D.new();var tor=TorusMesh.new();tor.inner_radius=.42;tor.outer_radius=.47;ring.mesh=tor;ring.position.y=.04
-	var rm=StandardMaterial3D.new();rm.albedo_color=team;rm.emission_enabled=true;rm.emission=team*.4;ring.material_override=rm;root.add_child(ring)
-	var notch=MeshInstance3D.new();var bx=BoxMesh.new();bx.size=Vector3(.12,.03,.14);notch.mesh=bx;notch.position=Vector3(0,.06,.47);notch.material_override=rm;root.add_child(notch)
-	var info={"root":root,"model":null,"ap":null,"token":null}
+	# basetta esagonale (allineata alle celle) con il bordo luminoso del colore della pedina
+	var rim=MeshInstance3D.new();var rc=CylinderMesh.new();rc.top_radius=.385;rc.bottom_radius=.385;rc.height=.045;rc.radial_segments=6;rc.rings=1;rim.mesh=rc;rim.position.y=.0225
+	var rm=StandardMaterial3D.new();rm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;rim.material_override=rm;root.add_child(rim)  # colore pieno, non saturato dalle luci
+	var top=MeshInstance3D.new();var tc=CylinderMesh.new();tc.top_radius=.335;tc.bottom_radius=.335;tc.height=.05;tc.radial_segments=6;tc.rings=1;top.mesh=tc;top.position.y=.026
+	var tm=StandardMaterial3D.new();tm.albedo_color=Color("1d2628");tm.roughness=.75;top.material_override=tm;root.add_child(top)
+	var notch=MeshInstance3D.new();var bx=BoxMesh.new();bx.size=Vector3(.09,.02,.07);notch.mesh=bx;notch.position=Vector3(0,.055,.29)
+	var nm=StandardMaterial3D.new();nm.albedo_color=team;nm.emission_enabled=true;nm.emission=team*.5;notch.material_override=nm;root.add_child(notch)
+	var info={"root":root,"model":null,"ap":null,"token":null,"rim":rm}
 	var path=MODELS.get(p.character,"")
 	if path!="":
-		var model=load(path).instantiate();model.scale=Vector3.ONE*1.15;root.add_child(model);info.model=model
+		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;root.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
 		info.ap=_find_animation(model)
 		if info.ap:_damp_root_motion(info.ap)
 		for n in ["In guardia","Riposo","Avanzare","Correre","Carica"]:
@@ -136,15 +140,35 @@ func _mini(i: int) -> Dictionary:
 		if info.ap:info.ap.play("In guardia")
 	else:
 		# personaggio senza modello 3D: pedina in piedi con il disegno della mossa corrente
-		var s=Sprite3D.new();s.pixel_size=.0035;s.position.y=.85;s.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y;s.shaded=false;root.add_child(s);info.token=s
-	var label=Label3D.new();label.text=p.name;label.font_size=36;label.outline_size=10;label.modulate=team;label.billboard=BaseMaterial3D.BILLBOARD_ENABLED;label.position.y=2.45+.32*(i%2);label.no_depth_test=true;root.add_child(label);info.label=label
+		var s=Sprite3D.new();s.pixel_size=.0019;s.position.y=.47;s.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y;s.shaded=false;root.add_child(s);info.token=s
+	# barra di stato sopra la testa: nome e ferite (sempre rivolta alla camera)
+	var bar=Node3D.new();bar.position.y=1.32+.16*(i%2);root.add_child(bar);info.bar=bar
+	var label=Label3D.new();label.text=p.name;label.font_size=26;label.outline_size=8;label.modulate=team;label.position.y=.085;label.no_depth_test=true;label.render_priority=3;bar.add_child(label);info.label=label
+	var back=MeshInstance3D.new();var bq=QuadMesh.new();bq.size=Vector2(.64,.075);back.mesh=bq
+	var bk=StandardMaterial3D.new();bk.albedo_color=Color(0,0,0,.75);bk.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;bk.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;bk.no_depth_test=true;bk.render_priority=1;back.material_override=bk;bar.add_child(back)
+	var fill=MeshInstance3D.new();var fq=QuadMesh.new();fq.size=Vector2(.6,.05);fill.mesh=fq;fill.position.z=.001
+	var fm=StandardMaterial3D.new();fm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;fm.no_depth_test=true;fm.render_priority=2;fill.material_override=fm;bar.add_child(fill);info.fill=fill;info.fill_mat=fm
 	minis[i]=info;return info
 
+func _set_status(i: int,hp: int,max_hp: int,alive: bool) -> void:
+	var info=minis[i];var p=game.state.fighters[i]
+	info.label.text=p.name+("  †" if not alive else "")
+	var f=clampf(float(hp)/maxf(1.0,max_hp),0,1)
+	info.fill.scale.x=maxf(f,.001);info.fill.position.x=-.3*(1.0-f);info.fill.visible=alive and f>0
+	info.fill_mat.albedo_color=Color("d9534f").lerp(Color("f0c040"),clampf(f*2,0,1)) if f<.5 else Color("f0c040").lerp(Color("5fd068"),(f-.5)*2)
+func token_color(m: Dictionary) -> Color:
+	if m.get("attack")!=null:return Color("ff4a3d")            # attacco: rosso
+	if not m.get("blue",[]).is_empty():return Color("3d8bff")   # difesa: blu
+	if not m.get("green",[]).is_empty():return Color("3ddc6a")  # movimento: verde
+	return Color("8f9a9e")
+func _set_rim(i: int,move_id: String) -> void:
+	var p=game.state.fighters[i];var m=game.definition(p).moves.get(move_id,{})
+	minis[i].rim.albedo_color=token_color(m)
 const ATTACK_CLIPS=["Affondo","Fendente","Taglio Sx","Taglio Dx","Calcio","Carica"]
 var _damped={}
 func _damp_root_motion(ap: AnimationPlayer) -> void:
 	# Negli attacchi il bacino avanza fino a ~1 m: sulla mappa la cella accanto è a 1,04 m,
-	# quindi dimezzo lo spostamento orizzontale (X/Z) mantenendo quello verticale.
+	# quindi riduco al 70% lo spostamento orizzontale (X/Z) mantenendo quello verticale.
 	for clip in ATTACK_CLIPS:
 		if not ap.has_animation(clip):continue
 		var anim=ap.get_animation(clip)
@@ -155,7 +179,7 @@ func _damp_root_motion(ap: AnimationPlayer) -> void:
 			var first: Vector3=anim.track_get_key_value(t,0)
 			for k in anim.track_get_key_count(t):
 				var v: Vector3=anim.track_get_key_value(t,k)
-				anim.track_set_key_value(t,k,Vector3(first.x+(v.x-first.x)*.5,v.y,first.z+(v.z-first.z)*.5))
+				anim.track_set_key_value(t,k,Vector3(first.x+(v.x-first.x)*.7,v.y,first.z+(v.z-first.z)*.7))
 func _find_animation(n: Node) -> AnimationPlayer:
 	if n is AnimationPlayer:return n
 	for c in n.get_children():
@@ -209,7 +233,7 @@ func sync() -> void:
 	if not step.is_empty():
 		var labels={}   # etichette dopo questo passo, per il replay
 		for i in minis:
-			var q=game.state.fighters[i];labels[i]=("%s  †" % q.name) if not q.alive else ("%s  %d/%d" % [q.name,maxi(0,int(q.hp)),int(q.max_hp)])
+			var q=game.state.fighters[i];labels[i]=[int(q.hp),int(q.max_hp),q.alive]
 		step.append({"labels":labels})
 		if is_visible_in_tree():
 			queue.append(step)
@@ -226,7 +250,9 @@ func _token(i: int) -> void:
 func _refresh_tokens() -> void:
 	for i in minis:
 		var p=game.state.fighters[i];var info=minis[i]
-		info.label.text=("%s  †" % p.name) if not p.alive else ("%s  %d/%d" % [p.name,maxi(0,int(p.hp)),int(p.max_hp)])
+		if not replaying:
+			_set_status(i,int(p.hp),int(p.max_hp),p.alive)
+			if not playing:_set_rim(i,p.current)
 		info.root.visible=p.cell!=""
 		if not playing:
 			if info.token:_token(i)
@@ -257,7 +283,7 @@ func _play_step(step: Array,fluid: bool) -> void:
 		if t.has("labels"):
 			if fluid:
 				for i in t.labels:
-					if minis.has(i):minis[i].label.text=t.labels[i]
+					if minis.has(i):_set_status(i,t.labels[i][0],t.labels[i][1],t.labels[i][2])
 			continue
 		var info=minis.get(t.i)
 		if info and info.ap and not t.get("stay",false) and t.clip!="A terra":info.ap.play("In guardia",.25)
@@ -273,6 +299,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(root,"rotation:y",root.rotation.y+angle_difference(root.rotation.y,t.yaw),turn)
 	tw.tween_callback(func():
+		_set_rim(t.i,t.move)
 		if ap and ap.has_animation(t.clip):ap.play(t.clip,.12 if fluid else .18)
 		if t.get("hit",0)>0:_float(root.position,"-%d" % t.hit))
 	if t.from.distance_to(t.to)>.05:
@@ -283,8 +310,8 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 	return turn+length
 
 func _float(at: Vector3,text: String) -> void:
-	var l=Label3D.new();l.text=text;l.font_size=110;l.outline_size=20;l.modulate=Color("ff7b6b");l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
-	viewport.add_child(l);l.position=at+Vector3(0,2.3,0)
+	var l=Label3D.new();l.text=text;l.font_size=72;l.outline_size=14;l.modulate=Color("ff7b6b");l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
+	viewport.add_child(l);l.position=at+Vector3(0,1.35,0)
 	var t=create_tween();t.tween_property(l,"position:y",l.position.y+.7,1.2);t.parallel().tween_property(l,"modulate:a",0.0,1.2);t.tween_callback(l.queue_free)
 
 func replay() -> void:
@@ -299,7 +326,7 @@ func replay() -> void:
 		if not minis.has(i):continue
 		minis[i].root.position=cell_pos(initial[i].cell);minis[i].root.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true
 		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
-		var q=game.state.fighters[i];minis[i].label.text="%s  %d/%d" % [q.name,int(q.max_hp),int(q.max_hp)]
+		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true);_set_rim(i,initial[i].current)
 	await get_tree().create_timer(.6).timeout
 	for step in history:
 		await _play_step(step,true)
