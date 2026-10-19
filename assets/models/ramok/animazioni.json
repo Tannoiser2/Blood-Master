@@ -1,0 +1,40 @@
+{
+  "character": "ramok",
+  "model": "ramok.glb",
+  "versione": 1,
+  "pipeline": "Meshy: concept in posa A senza armi (dalla carta originale) -> image-to-3d 4K PBR -> remesh 50k -> rig automatico; alabarda modello separato agganciato alla mano destra, mano sinistra sull'asta con IK a due ossa cotto nelle clip; 18 clip trasferite da Anteos con tools/heroes/assemble.py",
+  "skeleton_bones": 24,
+  "fps": 24,
+  "clips": {
+    "idle": "Riposo",
+    "walk": "Camminata"
+  },
+  "pedine": {
+    "advance": "Avanzare",
+    "guard": "In guardia",
+    "charge": "Carica",
+    "cleave": "Fendente",
+    "left": "Taglio Sx",
+    "right": "Taglio Dx",
+    "parry_l": "Parata Sx",
+    "parry_r": "Parata Dx",
+    "dodge": "Schivata",
+    "roll": "Rotolare",
+    "kick": "Calcio",
+    "down": "A terra",
+    "rise": "Rialzarsi",
+    "unbalanced": "Sbilanciato",
+    "run": "Correre",
+    "thrust": "Affondo",
+    "spin": "Taglio Dx",
+    "sweep": "Taglio Sx"
+  },
+  "status": "prototipo",
+  "integrated_in_match": false,
+  "meshy_tasks": {},
+  "crediti_meshy": 127,
+  "versione_precedente": {
+    "model": "gascor-animated.glb",
+    "note": "v2: statua Meshy con rig e animazioni procedurali (tools/gascor/rig_model.py), non più usata dalla prova 3D"
+  }
+}

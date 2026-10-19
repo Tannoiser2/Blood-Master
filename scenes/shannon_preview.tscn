@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gascor_preview.gd" id="1"]
+
+[node name="ShannonPreview" type="Node3D"]
+script = ExtResource("1")
+model_path = "res://assets/models/shannon/shannon.glb"
+title_text = "SHANNON  /  IL CUPO"
+subtitle_text = "Prova 3D Meshy · lancia · mosse di Anteos adattate · trascina per ruotare"
+card_path = "res://assets/modern/shannon/shannon-concept-meshy.webp"
+card_label = "Concept generato (posa A)"
+looping = PackedStringArray("Riposo", "Camminata", "In guardia", "Avanzare", "Correre", "Carica")
+other_scene = "res://scenes/nuchra_preview.tscn"
+other_label = "Vai a Nuchra"

@@ -110,6 +110,7 @@ func _show_menu() -> void:
 	var trials=HBoxContainer.new();trials.add_theme_constant_override("separation",10);hero.add_child(trials)
 	trials.add_child(button("Gascor 3D",func():get_tree().change_scene_to_file("res://scenes/gascor_preview.tscn")))
 	trials.add_child(button("Anteos 3D",func():get_tree().change_scene_to_file("res://scenes/anteos_preview.tscn")))
+	trials.add_child(button("Altri 3D",func():get_tree().change_scene_to_file("res://scenes/ut_preview.tscn")))
 	trials.add_child(button("Duello 3D",func():get_tree().change_scene_to_file("res://scenes/duel_3d.tscn")))
 	var intro=label("Scegli la tua mossa. Attendi l’estrazione.\nColpisci quando l’avversario abbassa la guardia.",19,MUTED);hero.add_child(intro)
 	var arena_view=TextureRect.new();arena_view.texture=load("res://assets/arena/arena.webp");arena_view.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;arena_view.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;arena_view.size_flags_vertical=Control.SIZE_EXPAND_FILL;arena_view.custom_minimum_size=Vector2(350,350);hero.add_child(arena_view)

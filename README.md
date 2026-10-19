@@ -13,8 +13,8 @@ grafica originale restano la presentazione del gioco.
 ## Miniature 3D
 
 Durante la partita il tasto "Miniature 3D" sotto la mappa sostituisce le pedine
-con miniature animate (Gascor e Anteos; gli altri personaggi restano pedine in
-piedi). Quando una tessera viene estratta la miniatura esegue la mossa
+con miniature animate (Gascor, Ut e Shannon per i blu; Anteos, Nuchra e Ramok
+per i rossi; gli altri personaggi restano pedine in piedi). Quando una tessera viene estratta la miniatura esegue la mossa
 corrispondente, si sposta sulla nuova cella e rispetta il facing; chi viene
 colpito reagisce. A fine scontro "Replay 3D" ripropone tutte le animazioni di
 seguito, senza pause fra i turni. Tasto destro: ruota la vista · tasto centrale:
@@ -23,9 +23,10 @@ sposta · rotellina: zoom · "Inquadra" riattiva la camera che segue lo scontro.
 ## Sviluppo
 
 Aprire project.godot in Godot 4.7. La scena principale è scenes/main.tscn.
-Le prove 3D sono in scenes/gascor_preview.tscn, scenes/anteos_preview.tscn e
-scenes/duel_3d.tscn; la mappa 3D è scripts/board3d.gd. I modelli si rigenerano con
-tools/anteos/assemble.py e tools/gascor/assemble_meshy.py (pipeline Meshy).
+Le prove 3D sono in scenes/<personaggio>_preview.tscn (gascor, anteos, ut,
+shannon, nuchra, ramok) e scenes/duel_3d.tscn; la mappa 3D è scripts/board3d.gd. I modelli si rigenerano con
+tools/anteos/assemble.py, tools/gascor/assemble_meshy.py e tools/heroes/assemble.py
+(pipeline Meshy; armi a due mani per Ut, Shannon, Nuchra e Ramok).
 Le fonti ad alta risoluzione e i file Blender rimangono locali in source_art.
 
 Ogni aggiornamento di main verifica le regole, esporta la versione web senza
