@@ -1,0 +1,108 @@
+class_name ArenaBoard
+extends Control
+signal cell_clicked(cell: String)
+signal fighter_clicked(index: int)
+var game: BloodRules
+var highlights: Array=[]
+var selected=""
+var focus_fighter=-1
+var preview_facing=-1
+var show_grid=false
+var zoom=1.0
+var pan=Vector2.ZERO
+var textures={}
+var arena_texture=preload("res://assets/arena/arena.webp")
+var hovered=""
+var origin=Vector2.ZERO
+var scale_factor=1.0
+const GOLD=Color("e0ba77")
+const TEAL=Color("69cec1")
+const RED=Color("e68078")
+func _ready() -> void:
+	mouse_filter=Control.MOUSE_FILTER_STOP
+	clip_contents=true
+	custom_minimum_size=Vector2(460,350)
+	resized.connect(queue_redraw)
+func texture(path: String) -> Texture2D:
+	if path=="":return null
+	if not textures.has(path):textures[path]=load(path)
+	return textures[path]
+func fit() -> void:zoom=1;pan=Vector2.ZERO;queue_redraw()
+func world(k: String) -> Vector2:
+	var c=game.cells[k];return Vector2(float(c.x),float(c.y))
+func screen(p: Vector2) -> Vector2:return origin+Vector2(p.y,1956-p.x)*scale_factor
+func _draw() -> void:
+	draw_style_box(_background(),Rect2(Vector2.ZERO,size))
+	if game==null:return
+	scale_factor=minf((size.x-24)/2736.0,(size.y-24)/1956.0)*zoom
+	origin=(size-Vector2(2736,1956)*scale_factor)*.5+pan
+	draw_set_transform(origin+Vector2(0,1956*scale_factor),-PI/2,Vector2.ONE*scale_factor)
+	draw_texture(arena_texture,Vector2.ZERO)
+	draw_set_transform(Vector2.ZERO)
+	for k in game.cells:
+		var center=screen(world(k));var poly=hexagon(center,121*scale_factor)
+		if show_grid:draw_polyline(poly,Color(0.1,0.12,0.1,.28),1.0,true)
+		if game.cells[k].entry and game.state.get("phase","")=="deploy":draw_colored_polygon(poly,Color(0.1,.8,.7,.2))
+		if k in highlights:
+			draw_colored_polygon(poly,Color(.8,.65,.3,.23));draw_polyline(poly,GOLD,2.0,true)
+		if k==selected:draw_polyline(poly,Color("fff0bf"),4.0,true)
+		elif k==hovered:draw_polyline(poly,Color(1,1,1,.7),1.5,true)
+	if game.state.is_empty():return
+	for e in game.state.effects:
+		var path="res://assets/tokens/effect_"+("fire" if e.kind=="livingfire" else e.kind)+".webp"
+		var tex=texture(path)
+		if tex:draw_texture_rect(tex,Rect2(screen(world(e.cell))-Vector2.ONE*100*scale_factor,Vector2.ONE*200*scale_factor),false)
+	for i in game.state.fighters.size():
+		var p=game.state.fighters[i]
+		if p.cell=="" or not game.cells.has(p.cell) or not p.alive:continue
+		var center=screen(world(p.cell))
+		# Entry stacking is legal; offset the visual markers without changing cells.
+		var count=0
+		for j in i:
+			if game.state.fighters[j].cell==p.cell:count+=1
+		center+=Vector2(count*8,-count*8)
+		var m=game.move(p);var path=m.get("texture","")
+		if p.frog:path="res://assets/tokens/effect_frog.webp"
+		var tex=texture(path);var radius=109*scale_factor
+		var color=TEAL if p.team==0 else RED
+		draw_circle(center+Vector2(2,4),radius,Color(0,0,0,.5))
+		draw_arc(center,radius+3,0,TAU,40,color,3,true)
+		if i==focus_fighter:draw_arc(center,radius+7,0,TAU,40,GOLD,3,true)
+		var facing=int(p.facing)
+		if i==focus_fighter and preview_facing>=0:facing=preview_facing
+		draw_set_transform(center,-PI/2+facing*PI/3)
+		if tex:draw_texture_rect(tex,Rect2(Vector2(-radius,-radius*.866),Vector2(radius*2,radius*1.732)),false,Color(1,1,1,.72 if p.done else 1))
+		draw_set_transform(Vector2.ZERO)
+		var forward=Vector2.UP.rotated(-PI/2+facing*PI/3)
+		draw_circle(center+forward*(radius+9),3,color)
+		var bar=Rect2(center+Vector2(-radius,radius+9),Vector2(radius*2,5))
+		draw_rect(bar,Color("131d20"));bar.size.x*=clampf(float(p.hp)/maxf(1,p.max_hp),0,1);draw_rect(bar,color)
+		if p.burning:draw_circle(center+Vector2(radius,-radius),5,Color("f5a34b"))
+		if p.fatigue>0:draw_circle(center+Vector2(-radius,-radius),4,Color("a38bdd"))
+		if p.unbalanced:draw_arc(center,radius+10,0,TAU,30,Color("f5a34b"),2,true)
+func hexagon(center: Vector2,radius: float) -> PackedVector2Array:
+	var poly=PackedVector2Array()
+	for i in 7:poly.append(center+Vector2(cos(i*PI/3-PI/2),sin(i*PI/3-PI/2))*radius)
+	return poly
+func _background() -> StyleBoxFlat:
+	var s=StyleBoxFlat.new();s.bg_color=Color("101b1c");s.set_corner_radius_all(16);return s
+func _gui_input(event: InputEvent) -> void:
+	if game==null:return
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
+			zoom=clampf(zoom*(1.12 if event.button_index==MOUSE_BUTTON_WHEEL_UP else .89),.8,3.5);queue_redraw();accept_event()
+		elif event.pressed and event.button_index==MOUSE_BUTTON_LEFT and hovered!="":
+			cell_clicked.emit(hovered)
+	if event is InputEventMouseMotion:
+		if event.button_mask & (MOUSE_BUTTON_MASK_RIGHT|MOUSE_BUTTON_MASK_MIDDLE):pan+=event.relative
+		var best=100000.0;var cell=""
+		for k in game.cells:
+			var dist=screen(world(k)).distance_to(event.position)
+			if dist<best:best=dist;cell=k
+		hovered=cell if best<110*scale_factor else ""
+		tooltip_text=""
+		if hovered!="" and not game.state.is_empty():
+			var j=game.at(hovered)
+			if j!=-1:
+				var p=game.state.fighters[j];tooltip_text="%s · %s\n%d ferite rimaste · %d fatica" % [p.name,game.move(p).get("name",""),p.hp,p.fatigue]
+		queue_redraw()

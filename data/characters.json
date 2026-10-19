@@ -1,0 +1,5112 @@
+{
+  "zenyo": {
+    "id": "zenyo",
+    "name": "Zenyo",
+    "title": "L’illuminato",
+    "kind": "monk",
+    "team": 0,
+    "size": 3,
+    "hp": 20,
+    "sprint": 5,
+    "armor": [],
+    "recovery": [
+      1,
+      3,
+      3,
+      4,
+      99,
+      99
+    ],
+    "sprints": [
+      [
+        1,
+        0,
+        0,
+        1
+      ],
+      [
+        2,
+        1,
+        1,
+        1
+      ],
+      [
+        3,
+        1,
+        1,
+        2
+      ],
+      [
+        5,
+        1,
+        3,
+        2
+      ],
+      [
+        6,
+        2,
+        4,
+        3
+      ]
+    ],
+    "card": "res://assets/cards/zenyo.webp",
+    "mage": false,
+    "source_card": [
+      "blu",
+      0,
+      0
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 6,
+        "defense": -3,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/zenyo_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/zenyo_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/zenyo_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/zenyo_rise.webp"
+      },
+      "roll": {
+        "id": "roll",
+        "name": "Rotolare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          1,
+          2,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/zenyo_roll.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/zenyo_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/zenyo_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -6,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/zenyo_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -6,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/zenyo_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -4,
+        "texture": "res://assets/tokens/zenyo_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 8,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": -1,
+        "texture": "res://assets/tokens/zenyo_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 7,
+        "defense": -2,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/zenyo_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 7,
+        "defense": -2,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/zenyo_left.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 9,
+        "defense": -3,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": -3,
+        "texture": "res://assets/tokens/zenyo_thrust.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/zenyo_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 11,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/zenyo_cleave.webp"
+      },
+      "sweep": {
+        "id": "sweep",
+        "name": "Spazzata",
+        "attack": 6,
+        "defense": -2,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 4,
+        "secondary": -2,
+        "texture": "res://assets/tokens/zenyo_sweep.webp"
+      },
+      "meditate": {
+        "id": "meditate",
+        "name": "Meditazione",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/zenyo_meditate.webp"
+      }
+    }
+  },
+  "gascor": {
+    "id": "gascor",
+    "name": "Gascor",
+    "title": "Il prode",
+    "kind": "sword",
+    "team": 0,
+    "size": 4,
+    "hp": 24,
+    "sprint": 3,
+    "armor": [
+      1,
+      4
+    ],
+    "recovery": [
+      1,
+      1,
+      2,
+      3,
+      3,
+      99
+    ],
+    "sprints": [
+      [
+        0,
+        1,
+        0,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        2
+      ],
+      [
+        2,
+        2,
+        2,
+        3
+      ]
+    ],
+    "card": "res://assets/cards/gascor.webp",
+    "mage": false,
+    "source_card": [
+      "blu",
+      1,
+      0
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 5,
+        "defense": 1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/gascor_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/gascor_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/gascor_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/gascor_rise.webp"
+      },
+      "roll": {
+        "id": "roll",
+        "name": "Rotolare",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [
+          1,
+          2,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/gascor_roll.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 6,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 6,
+        "texture": "res://assets/tokens/gascor_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/gascor_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/gascor_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/gascor_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/gascor_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 8,
+        "defense": 3,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 3,
+        "texture": "res://assets/tokens/gascor_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 7,
+        "defense": 2,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/gascor_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 7,
+        "defense": 2,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/gascor_left.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 9,
+        "defense": 1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": 1,
+        "texture": "res://assets/tokens/gascor_thrust.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/gascor_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 12,
+        "defense": 3,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 3,
+        "texture": "res://assets/tokens/gascor_cleave.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 5,
+        "defense": 4,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 4,
+        "texture": "res://assets/tokens/gascor_kick.webp"
+      }
+    }
+  },
+  "ut": {
+    "id": "ut",
+    "name": "Ut",
+    "title": "Il vendicatore",
+    "kind": "heavy",
+    "team": 0,
+    "size": 6,
+    "hp": 38,
+    "sprint": 2,
+    "armor": [
+      3,
+      6
+    ],
+    "recovery": [
+      1,
+      1,
+      1,
+      2,
+      2,
+      4
+    ],
+    "sprints": [
+      [
+        2,
+        1,
+        1,
+        3
+      ],
+      [
+        5,
+        1,
+        2,
+        6
+      ]
+    ],
+    "card": "res://assets/cards/ut.webp",
+    "mage": false,
+    "source_card": [
+      "blu",
+      0,
+      1
+    ],
+    "moves": {
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/ut_run.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 9,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 9,
+        "texture": "res://assets/tokens/ut_down.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 8,
+        "defense": 3,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/ut_guard.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/ut_again.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/ut_unbalanced.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 14,
+        "defense": 5,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 5,
+        "texture": "res://assets/tokens/ut_cleave.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/ut_advance.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 8,
+        "defense": 6,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": 6,
+        "texture": "res://assets/tokens/ut_kick.webp"
+      },
+      "spin": {
+        "id": "spin",
+        "name": "Roteare",
+        "attack": 10,
+        "defense": 3,
+        "red": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 2,
+        "rest": false,
+        "imbalance": 3,
+        "secondary": 3,
+        "texture": "res://assets/tokens/ut_spin.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/ut_parry_l.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 9,
+        "defense": 4,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 4,
+        "texture": "res://assets/tokens/ut_left.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/ut_rise.webp"
+      }
+    }
+  },
+  "shannon": {
+    "id": "shannon",
+    "name": "Shannon",
+    "title": "Il cupo",
+    "kind": "spear",
+    "team": 0,
+    "size": 4,
+    "hp": 18,
+    "sprint": 3,
+    "armor": [
+      2,
+      3
+    ],
+    "recovery": [
+      1,
+      2,
+      2,
+      3,
+      3,
+      99
+    ],
+    "sprints": [
+      [
+        1,
+        0,
+        0,
+        2
+      ],
+      [
+        2,
+        1,
+        1,
+        3
+      ],
+      [
+        3,
+        1,
+        2,
+        5
+      ]
+    ],
+    "card": "res://assets/cards/shannon.webp",
+    "mage": false,
+    "source_card": [
+      "blu",
+      1,
+      1
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 5,
+        "defense": -1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shannon_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/shannon_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/shannon_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/shannon_rise.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 4,
+        "defense": 3,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": 3,
+        "texture": "res://assets/tokens/shannon_kick.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/shannon_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/shannon_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shannon_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shannon_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/shannon_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 12,
+        "defense": 1,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 1,
+        "texture": "res://assets/tokens/shannon_charge.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 10,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shannon_thrust.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/shannon_again.webp"
+      },
+      "sweep": {
+        "id": "sweep",
+        "name": "Spazzata",
+        "attack": 6,
+        "defense": -1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 3,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shannon_sweep.webp"
+      }
+    }
+  },
+  "kylvia": {
+    "id": "kylvia",
+    "name": "Kylvia",
+    "title": "La temeraria",
+    "kind": "archer",
+    "team": 0,
+    "size": 2,
+    "hp": 14,
+    "sprint": 4,
+    "armor": [
+      1,
+      2
+    ],
+    "recovery": [
+      1,
+      2,
+      2,
+      2,
+      4,
+      99
+    ],
+    "sprints": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        1,
+        2,
+        1
+      ],
+      [
+        1,
+        2,
+        3,
+        2
+      ]
+    ],
+    "card": "res://assets/cards/kylvia.webp",
+    "mage": false,
+    "source_card": [
+      "blu",
+      1,
+      2
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 4,
+        "defense": -1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/kylvia_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/kylvia_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/kylvia_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/kylvia_rise.webp"
+      },
+      "load": {
+        "id": "load",
+        "name": "Incoccare",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/kylvia_load.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/kylvia_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/kylvia_down.webp"
+      },
+      "shoot": {
+        "id": "shoot",
+        "name": "Tirare",
+        "attack": 15,
+        "defense": 1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/kylvia_shoot.webp"
+      },
+      "weapon": {
+        "id": "weapon",
+        "name": "Cambio arma",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/kylvia_weapon.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/kylvia_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 6,
+        "defense": 1,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 1,
+        "texture": "res://assets/tokens/kylvia_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 5,
+        "defense": 0,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/kylvia_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 5,
+        "defense": 0,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/kylvia_left.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 7,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/kylvia_thrust.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 4,
+        "defense": 2,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 2,
+        "texture": "res://assets/tokens/kylvia_kick.webp"
+      },
+      "roll": {
+        "id": "roll",
+        "name": "Rotolare",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [
+          1,
+          2,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/kylvia_roll.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/kylvia_again.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/kylvia_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/kylvia_parry_l.webp"
+      }
+    }
+  },
+  "anteos": {
+    "id": "anteos",
+    "name": "Anteos",
+    "title": "Lo spietato",
+    "kind": "sword",
+    "team": 1,
+    "size": 4,
+    "hp": 24,
+    "sprint": 3,
+    "armor": [
+      1,
+      4
+    ],
+    "recovery": [
+      1,
+      1,
+      2,
+      3,
+      3,
+      99
+    ],
+    "sprints": [
+      [
+        0,
+        1,
+        0,
+        1
+      ],
+      [
+        1,
+        1,
+        1,
+        2
+      ],
+      [
+        2,
+        2,
+        2,
+        3
+      ]
+    ],
+    "card": "res://assets/cards/anteos.webp",
+    "mage": false,
+    "source_card": [
+      "rossi",
+      0,
+      0
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 5,
+        "defense": 1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/anteos_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/anteos_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/anteos_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/anteos_rise.webp"
+      },
+      "roll": {
+        "id": "roll",
+        "name": "Rotolare",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [
+          1,
+          2,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/anteos_roll.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 6,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 6,
+        "texture": "res://assets/tokens/anteos_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/anteos_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/anteos_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/anteos_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/anteos_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 8,
+        "defense": 3,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 3,
+        "texture": "res://assets/tokens/anteos_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 7,
+        "defense": 2,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/anteos_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 7,
+        "defense": 2,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/anteos_left.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 9,
+        "defense": 1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": 1,
+        "texture": "res://assets/tokens/anteos_thrust.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/anteos_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 12,
+        "defense": 3,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 3,
+        "texture": "res://assets/tokens/anteos_cleave.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 5,
+        "defense": 4,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 4,
+        "texture": "res://assets/tokens/anteos_kick.webp"
+      }
+    }
+  },
+  "shaara": {
+    "id": "shaara",
+    "name": "Shaara",
+    "title": "La tempestosa",
+    "kind": "monk",
+    "team": 1,
+    "size": 3,
+    "hp": 20,
+    "sprint": 5,
+    "armor": [],
+    "recovery": [
+      1,
+      3,
+      3,
+      4,
+      99,
+      99
+    ],
+    "sprints": [
+      [
+        1,
+        0,
+        0,
+        1
+      ],
+      [
+        2,
+        1,
+        1,
+        1
+      ],
+      [
+        3,
+        1,
+        1,
+        2
+      ],
+      [
+        5,
+        1,
+        3,
+        2
+      ],
+      [
+        6,
+        2,
+        4,
+        3
+      ]
+    ],
+    "card": "res://assets/cards/shaara.webp",
+    "mage": false,
+    "source_card": [
+      "rossi",
+      1,
+      0
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 6,
+        "defense": -3,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/shaara_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/shaara_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shaara_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/shaara_rise.webp"
+      },
+      "roll": {
+        "id": "roll",
+        "name": "Rotolare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          1,
+          2,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/shaara_roll.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/shaara_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/shaara_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -6,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/shaara_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -6,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/shaara_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -4,
+        "texture": "res://assets/tokens/shaara_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 8,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shaara_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 7,
+        "defense": -2,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/shaara_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 7,
+        "defense": -2,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/shaara_left.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 9,
+        "defense": -3,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": -3,
+        "texture": "res://assets/tokens/shaara_thrust.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/shaara_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 11,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/shaara_cleave.webp"
+      },
+      "sweep": {
+        "id": "sweep",
+        "name": "Spazzata",
+        "attack": 6,
+        "defense": -2,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 4,
+        "secondary": -2,
+        "texture": "res://assets/tokens/shaara_sweep.webp"
+      },
+      "meditate": {
+        "id": "meditate",
+        "name": "Meditazione",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/shaara_meditate.webp"
+      }
+    }
+  },
+  "zak": {
+    "id": "zak",
+    "name": "Zak",
+    "title": "Il fulmineo",
+    "kind": "archer",
+    "team": 1,
+    "size": 2,
+    "hp": 14,
+    "sprint": 4,
+    "armor": [
+      1,
+      2
+    ],
+    "recovery": [
+      1,
+      2,
+      2,
+      2,
+      4,
+      99
+    ],
+    "sprints": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        1,
+        2,
+        1
+      ],
+      [
+        1,
+        2,
+        3,
+        2
+      ]
+    ],
+    "card": "res://assets/cards/zak.webp",
+    "mage": false,
+    "source_card": [
+      "rossi",
+      0,
+      1
+    ],
+    "moves": {
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/zak_unbalanced.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/zak_parry_l.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 4,
+        "defense": -1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/zak_guard.webp"
+      },
+      "shoot": {
+        "id": "shoot",
+        "name": "Tirare",
+        "attack": 15,
+        "defense": 1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/zak_shoot.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/zak_down.webp"
+      },
+      "weapon": {
+        "id": "weapon",
+        "name": "Cambio arma",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/zak_weapon.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/zak_advance.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 5,
+        "defense": 0,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/zak_left.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 6,
+        "defense": 1,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 1,
+        "texture": "res://assets/tokens/zak_charge.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/zak_again.webp"
+      },
+      "load": {
+        "id": "load",
+        "name": "Incoccare",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/zak_load.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/zak_rise.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 4,
+        "defense": 2,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 2,
+        "texture": "res://assets/tokens/zak_kick.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/zak_parry_r.webp"
+      },
+      "roll": {
+        "id": "roll",
+        "name": "Rotolare",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [
+          1,
+          2,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/zak_roll.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 7,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/zak_thrust.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 5,
+        "defense": 0,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/zak_right.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/zak_run.webp"
+      }
+    }
+  },
+  "nuchra": {
+    "id": "nuchra",
+    "name": "Nuchra",
+    "title": "La folle",
+    "kind": "heavy",
+    "team": 1,
+    "size": 6,
+    "hp": 38,
+    "sprint": 2,
+    "armor": [
+      3,
+      6
+    ],
+    "recovery": [
+      1,
+      1,
+      1,
+      2,
+      2,
+      4
+    ],
+    "sprints": [
+      [
+        2,
+        1,
+        1,
+        3
+      ],
+      [
+        5,
+        1,
+        2,
+        6
+      ]
+    ],
+    "card": "res://assets/cards/nuchra.webp",
+    "mage": false,
+    "source_card": [
+      "rossi",
+      1,
+      1
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 8,
+        "defense": 3,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/nuchra_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/nuchra_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/nuchra_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/nuchra_rise.webp"
+      },
+      "spin": {
+        "id": "spin",
+        "name": "Roteare",
+        "attack": 10,
+        "defense": 3,
+        "red": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 2,
+        "rest": false,
+        "imbalance": 3,
+        "secondary": 3,
+        "texture": "res://assets/tokens/nuchra_spin.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/nuchra_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 9,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 9,
+        "texture": "res://assets/tokens/nuchra_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/nuchra_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/nuchra_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [
+          2,
+          3,
+          4
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/nuchra_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 10,
+        "defense": 5,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 5,
+        "texture": "res://assets/tokens/nuchra_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 9,
+        "defense": 4,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 4,
+        "texture": "res://assets/tokens/nuchra_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 9,
+        "defense": 4,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 4,
+        "texture": "res://assets/tokens/nuchra_left.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 8,
+        "defense": 6,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": 6,
+        "texture": "res://assets/tokens/nuchra_kick.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/nuchra_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 14,
+        "defense": 5,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 5,
+        "texture": "res://assets/tokens/nuchra_cleave.webp"
+      }
+    }
+  },
+  "ramok": {
+    "id": "ramok",
+    "name": "Ramok",
+    "title": "Il malefico",
+    "kind": "spear",
+    "team": 1,
+    "size": 4,
+    "hp": 18,
+    "sprint": 3,
+    "armor": [
+      2,
+      3
+    ],
+    "recovery": [
+      1,
+      2,
+      2,
+      3,
+      3,
+      99
+    ],
+    "sprints": [
+      [
+        1,
+        0,
+        0,
+        2
+      ],
+      [
+        2,
+        1,
+        1,
+        3
+      ],
+      [
+        3,
+        1,
+        2,
+        5
+      ]
+    ],
+    "card": "res://assets/cards/ramok.webp",
+    "mage": false,
+    "source_card": [
+      "rossi",
+      1,
+      2
+    ],
+    "moves": {
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 5,
+        "defense": -1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/ramok_guard.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/ramok_advance.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/ramok_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/ramok_rise.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 4,
+        "defense": 3,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": 3,
+        "texture": "res://assets/tokens/ramok_kick.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/ramok_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/ramok_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/ramok_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/ramok_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/ramok_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 12,
+        "defense": 1,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 1,
+        "texture": "res://assets/tokens/ramok_charge.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 10,
+        "defense": -1,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": -1,
+        "texture": "res://assets/tokens/ramok_thrust.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/ramok_again.webp"
+      },
+      "sweep": {
+        "id": "sweep",
+        "name": "Spazzata",
+        "attack": 6,
+        "defense": -1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 3,
+        "secondary": -1,
+        "texture": "res://assets/tokens/ramok_sweep.webp"
+      }
+    }
+  },
+  "gandy": {
+    "id": "gandy",
+    "name": "Gandy",
+    "title": "Il pacifico",
+    "kind": "gandy",
+    "team": -1,
+    "size": 3,
+    "hp": 16,
+    "sprint": 3,
+    "armor": [
+      1,
+      1
+    ],
+    "recovery": [
+      1,
+      1,
+      2,
+      3,
+      3,
+      99
+    ],
+    "sprints": [
+      [
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        1,
+        1
+      ],
+      [
+        1,
+        2,
+        2,
+        1
+      ]
+    ],
+    "card": "res://assets/cards/gandy.webp",
+    "mage": true,
+    "source_card": [
+      "backfire",
+      1
+    ],
+    "moves": {
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/gandy_advance.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/gandy_down.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/gandy_unbalanced.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/gandy_run.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 3,
+        "defense": 2,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/gandy_guard.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          2,
+          3,
+          4
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/gandy_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 4,
+        "defense": 4,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/gandy_charge.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 6,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 6,
+        "texture": "res://assets/tokens/gandy_rise.webp"
+      },
+      "concentrate": {
+        "id": "concentrate",
+        "name": "Concentrazione",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/gandy_concentrate.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 6,
+        "defense": 3,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 3,
+        "texture": "res://assets/tokens/gandy_cleave.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/gandy_parry_r.webp"
+      },
+      "sweep": {
+        "id": "sweep",
+        "name": "Spazzata",
+        "attack": 4,
+        "defense": 4,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 3,
+        "secondary": 4,
+        "texture": "res://assets/tokens/gandy_sweep.webp"
+      },
+      "firestaff": {
+        "id": "firestaff",
+        "name": "Bastone di fuoco",
+        "attack": 13,
+        "defense": -3,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/gandy_firestaff.webp",
+        "spell": true,
+        "value": 1,
+        "cost": 1,
+        "range": 1,
+        "target": "enemy"
+      },
+      "shield": {
+        "id": "shield",
+        "name": "Scudo di energia",
+        "attack": null,
+        "defense": -15,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -15,
+        "texture": "res://assets/tokens/gandy_shield.webp",
+        "spell": true,
+        "value": 2,
+        "cost": 2,
+        "range": 0,
+        "target": "self"
+      },
+      "vortex": {
+        "id": "vortex",
+        "name": "Gorgo magico",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/gandy_vortex.webp",
+        "spell": true,
+        "value": 3,
+        "cost": 3,
+        "range": 3,
+        "target": "empty"
+      },
+      "sleep": {
+        "id": "sleep",
+        "name": "Sonno",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/gandy_sleep.webp",
+        "spell": true,
+        "value": 4,
+        "cost": 4,
+        "range": 3,
+        "target": "enemy"
+      },
+      "fireball": {
+        "id": "fireball",
+        "name": "Palla di fuoco",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/gandy_fireball.webp",
+        "spell": true,
+        "value": 5,
+        "cost": 5,
+        "range": 7,
+        "target": "cell"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/gandy_again.webp"
+      }
+    }
+  },
+  "thorn": {
+    "id": "thorn",
+    "name": "Thorn",
+    "title": "Il putrido",
+    "kind": "thorn",
+    "team": -1,
+    "size": 4,
+    "hp": 18,
+    "sprint": 2,
+    "armor": [
+      1,
+      2
+    ],
+    "recovery": [
+      1,
+      1,
+      2,
+      2,
+      3,
+      4
+    ],
+    "sprints": [
+      [
+        0,
+        1,
+        1,
+        0
+      ],
+      [
+        1,
+        2,
+        2,
+        1
+      ]
+    ],
+    "card": "res://assets/cards/thorn.webp",
+    "mage": true,
+    "source_card": [
+      "backfire",
+      0
+    ],
+    "moves": {
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/thorn_advance.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/thorn_down.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/thorn_unbalanced.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/thorn_run.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 2,
+        "defense": 2,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/thorn_guard.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          2,
+          3,
+          4
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/thorn_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 4,
+        "defense": 4,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/thorn_charge.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 6,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 6,
+        "texture": "res://assets/tokens/thorn_rise.webp"
+      },
+      "concentrate": {
+        "id": "concentrate",
+        "name": "Concentrazione",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/thorn_concentrate.webp"
+      },
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 4,
+        "defense": 5,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 5,
+        "texture": "res://assets/tokens/thorn_kick.webp"
+      },
+      "punch": {
+        "id": "punch",
+        "name": "Pugno",
+        "attack": 5,
+        "defense": 4,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/thorn_punch.webp"
+      },
+      "pustules": {
+        "id": "pustules",
+        "name": "Pustole venefiche",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/thorn_pustules.webp",
+        "spell": true,
+        "value": 1,
+        "cost": 1,
+        "range": 2,
+        "target": "self"
+      },
+      "fear": {
+        "id": "fear",
+        "name": "Paura",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/thorn_fear.webp",
+        "spell": true,
+        "value": 2,
+        "cost": 2,
+        "range": 5,
+        "target": "self"
+      },
+      "age": {
+        "id": "age",
+        "name": "Invecchiamento",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/thorn_age.webp",
+        "spell": true,
+        "value": 3,
+        "cost": 3,
+        "range": 4,
+        "target": "enemy"
+      },
+      "summon": {
+        "id": "summon",
+        "name": "Evocazione",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/thorn_summon.webp",
+        "spell": true,
+        "value": 4,
+        "cost": 4,
+        "range": 2,
+        "target": "empty"
+      },
+      "plague": {
+        "id": "plague",
+        "name": "Peste",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/thorn_plague.webp",
+        "spell": true,
+        "value": 5,
+        "cost": 5,
+        "range": 5,
+        "target": "enemy"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/thorn_again.webp"
+      }
+    }
+  },
+  "sanguinaria": {
+    "id": "sanguinaria",
+    "name": "Sanguinaria",
+    "title": "L’inesorabile",
+    "kind": "sanguinaria",
+    "team": -1,
+    "size": 3,
+    "hp": 20,
+    "sprint": 3,
+    "armor": [],
+    "recovery": [
+      1,
+      2,
+      2,
+      3,
+      99,
+      99
+    ],
+    "sprints": [
+      [
+        1,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        2
+      ],
+      [
+        2,
+        1,
+        1,
+        3
+      ],
+      [
+        3,
+        1,
+        2,
+        4
+      ]
+    ],
+    "card": "res://assets/cards/sanguinaria.webp",
+    "mage": true,
+    "source_card": [
+      "backfire",
+      3
+    ],
+    "moves": {
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/sanguinaria_advance.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/sanguinaria_down.webp"
+      },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 4,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 4,
+        "texture": "res://assets/tokens/sanguinaria_unbalanced.webp"
+      },
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/sanguinaria_run.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 5,
+        "defense": -1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/sanguinaria_guard.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/sanguinaria_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 9,
+        "defense": 1,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/sanguinaria_charge.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/sanguinaria_rise.webp"
+      },
+      "thrust": {
+        "id": "thrust",
+        "name": "Affondo",
+        "attack": 8,
+        "defense": 1,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 1,
+        "texture": "res://assets/tokens/sanguinaria_thrust.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/sanguinaria_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -4,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/sanguinaria_parry_l.webp"
+      },
+      "concentrate": {
+        "id": "concentrate",
+        "name": "Concentrazione",
+        "attack": null,
+        "defense": 7,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/sanguinaria_concentrate.webp"
+      },
+      "wall": {
+        "id": "wall",
+        "name": "Muro infernale",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -1,
+        "texture": "res://assets/tokens/sanguinaria_wall.webp",
+        "spell": true,
+        "value": 1,
+        "cost": 1,
+        "range": 3,
+        "target": "empty"
+      },
+      "teleport": {
+        "id": "teleport",
+        "name": "Teletrasporto",
+        "attack": null,
+        "defense": -8,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -8,
+        "texture": "res://assets/tokens/sanguinaria_teleport.webp",
+        "spell": true,
+        "value": 2,
+        "cost": 1,
+        "range": 99,
+        "target": "empty"
+      },
+      "transform": {
+        "id": "transform",
+        "name": "Trasformazione",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/sanguinaria_transform.webp",
+        "spell": true,
+        "value": 3,
+        "cost": 3,
+        "range": 1,
+        "target": "enemy"
+      },
+      "livingfire": {
+        "id": "livingfire",
+        "name": "Fuoco vivente",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/sanguinaria_livingfire.webp",
+        "spell": true,
+        "value": 4,
+        "cost": 4,
+        "range": 1,
+        "target": "empty"
+      },
+      "abyss": {
+        "id": "abyss",
+        "name": "Abisso infernale",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/sanguinaria_abyss.webp",
+        "spell": true,
+        "value": 5,
+        "cost": 5,
+        "range": 3,
+        "target": "cell"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/sanguinaria_again.webp"
+      }
+    }
+  },
+  "ziggy": {
+    "id": "ziggy",
+    "name": "Ziggynowskij",
+    "title": "Il fluttuante",
+    "kind": "ziggy",
+    "team": -1,
+    "size": 0,
+    "hp": 0,
+    "sprint": 6,
+    "armor": [],
+    "recovery": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "sprints": [],
+    "card": "res://assets/cards/ziggy.webp",
+    "mage": true,
+    "source_card": [
+      "backfire",
+      2
+    ],
+    "moves": {
+      "shock": {
+        "id": "shock",
+        "name": "Shock",
+        "attack": null,
+        "defense": -5,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -5,
+        "texture": "res://assets/tokens/ziggy_shock.webp",
+        "spell": true,
+        "value": 1,
+        "cost": 1,
+        "range": 1,
+        "target": "self"
+      },
+      "heal": {
+        "id": "heal",
+        "name": "Rigenerazione",
+        "attack": null,
+        "defense": -3,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -3,
+        "texture": "res://assets/tokens/ziggy_heal.webp",
+        "spell": true,
+        "value": 2,
+        "cost": 2,
+        "range": 0,
+        "target": "self"
+      },
+      "drain": {
+        "id": "drain",
+        "name": "Risucchio",
+        "attack": null,
+        "defense": -6,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -6,
+        "texture": "res://assets/tokens/ziggy_drain.webp",
+        "spell": true,
+        "value": 3,
+        "cost": 3,
+        "range": 2,
+        "target": "enemy"
+      },
+      "control": {
+        "id": "control",
+        "name": "Controllo mentale",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/ziggy_control.webp",
+        "spell": true,
+        "value": 4,
+        "cost": 1,
+        "range": 4,
+        "target": "enemy"
+      },
+      "lightning": {
+        "id": "lightning",
+        "name": "Fulmine magico",
+        "attack": null,
+        "defense": -2,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -2,
+        "texture": "res://assets/tokens/ziggy_lightning.webp",
+        "spell": true,
+        "value": 5,
+        "cost": 5,
+        "range": 7,
+        "target": "cell"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/ziggy_again.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/ziggy_advance.webp"
+      },
+      "float": {
+        "id": "float",
+        "name": "Fluttuare",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/ziggy_float.webp"
+      },
+      "concentrate": {
+        "id": "concentrate",
+        "name": "Concentrazione",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/ziggy_concentrate.webp"
+      },
+      "dematerialize": {
+        "id": "dematerialize",
+        "name": "Smaterializzazione",
+        "attack": null,
+        "defense": -25,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": -25,
+        "texture": "res://assets/tokens/ziggy_dematerialize.webp"
+      }
+    }
+  },
+  "skelos": {
+    "id": "skelos",
+    "name": "Skelos",
+    "title": "Scheletro animato",
+    "kind": "skeleton",
+    "team": -1,
+    "size": 4,
+    "hp": 1,
+    "sprint": 3,
+    "armor": [],
+    "recovery": [
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
+    ],
+    "sprints": [
+      [
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        1,
+        1
+      ],
+      [
+        2,
+        0,
+        1,
+        2
+      ],
+      [
+        2,
+        0,
+        2,
+        2
+      ]
+    ],
+    "card": "res://assets/cards/skelos.webp",
+    "mage": false,
+    "source_card": [
+      "backfire",
+      5
+    ],
+    "moves": {
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/skelos_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 9,
+        "defense": 4,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 4,
+        "texture": "res://assets/tokens/skelos_cleave.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/skelos_advance.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 6,
+        "defense": 3,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/skelos_guard.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          2,
+          3,
+          4
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/skelos_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 6,
+        "defense": 3,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/skelos_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 5,
+        "defense": 3,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/skelos_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 5,
+        "defense": 3,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/skelos_left.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/skelos_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/skelos_parry_l.webp"
+      },
+      "pieces": {
+        "id": "pieces",
+        "name": "In pezzi",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/skelos_pieces.webp"
+      }
+    }
+  },
+  "sketos": {
+    "id": "sketos",
+    "name": "Sketos",
+    "title": "Scheletro animato",
+    "kind": "skeleton",
+    "team": -1,
+    "size": 4,
+    "hp": 1,
+    "sprint": 3,
+    "armor": [],
+    "recovery": [
+      99,
+      99,
+      99,
+      99,
+      99,
+      99
+    ],
+    "sprints": [
+      [
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        1,
+        1
+      ],
+      [
+        2,
+        0,
+        1,
+        2
+      ],
+      [
+        2,
+        0,
+        2,
+        2
+      ]
+    ],
+    "card": "res://assets/cards/sketos.webp",
+    "mage": false,
+    "source_card": [
+      "backfire",
+      4
+    ],
+    "moves": {
+      "again": {
+        "id": "again",
+        "name": "Ancora",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/sketos_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 11,
+        "defense": 4,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 4,
+        "texture": "res://assets/tokens/sketos_cleave.webp"
+      },
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 3,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/sketos_advance.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 6,
+        "defense": 3,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/sketos_guard.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 1,
+        "red": [],
+        "green": [
+          2,
+          3,
+          4
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 1,
+        "texture": "res://assets/tokens/sketos_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 8,
+        "defense": 5,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/sketos_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 6,
+        "defense": 4,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 4,
+        "texture": "res://assets/tokens/sketos_right.webp"
+      },
+      "left": {
+        "id": "left",
+        "name": "Taglio sinistro",
+        "attack": 6,
+        "defense": 4,
+        "red": [
+          5,
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 4,
+        "texture": "res://assets/tokens/sketos_left.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/sketos_parry_r.webp"
+      },
+      "parry_l": {
+        "id": "parry_l",
+        "name": "Parata sinistra",
+        "attack": null,
+        "defense": -1,
+        "red": [],
+        "green": [],
+        "blue": [
+          5,
+          0
+        ],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/sketos_parry_l.webp"
+      },
+      "pieces": {
+        "id": "pieces",
+        "name": "In pezzi",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/sketos_pieces.webp"
+      }
+    }
+  },
+  "golem": {
+    "id": "golem",
+    "name": "Golem",
+    "title": "Mostro di roccia",
+    "kind": "golem",
+    "team": -1,
+    "size": 8,
+    "hp": 40,
+    "sprint": 1,
+    "armor": [],
+    "recovery": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "sprints": [],
+    "card": "res://assets/cards/golem.webp",
+    "mage": false,
+    "source_card": [
+      "backfire",
+      6
+    ],
+    "moves": {
+      "advance": {
+        "id": "advance",
+        "name": "Avanzare",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 0,
+        "texture": "res://assets/tokens/golem_advance.webp"
+      },
+      "guard": {
+        "id": "guard",
+        "name": "In guardia",
+        "attack": 18,
+        "defense": 2,
+        "red": [
+          5,
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/golem_guard.webp"
+      }
+    }
+  }
+}

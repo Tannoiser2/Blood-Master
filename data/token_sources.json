@@ -1,0 +1,2552 @@
+{
+  "zenyo_guard": {
+    "page": "blu-2",
+    "rect": [
+      493,
+      68,
+      923,
+      441
+    ],
+    "rotation": 0
+  },
+  "zenyo_advance": {
+    "page": "blu-2",
+    "rect": [
+      493,
+      493,
+      923,
+      866
+    ],
+    "rotation": 0
+  },
+  "zenyo_run": {
+    "page": "blu-2",
+    "rect": [
+      493,
+      918,
+      923,
+      1291
+    ],
+    "rotation": 0
+  },
+  "zenyo_rise": {
+    "page": "blu-2",
+    "rect": [
+      493,
+      1343,
+      923,
+      1716
+    ],
+    "rotation": 0
+  },
+  "zenyo_roll": {
+    "page": "blu-2",
+    "rect": [
+      893,
+      280,
+      1323,
+      653
+    ],
+    "rotation": 0
+  },
+  "zenyo_unbalanced": {
+    "page": "blu-2",
+    "rect": [
+      893,
+      705,
+      1323,
+      1078
+    ],
+    "rotation": 0
+  },
+  "zenyo_down": {
+    "page": "blu-2",
+    "rect": [
+      893,
+      1130,
+      1323,
+      1503
+    ],
+    "rotation": 0
+  },
+  "zenyo_parry_r": {
+    "page": "blu-2",
+    "rect": [
+      1293,
+      68,
+      1723,
+      441
+    ],
+    "rotation": 0
+  },
+  "zenyo_parry_l": {
+    "page": "blu-2",
+    "rect": [
+      1293,
+      493,
+      1723,
+      866
+    ],
+    "rotation": 0
+  },
+  "zenyo_dodge": {
+    "page": "blu-2",
+    "rect": [
+      1293,
+      918,
+      1723,
+      1291
+    ],
+    "rotation": 0
+  },
+  "zenyo_charge": {
+    "page": "blu-2",
+    "rect": [
+      1293,
+      1343,
+      1723,
+      1716
+    ],
+    "rotation": 0
+  },
+  "zenyo_right": {
+    "page": "blu-2",
+    "rect": [
+      1693,
+      280,
+      2123,
+      653
+    ],
+    "rotation": 0
+  },
+  "zenyo_left": {
+    "page": "blu-2",
+    "rect": [
+      1693,
+      705,
+      2123,
+      1078
+    ],
+    "rotation": 0
+  },
+  "zenyo_thrust": {
+    "page": "blu-2",
+    "rect": [
+      1693,
+      1130,
+      2123,
+      1503
+    ],
+    "rotation": 0
+  },
+  "zenyo_again": {
+    "page": "blu-2",
+    "rect": [
+      2093,
+      68,
+      2523,
+      441
+    ],
+    "rotation": 0
+  },
+  "zenyo_cleave": {
+    "page": "blu-2",
+    "rect": [
+      2093,
+      493,
+      2523,
+      866
+    ],
+    "rotation": 0
+  },
+  "zenyo_sweep": {
+    "page": "blu-2",
+    "rect": [
+      2093,
+      918,
+      2523,
+      1291
+    ],
+    "rotation": 0
+  },
+  "zenyo_meditate": {
+    "page": "blu-2",
+    "rect": [
+      2093,
+      1343,
+      2523,
+      1716
+    ],
+    "rotation": 0
+  },
+  "shaara_guard": {
+    "page": "rossi-3",
+    "rect": [
+      464,
+      68,
+      894,
+      441
+    ],
+    "rotation": 0
+  },
+  "shaara_advance": {
+    "page": "rossi-3",
+    "rect": [
+      464,
+      493,
+      894,
+      866
+    ],
+    "rotation": 0
+  },
+  "shaara_run": {
+    "page": "rossi-3",
+    "rect": [
+      464,
+      918,
+      894,
+      1291
+    ],
+    "rotation": 0
+  },
+  "shaara_rise": {
+    "page": "rossi-3",
+    "rect": [
+      464,
+      1343,
+      894,
+      1716
+    ],
+    "rotation": 0
+  },
+  "shaara_roll": {
+    "page": "rossi-3",
+    "rect": [
+      864,
+      280,
+      1294,
+      653
+    ],
+    "rotation": 0
+  },
+  "shaara_unbalanced": {
+    "page": "rossi-3",
+    "rect": [
+      864,
+      705,
+      1294,
+      1078
+    ],
+    "rotation": 0
+  },
+  "shaara_down": {
+    "page": "rossi-3",
+    "rect": [
+      864,
+      1130,
+      1294,
+      1503
+    ],
+    "rotation": 0
+  },
+  "shaara_parry_r": {
+    "page": "rossi-3",
+    "rect": [
+      1264,
+      68,
+      1694,
+      441
+    ],
+    "rotation": 0
+  },
+  "shaara_parry_l": {
+    "page": "rossi-3",
+    "rect": [
+      1264,
+      493,
+      1694,
+      866
+    ],
+    "rotation": 0
+  },
+  "shaara_dodge": {
+    "page": "rossi-3",
+    "rect": [
+      1264,
+      918,
+      1694,
+      1291
+    ],
+    "rotation": 0
+  },
+  "shaara_charge": {
+    "page": "rossi-3",
+    "rect": [
+      1264,
+      1343,
+      1694,
+      1716
+    ],
+    "rotation": 0
+  },
+  "shaara_right": {
+    "page": "rossi-3",
+    "rect": [
+      1664,
+      280,
+      2094,
+      653
+    ],
+    "rotation": 0
+  },
+  "shaara_left": {
+    "page": "rossi-3",
+    "rect": [
+      1664,
+      705,
+      2094,
+      1078
+    ],
+    "rotation": 0
+  },
+  "shaara_thrust": {
+    "page": "rossi-3",
+    "rect": [
+      1664,
+      1130,
+      2094,
+      1503
+    ],
+    "rotation": 0
+  },
+  "shaara_again": {
+    "page": "rossi-3",
+    "rect": [
+      2064,
+      68,
+      2494,
+      441
+    ],
+    "rotation": 0
+  },
+  "shaara_cleave": {
+    "page": "rossi-3",
+    "rect": [
+      2064,
+      493,
+      2494,
+      866
+    ],
+    "rotation": 0
+  },
+  "shaara_sweep": {
+    "page": "rossi-3",
+    "rect": [
+      2064,
+      918,
+      2494,
+      1291
+    ],
+    "rotation": 0
+  },
+  "shaara_meditate": {
+    "page": "rossi-3",
+    "rect": [
+      2064,
+      1343,
+      2494,
+      1716
+    ],
+    "rotation": 0
+  },
+  "gascor_guard": {
+    "page": "blu-3",
+    "rect": [
+      464,
+      68,
+      894,
+      441
+    ],
+    "rotation": 0
+  },
+  "gascor_advance": {
+    "page": "blu-3",
+    "rect": [
+      464,
+      493,
+      894,
+      866
+    ],
+    "rotation": 0
+  },
+  "gascor_run": {
+    "page": "blu-3",
+    "rect": [
+      464,
+      918,
+      894,
+      1291
+    ],
+    "rotation": 0
+  },
+  "gascor_rise": {
+    "page": "blu-3",
+    "rect": [
+      2064,
+      1343,
+      2494,
+      1716
+    ],
+    "rotation": 0
+  },
+  "gascor_roll": {
+    "page": "blu-3",
+    "rect": [
+      864,
+      280,
+      1294,
+      653
+    ],
+    "rotation": 0
+  },
+  "gascor_unbalanced": {
+    "page": "blu-3",
+    "rect": [
+      864,
+      705,
+      1294,
+      1078
+    ],
+    "rotation": 0
+  },
+  "gascor_down": {
+    "page": "blu-3",
+    "rect": [
+      864,
+      1130,
+      1294,
+      1503
+    ],
+    "rotation": 0
+  },
+  "gascor_parry_r": {
+    "page": "blu-3",
+    "rect": [
+      1264,
+      68,
+      1694,
+      441
+    ],
+    "rotation": 0
+  },
+  "gascor_parry_l": {
+    "page": "blu-3",
+    "rect": [
+      1264,
+      493,
+      1694,
+      866
+    ],
+    "rotation": 0
+  },
+  "gascor_dodge": {
+    "page": "blu-3",
+    "rect": [
+      1264,
+      918,
+      1694,
+      1291
+    ],
+    "rotation": 0
+  },
+  "gascor_charge": {
+    "page": "blu-3",
+    "rect": [
+      1264,
+      1343,
+      1694,
+      1716
+    ],
+    "rotation": 0
+  },
+  "gascor_right": {
+    "page": "blu-3",
+    "rect": [
+      1664,
+      280,
+      2094,
+      653
+    ],
+    "rotation": 0
+  },
+  "gascor_left": {
+    "page": "blu-3",
+    "rect": [
+      1664,
+      705,
+      2094,
+      1078
+    ],
+    "rotation": 0
+  },
+  "gascor_thrust": {
+    "page": "blu-3",
+    "rect": [
+      1664,
+      1130,
+      2094,
+      1503
+    ],
+    "rotation": 0
+  },
+  "gascor_again": {
+    "page": "blu-3",
+    "rect": [
+      2064,
+      68,
+      2494,
+      441
+    ],
+    "rotation": 0
+  },
+  "gascor_cleave": {
+    "page": "blu-3",
+    "rect": [
+      2064,
+      493,
+      2494,
+      866
+    ],
+    "rotation": 0
+  },
+  "gascor_kick": {
+    "page": "blu-3",
+    "rect": [
+      2064,
+      918,
+      2494,
+      1291
+    ],
+    "rotation": 0
+  },
+  "anteos_guard": {
+    "page": "rossi-4",
+    "rect": [
+      464,
+      68,
+      894,
+      441
+    ],
+    "rotation": 0
+  },
+  "anteos_advance": {
+    "page": "rossi-4",
+    "rect": [
+      464,
+      493,
+      894,
+      866
+    ],
+    "rotation": 0
+  },
+  "anteos_run": {
+    "page": "rossi-4",
+    "rect": [
+      464,
+      918,
+      894,
+      1291
+    ],
+    "rotation": 0
+  },
+  "anteos_rise": {
+    "page": "rossi-4",
+    "rect": [
+      2064,
+      1343,
+      2494,
+      1716
+    ],
+    "rotation": 0
+  },
+  "anteos_roll": {
+    "page": "rossi-4",
+    "rect": [
+      864,
+      280,
+      1294,
+      653
+    ],
+    "rotation": 0
+  },
+  "anteos_unbalanced": {
+    "page": "rossi-4",
+    "rect": [
+      864,
+      705,
+      1294,
+      1078
+    ],
+    "rotation": 0
+  },
+  "anteos_down": {
+    "page": "rossi-4",
+    "rect": [
+      864,
+      1130,
+      1294,
+      1503
+    ],
+    "rotation": 0
+  },
+  "anteos_parry_r": {
+    "page": "rossi-4",
+    "rect": [
+      1264,
+      68,
+      1694,
+      441
+    ],
+    "rotation": 0
+  },
+  "anteos_parry_l": {
+    "page": "rossi-4",
+    "rect": [
+      1264,
+      493,
+      1694,
+      866
+    ],
+    "rotation": 0
+  },
+  "anteos_dodge": {
+    "page": "rossi-4",
+    "rect": [
+      1264,
+      918,
+      1694,
+      1291
+    ],
+    "rotation": 0
+  },
+  "anteos_charge": {
+    "page": "rossi-4",
+    "rect": [
+      1264,
+      1343,
+      1694,
+      1716
+    ],
+    "rotation": 0
+  },
+  "anteos_right": {
+    "page": "rossi-4",
+    "rect": [
+      1664,
+      280,
+      2094,
+      653
+    ],
+    "rotation": 0
+  },
+  "anteos_left": {
+    "page": "rossi-4",
+    "rect": [
+      1664,
+      705,
+      2094,
+      1078
+    ],
+    "rotation": 0
+  },
+  "anteos_thrust": {
+    "page": "rossi-4",
+    "rect": [
+      1664,
+      1130,
+      2094,
+      1503
+    ],
+    "rotation": 0
+  },
+  "anteos_again": {
+    "page": "rossi-4",
+    "rect": [
+      2064,
+      68,
+      2494,
+      441
+    ],
+    "rotation": 0
+  },
+  "anteos_cleave": {
+    "page": "rossi-4",
+    "rect": [
+      2064,
+      493,
+      2494,
+      866
+    ],
+    "rotation": 0
+  },
+  "anteos_kick": {
+    "page": "rossi-4",
+    "rect": [
+      2064,
+      918,
+      2494,
+      1291
+    ],
+    "rotation": 0
+  },
+  "shannon_guard": {
+    "page": "blu-5",
+    "rect": [
+      464,
+      68,
+      894,
+      441
+    ],
+    "rotation": 0
+  },
+  "shannon_advance": {
+    "page": "blu-5",
+    "rect": [
+      464,
+      493,
+      894,
+      866
+    ],
+    "rotation": 0
+  },
+  "shannon_run": {
+    "page": "blu-5",
+    "rect": [
+      464,
+      918,
+      894,
+      1291
+    ],
+    "rotation": 0
+  },
+  "shannon_rise": {
+    "page": "blu-5",
+    "rect": [
+      464,
+      1343,
+      894,
+      1716
+    ],
+    "rotation": 0
+  },
+  "shannon_kick": {
+    "page": "blu-5",
+    "rect": [
+      864,
+      280,
+      1294,
+      653
+    ],
+    "rotation": 0
+  },
+  "shannon_unbalanced": {
+    "page": "blu-5",
+    "rect": [
+      864,
+      705,
+      1294,
+      1078
+    ],
+    "rotation": 0
+  },
+  "shannon_down": {
+    "page": "blu-5",
+    "rect": [
+      864,
+      1130,
+      1294,
+      1503
+    ],
+    "rotation": 0
+  },
+  "shannon_parry_r": {
+    "page": "blu-5",
+    "rect": [
+      1264,
+      68,
+      1694,
+      441
+    ],
+    "rotation": 0
+  },
+  "shannon_parry_l": {
+    "page": "blu-5",
+    "rect": [
+      1264,
+      493,
+      1694,
+      866
+    ],
+    "rotation": 0
+  },
+  "shannon_dodge": {
+    "page": "blu-5",
+    "rect": [
+      1264,
+      918,
+      1694,
+      1291
+    ],
+    "rotation": 0
+  },
+  "shannon_charge": {
+    "page": "blu-5",
+    "rect": [
+      1264,
+      1343,
+      1694,
+      1716
+    ],
+    "rotation": 0
+  },
+  "shannon_thrust": {
+    "page": "blu-5",
+    "rect": [
+      1664,
+      1130,
+      2094,
+      1503
+    ],
+    "rotation": 0
+  },
+  "shannon_again": {
+    "page": "blu-5",
+    "rect": [
+      2064,
+      68,
+      2494,
+      441
+    ],
+    "rotation": 0
+  },
+  "shannon_sweep": {
+    "page": "blu-5",
+    "rect": [
+      2064,
+      1343,
+      2494,
+      1716
+    ],
+    "rotation": 0
+  },
+  "ramok_guard": {
+    "page": "rossi-5",
+    "rect": [
+      493,
+      68,
+      923,
+      441
+    ],
+    "rotation": 0
+  },
+  "ramok_advance": {
+    "page": "rossi-5",
+    "rect": [
+      493,
+      493,
+      923,
+      866
+    ],
+    "rotation": 0
+  },
+  "ramok_run": {
+    "page": "rossi-5",
+    "rect": [
+      493,
+      918,
+      923,
+      1291
+    ],
+    "rotation": 0
+  },
+  "ramok_rise": {
+    "page": "rossi-5",
+    "rect": [
+      493,
+      1343,
+      923,
+      1716
+    ],
+    "rotation": 0
+  },
+  "ramok_kick": {
+    "page": "rossi-5",
+    "rect": [
+      893,
+      280,
+      1323,
+      653
+    ],
+    "rotation": 0
+  },
+  "ramok_unbalanced": {
+    "page": "rossi-5",
+    "rect": [
+      893,
+      705,
+      1323,
+      1078
+    ],
+    "rotation": 0
+  },
+  "ramok_down": {
+    "page": "rossi-5",
+    "rect": [
+      893,
+      1130,
+      1323,
+      1503
+    ],
+    "rotation": 0
+  },
+  "ramok_parry_r": {
+    "page": "rossi-5",
+    "rect": [
+      1293,
+      68,
+      1723,
+      441
+    ],
+    "rotation": 0
+  },
+  "ramok_parry_l": {
+    "page": "rossi-5",
+    "rect": [
+      1293,
+      493,
+      1723,
+      866
+    ],
+    "rotation": 0
+  },
+  "ramok_dodge": {
+    "page": "rossi-5",
+    "rect": [
+      1293,
+      918,
+      1723,
+      1291
+    ],
+    "rotation": 0
+  },
+  "ramok_charge": {
+    "page": "rossi-5",
+    "rect": [
+      1293,
+      1343,
+      1723,
+      1716
+    ],
+    "rotation": 0
+  },
+  "ramok_thrust": {
+    "page": "rossi-5",
+    "rect": [
+      1693,
+      1130,
+      2123,
+      1503
+    ],
+    "rotation": 0
+  },
+  "ramok_again": {
+    "page": "rossi-5",
+    "rect": [
+      2093,
+      68,
+      2523,
+      441
+    ],
+    "rotation": 0
+  },
+  "ramok_sweep": {
+    "page": "rossi-5",
+    "rect": [
+      2093,
+      1343,
+      2523,
+      1716
+    ],
+    "rotation": 0
+  },
+  "kylvia_guard": {
+    "page": "blu-4",
+    "rect": [
+      464,
+      68,
+      894,
+      441
+    ],
+    "rotation": 0
+  },
+  "kylvia_advance": {
+    "page": "blu-4",
+    "rect": [
+      464,
+      493,
+      894,
+      866
+    ],
+    "rotation": 0
+  },
+  "kylvia_run": {
+    "page": "blu-4",
+    "rect": [
+      464,
+      918,
+      894,
+      1291
+    ],
+    "rotation": 0
+  },
+  "kylvia_rise": {
+    "page": "blu-4",
+    "rect": [
+      464,
+      1343,
+      894,
+      1716
+    ],
+    "rotation": 0
+  },
+  "kylvia_load": {
+    "page": "blu-4",
+    "rect": [
+      864,
+      280,
+      1294,
+      653
+    ],
+    "rotation": 0
+  },
+  "kylvia_unbalanced": {
+    "page": "blu-4",
+    "rect": [
+      864,
+      705,
+      1294,
+      1078
+    ],
+    "rotation": 0
+  },
+  "kylvia_down": {
+    "page": "blu-4",
+    "rect": [
+      864,
+      1130,
+      1294,
+      1503
+    ],
+    "rotation": 0
+  },
+  "kylvia_shoot": {
+    "page": "blu-4",
+    "rect": [
+      1264,
+      68,
+      1694,
+      441
+    ],
+    "rotation": 0
+  },
+  "kylvia_weapon": {
+    "page": "blu-4",
+    "rect": [
+      1264,
+      493,
+      1694,
+      866
+    ],
+    "rotation": 0
+  },
+  "kylvia_dodge": {
+    "page": "blu-4",
+    "rect": [
+      1264,
+      918,
+      1694,
+      1291
+    ],
+    "rotation": 0
+  },
+  "kylvia_charge": {
+    "page": "blu-4",
+    "rect": [
+      1264,
+      1343,
+      1694,
+      1716
+    ],
+    "rotation": 0
+  },
+  "kylvia_right": {
+    "page": "blu-4",
+    "rect": [
+      1664,
+      280,
+      2094,
+      653
+    ],
+    "rotation": 0
+  },
+  "kylvia_left": {
+    "page": "blu-4",
+    "rect": [
+      1664,
+      705,
+      2094,
+      1078
+    ],
+    "rotation": 0
+  },
+  "kylvia_thrust": {
+    "page": "blu-4",
+    "rect": [
+      1664,
+      1130,
+      2094,
+      1503
+    ],
+    "rotation": 0
+  },
+  "kylvia_kick": {
+    "page": "blu-4",
+    "rect": [
+      2064,
+      493,
+      2494,
+      866
+    ],
+    "rotation": 0
+  },
+  "kylvia_roll": {
+    "page": "blu-4",
+    "rect": [
+      2064,
+      918,
+      2494,
+      1291
+    ],
+    "rotation": 0
+  },
+  "nuchra_guard": {
+    "page": "rossi-2",
+    "rect": [
+      464,
+      68,
+      894,
+      441
+    ],
+    "rotation": 0
+  },
+  "nuchra_advance": {
+    "page": "rossi-2",
+    "rect": [
+      464,
+      493,
+      894,
+      866
+    ],
+    "rotation": 0
+  },
+  "nuchra_run": {
+    "page": "rossi-2",
+    "rect": [
+      464,
+      918,
+      894,
+      1291
+    ],
+    "rotation": 0
+  },
+  "nuchra_rise": {
+    "page": "rossi-2",
+    "rect": [
+      464,
+      1343,
+      894,
+      1716
+    ],
+    "rotation": 0
+  },
+  "nuchra_spin": {
+    "page": "rossi-2",
+    "rect": [
+      864,
+      280,
+      1294,
+      653
+    ],
+    "rotation": 0
+  },
+  "nuchra_unbalanced": {
+    "page": "rossi-2",
+    "rect": [
+      864,
+      705,
+      1294,
+      1078
+    ],
+    "rotation": 0
+  },
+  "nuchra_down": {
+    "page": "rossi-2",
+    "rect": [
+      864,
+      1130,
+      1294,
+      1503
+    ],
+    "rotation": 0
+  },
+  "nuchra_parry_r": {
+    "page": "rossi-2",
+    "rect": [
+      1264,
+      68,
+      1694,
+      441
+    ],
+    "rotation": 0
+  },
+  "nuchra_parry_l": {
+    "page": "rossi-2",
+    "rect": [
+      1264,
+      493,
+      1694,
+      866
+    ],
+    "rotation": 0
+  },
+  "nuchra_dodge": {
+    "page": "rossi-2",
+    "rect": [
+      1264,
+      918,
+      1694,
+      1291
+    ],
+    "rotation": 0
+  },
+  "nuchra_charge": {
+    "page": "rossi-2",
+    "rect": [
+      1264,
+      1343,
+      1694,
+      1716
+    ],
+    "rotation": 0
+  },
+  "nuchra_right": {
+    "page": "rossi-2",
+    "rect": [
+      1664,
+      280,
+      2094,
+      653
+    ],
+    "rotation": 0
+  },
+  "nuchra_left": {
+    "page": "rossi-2",
+    "rect": [
+      1664,
+      705,
+      2094,
+      1078
+    ],
+    "rotation": 0
+  },
+  "nuchra_kick": {
+    "page": "rossi-2",
+    "rect": [
+      1664,
+      1130,
+      2094,
+      1503
+    ],
+    "rotation": 0
+  },
+  "nuchra_again": {
+    "page": "rossi-2",
+    "rect": [
+      2064,
+      68,
+      2494,
+      441
+    ],
+    "rotation": 0
+  },
+  "nuchra_cleave": {
+    "page": "rossi-2",
+    "rect": [
+      2064,
+      493,
+      2494,
+      866
+    ],
+    "rotation": 0
+  },
+  "kylvia_again": {
+    "page": "blu-5",
+    "rect": [
+      1664,
+      705,
+      2094,
+      1078
+    ],
+    "rotation": 0
+  },
+  "kylvia_parry_r": {
+    "page": "blu-5",
+    "rect": [
+      2064,
+      493,
+      2494,
+      866
+    ],
+    "rotation": 0
+  },
+  "kylvia_parry_l": {
+    "page": "blu-5",
+    "rect": [
+      2064,
+      918,
+      2494,
+      1291
+    ],
+    "rotation": 0
+  },
+  "ut_run": {
+    "page": "blu-6",
+    "rect": [
+      1155,
+      160,
+      1580,
+      529
+    ],
+    "rotation": 0
+  },
+  "ut_down": {
+    "page": "blu-6",
+    "rect": [
+      1155,
+      520,
+      1580,
+      889
+    ],
+    "rotation": 0
+  },
+  "ut_guard": {
+    "page": "blu-6",
+    "rect": [
+      1149,
+      879,
+      1577,
+      1248
+    ],
+    "rotation": 0
+  },
+  "ut_again": {
+    "page": "blu-6",
+    "rect": [
+      1470,
+      -13,
+      1898,
+      356
+    ],
+    "rotation": 0
+  },
+  "ut_unbalanced": {
+    "page": "blu-6",
+    "rect": [
+      1470,
+      346,
+      1898,
+      715
+    ],
+    "rotation": 0
+  },
+  "ut_cleave": {
+    "page": "blu-6",
+    "rect": [
+      1470,
+      704,
+      1898,
+      1073
+    ],
+    "rotation": 0
+  },
+  "ut_advance": {
+    "page": "blu-6",
+    "rect": [
+      1780,
+      166,
+      2208,
+      535
+    ],
+    "rotation": 0
+  },
+  "ut_kick": {
+    "page": "blu-6",
+    "rect": [
+      1780,
+      527,
+      2208,
+      896
+    ],
+    "rotation": 0
+  },
+  "ut_spin": {
+    "page": "blu-6",
+    "rect": [
+      1780,
+      882,
+      2208,
+      1251
+    ],
+    "rotation": 0
+  },
+  "ut_parry_l": {
+    "page": "blu-6",
+    "rect": [
+      2090,
+      -11,
+      2518,
+      358
+    ],
+    "rotation": 0
+  },
+  "ut_left": {
+    "page": "blu-6",
+    "rect": [
+      2090,
+      347,
+      2518,
+      716
+    ],
+    "rotation": 0
+  },
+  "ut_rise": {
+    "page": "blu-6",
+    "rect": [
+      2090,
+      706,
+      2518,
+      1075
+    ],
+    "rotation": 0
+  },
+  "zak_unbalanced": {
+    "page": "rossi-6",
+    "rect": [
+      535,
+      175,
+      963,
+      544
+    ],
+    "rotation": 0
+  },
+  "zak_parry_l": {
+    "page": "rossi-6",
+    "rect": [
+      535,
+      539,
+      963,
+      908
+    ],
+    "rotation": 0
+  },
+  "zak_guard": {
+    "page": "rossi-6",
+    "rect": [
+      535,
+      898,
+      963,
+      1267
+    ],
+    "rotation": 0
+  },
+  "zak_shoot": {
+    "page": "rossi-6",
+    "rect": [
+      849,
+      -11,
+      1277,
+      358
+    ],
+    "rotation": 0
+  },
+  "zak_down": {
+    "page": "rossi-6",
+    "rect": [
+      849,
+      350,
+      1277,
+      719
+    ],
+    "rotation": 0
+  },
+  "zak_weapon": {
+    "page": "rossi-6",
+    "rect": [
+      849,
+      711,
+      1277,
+      1080
+    ],
+    "rotation": 0
+  },
+  "zak_advance": {
+    "page": "rossi-6",
+    "rect": [
+      1163,
+      170,
+      1591,
+      539
+    ],
+    "rotation": 0
+  },
+  "zak_left": {
+    "page": "rossi-6",
+    "rect": [
+      1163,
+      529,
+      1591,
+      898
+    ],
+    "rotation": 0
+  },
+  "zak_charge": {
+    "page": "rossi-6",
+    "rect": [
+      1163,
+      891,
+      1591,
+      1260
+    ],
+    "rotation": 0
+  },
+  "zak_again": {
+    "page": "rossi-6",
+    "rect": [
+      1474,
+      -11,
+      1902,
+      358
+    ],
+    "rotation": 0
+  },
+  "zak_load": {
+    "page": "rossi-6",
+    "rect": [
+      1474,
+      347,
+      1902,
+      716
+    ],
+    "rotation": 0
+  },
+  "zak_rise": {
+    "page": "rossi-6",
+    "rect": [
+      1474,
+      710,
+      1902,
+      1079
+    ],
+    "rotation": 0
+  },
+  "zak_kick": {
+    "page": "rossi-6",
+    "rect": [
+      1788,
+      172,
+      2216,
+      541
+    ],
+    "rotation": 0
+  },
+  "zak_parry_r": {
+    "page": "rossi-6",
+    "rect": [
+      1788,
+      528,
+      2216,
+      897
+    ],
+    "rotation": 0
+  },
+  "zak_roll": {
+    "page": "rossi-6",
+    "rect": [
+      1817,
+      889,
+      2245,
+      1258
+    ],
+    "rotation": 180
+  },
+  "zak_thrust": {
+    "page": "rossi-6",
+    "rect": [
+      2103,
+      -11,
+      2523,
+      358
+    ],
+    "rotation": 0
+  },
+  "zak_right": {
+    "page": "rossi-6",
+    "rect": [
+      2103,
+      347,
+      2523,
+      716
+    ],
+    "rotation": 0
+  },
+  "zak_run": {
+    "page": "rossi-6",
+    "rect": [
+      2103,
+      702,
+      2523,
+      1071
+    ],
+    "rotation": 0
+  },
+  "thorn_advance": {
+    "page": "backfire-2",
+    "rect": [
+      476,
+      68,
+      906,
+      441
+    ],
+    "rotation": 0
+  },
+  "thorn_down": {
+    "page": "backfire-2",
+    "rect": [
+      476,
+      493,
+      906,
+      866
+    ],
+    "rotation": 0
+  },
+  "thorn_unbalanced": {
+    "page": "backfire-2",
+    "rect": [
+      476,
+      918,
+      906,
+      1291
+    ],
+    "rotation": 0
+  },
+  "thorn_run": {
+    "page": "backfire-2",
+    "rect": [
+      476,
+      1343,
+      906,
+      1716
+    ],
+    "rotation": 0
+  },
+  "thorn_guard": {
+    "page": "backfire-2",
+    "rect": [
+      876,
+      280,
+      1306,
+      653
+    ],
+    "rotation": 0
+  },
+  "thorn_dodge": {
+    "page": "backfire-2",
+    "rect": [
+      876,
+      705,
+      1306,
+      1078
+    ],
+    "rotation": 0
+  },
+  "thorn_charge": {
+    "page": "backfire-2",
+    "rect": [
+      876,
+      1130,
+      1306,
+      1503
+    ],
+    "rotation": 0
+  },
+  "thorn_rise": {
+    "page": "backfire-2",
+    "rect": [
+      1276,
+      68,
+      1706,
+      441
+    ],
+    "rotation": 0
+  },
+  "thorn_concentrate": {
+    "page": "backfire-2",
+    "rect": [
+      1276,
+      493,
+      1706,
+      866
+    ],
+    "rotation": 0
+  },
+  "thorn_kick": {
+    "page": "backfire-2",
+    "rect": [
+      1276,
+      918,
+      1706,
+      1291
+    ],
+    "rotation": 0
+  },
+  "thorn_punch": {
+    "page": "backfire-2",
+    "rect": [
+      1276,
+      1343,
+      1706,
+      1716
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_advance": {
+    "page": "backfire-3",
+    "rect": [
+      476,
+      68,
+      906,
+      441
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_down": {
+    "page": "backfire-3",
+    "rect": [
+      476,
+      493,
+      906,
+      866
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_unbalanced": {
+    "page": "backfire-3",
+    "rect": [
+      476,
+      918,
+      906,
+      1291
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_run": {
+    "page": "backfire-3",
+    "rect": [
+      476,
+      1343,
+      906,
+      1716
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_guard": {
+    "page": "backfire-3",
+    "rect": [
+      876,
+      280,
+      1306,
+      653
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_dodge": {
+    "page": "backfire-3",
+    "rect": [
+      876,
+      705,
+      1306,
+      1078
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_charge": {
+    "page": "backfire-3",
+    "rect": [
+      876,
+      1130,
+      1306,
+      1503
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_rise": {
+    "page": "backfire-3",
+    "rect": [
+      1276,
+      68,
+      1706,
+      441
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_thrust": {
+    "page": "backfire-3",
+    "rect": [
+      1276,
+      493,
+      1706,
+      866
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_parry_r": {
+    "page": "backfire-3",
+    "rect": [
+      1276,
+      918,
+      1706,
+      1291
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_parry_l": {
+    "page": "backfire-3",
+    "rect": [
+      1276,
+      1343,
+      1706,
+      1716
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_concentrate": {
+    "page": "backfire-3",
+    "rect": [
+      1676,
+      280,
+      2106,
+      653
+    ],
+    "rotation": 0
+  },
+  "gandy_advance": {
+    "page": "backfire-5",
+    "rect": [
+      476,
+      68,
+      906,
+      441
+    ],
+    "rotation": 0
+  },
+  "gandy_down": {
+    "page": "backfire-5",
+    "rect": [
+      476,
+      493,
+      906,
+      866
+    ],
+    "rotation": 0
+  },
+  "gandy_unbalanced": {
+    "page": "backfire-5",
+    "rect": [
+      476,
+      918,
+      906,
+      1291
+    ],
+    "rotation": 0
+  },
+  "gandy_run": {
+    "page": "backfire-5",
+    "rect": [
+      476,
+      1343,
+      906,
+      1716
+    ],
+    "rotation": 0
+  },
+  "gandy_guard": {
+    "page": "backfire-5",
+    "rect": [
+      876,
+      280,
+      1306,
+      653
+    ],
+    "rotation": 0
+  },
+  "gandy_dodge": {
+    "page": "backfire-5",
+    "rect": [
+      876,
+      705,
+      1306,
+      1078
+    ],
+    "rotation": 0
+  },
+  "gandy_charge": {
+    "page": "backfire-5",
+    "rect": [
+      876,
+      1130,
+      1306,
+      1503
+    ],
+    "rotation": 0
+  },
+  "gandy_rise": {
+    "page": "backfire-5",
+    "rect": [
+      1276,
+      68,
+      1706,
+      441
+    ],
+    "rotation": 0
+  },
+  "gandy_concentrate": {
+    "page": "backfire-5",
+    "rect": [
+      1276,
+      493,
+      1706,
+      866
+    ],
+    "rotation": 0
+  },
+  "gandy_cleave": {
+    "page": "backfire-5",
+    "rect": [
+      1276,
+      918,
+      1706,
+      1291
+    ],
+    "rotation": 0
+  },
+  "gandy_parry_r": {
+    "page": "backfire-5",
+    "rect": [
+      1276,
+      1343,
+      1706,
+      1716
+    ],
+    "rotation": 0
+  },
+  "gandy_sweep": {
+    "page": "backfire-5",
+    "rect": [
+      1676,
+      280,
+      2106,
+      653
+    ],
+    "rotation": 0
+  },
+  "gandy_firestaff": {
+    "page": "backfire-5",
+    "rect": [
+      1676,
+      705,
+      2106,
+      1078
+    ],
+    "rotation": 0
+  },
+  "gandy_shield": {
+    "page": "backfire-5",
+    "rect": [
+      1676,
+      1130,
+      2106,
+      1503
+    ],
+    "rotation": 0
+  },
+  "gandy_vortex": {
+    "page": "backfire-5",
+    "rect": [
+      2076,
+      68,
+      2506,
+      441
+    ],
+    "rotation": 0
+  },
+  "gandy_sleep": {
+    "page": "backfire-5",
+    "rect": [
+      2076,
+      493,
+      2506,
+      866
+    ],
+    "rotation": 0
+  },
+  "gandy_fireball": {
+    "page": "backfire-5",
+    "rect": [
+      2076,
+      918,
+      2506,
+      1291
+    ],
+    "rotation": 0
+  },
+  "thorn_pustules": {
+    "page": "backfire-2",
+    "rect": [
+      1676,
+      280,
+      2106,
+      653
+    ],
+    "rotation": 0
+  },
+  "thorn_fear": {
+    "page": "backfire-2",
+    "rect": [
+      1676,
+      705,
+      2106,
+      1078
+    ],
+    "rotation": 0
+  },
+  "thorn_age": {
+    "page": "backfire-2",
+    "rect": [
+      1676,
+      1130,
+      2106,
+      1503
+    ],
+    "rotation": 0
+  },
+  "thorn_summon": {
+    "page": "backfire-2",
+    "rect": [
+      2076,
+      68,
+      2506,
+      441
+    ],
+    "rotation": 0
+  },
+  "thorn_plague": {
+    "page": "backfire-2",
+    "rect": [
+      2076,
+      493,
+      2506,
+      866
+    ],
+    "rotation": 0
+  },
+  "thorn_again": {
+    "page": "backfire-2",
+    "rect": [
+      2076,
+      918,
+      2506,
+      1291
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_wall": {
+    "page": "backfire-3",
+    "rect": [
+      1676,
+      705,
+      2106,
+      1078
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_teleport": {
+    "page": "backfire-3",
+    "rect": [
+      1676,
+      1130,
+      2106,
+      1503
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_transform": {
+    "page": "backfire-3",
+    "rect": [
+      2076,
+      68,
+      2506,
+      441
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_livingfire": {
+    "page": "backfire-3",
+    "rect": [
+      2076,
+      493,
+      2506,
+      866
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_abyss": {
+    "page": "backfire-3",
+    "rect": [
+      2076,
+      918,
+      2506,
+      1291
+    ],
+    "rotation": 0
+  },
+  "sanguinaria_again": {
+    "page": "backfire-3",
+    "rect": [
+      2076,
+      1343,
+      2506,
+      1716
+    ],
+    "rotation": 0
+  },
+  "ziggy_shock": {
+    "page": "backfire-4",
+    "rect": [
+      876,
+      280,
+      1306,
+      653
+    ],
+    "rotation": 0
+  },
+  "ziggy_heal": {
+    "page": "backfire-4",
+    "rect": [
+      876,
+      705,
+      1306,
+      1078
+    ],
+    "rotation": 0
+  },
+  "ziggy_drain": {
+    "page": "backfire-4",
+    "rect": [
+      876,
+      1130,
+      1306,
+      1503
+    ],
+    "rotation": 0
+  },
+  "ziggy_control": {
+    "page": "backfire-4",
+    "rect": [
+      1276,
+      68,
+      1706,
+      441
+    ],
+    "rotation": 0
+  },
+  "ziggy_lightning": {
+    "page": "backfire-4",
+    "rect": [
+      1276,
+      493,
+      1706,
+      866
+    ],
+    "rotation": 0
+  },
+  "ziggy_again": {
+    "page": "backfire-4",
+    "rect": [
+      1276,
+      918,
+      1706,
+      1291
+    ],
+    "rotation": 0
+  },
+  "gandy_again": {
+    "page": "backfire-7",
+    "rect": [
+      2076,
+      68,
+      2506,
+      441
+    ],
+    "rotation": 0
+  },
+  "ziggy_advance": {
+    "page": "backfire-4",
+    "rect": [
+      476,
+      68,
+      906,
+      441
+    ],
+    "rotation": 0
+  },
+  "ziggy_float": {
+    "page": "backfire-4",
+    "rect": [
+      476,
+      493,
+      906,
+      866
+    ],
+    "rotation": 0
+  },
+  "ziggy_concentrate": {
+    "page": "backfire-4",
+    "rect": [
+      476,
+      918,
+      906,
+      1291
+    ],
+    "rotation": 0
+  },
+  "ziggy_dematerialize": {
+    "page": "backfire-4",
+    "rect": [
+      476,
+      1343,
+      906,
+      1716
+    ],
+    "rotation": 0
+  },
+  "skelos_again": {
+    "page": "backfire-6",
+    "rect": [
+      476,
+      68,
+      906,
+      441
+    ],
+    "rotation": 0
+  },
+  "skelos_cleave": {
+    "page": "backfire-6",
+    "rect": [
+      476,
+      493,
+      906,
+      866
+    ],
+    "rotation": 0
+  },
+  "skelos_advance": {
+    "page": "backfire-6",
+    "rect": [
+      476,
+      918,
+      906,
+      1291
+    ],
+    "rotation": 0
+  },
+  "skelos_guard": {
+    "page": "backfire-6",
+    "rect": [
+      476,
+      1343,
+      906,
+      1716
+    ],
+    "rotation": 0
+  },
+  "skelos_dodge": {
+    "page": "backfire-6",
+    "rect": [
+      876,
+      280,
+      1306,
+      653
+    ],
+    "rotation": 0
+  },
+  "skelos_charge": {
+    "page": "backfire-6",
+    "rect": [
+      876,
+      705,
+      1306,
+      1078
+    ],
+    "rotation": 0
+  },
+  "skelos_right": {
+    "page": "backfire-6",
+    "rect": [
+      876,
+      1130,
+      1306,
+      1503
+    ],
+    "rotation": 0
+  },
+  "skelos_left": {
+    "page": "backfire-6",
+    "rect": [
+      1276,
+      68,
+      1706,
+      441
+    ],
+    "rotation": 0
+  },
+  "skelos_parry_r": {
+    "page": "backfire-6",
+    "rect": [
+      1276,
+      493,
+      1706,
+      866
+    ],
+    "rotation": 0
+  },
+  "skelos_parry_l": {
+    "page": "backfire-6",
+    "rect": [
+      1276,
+      918,
+      1706,
+      1291
+    ],
+    "rotation": 0
+  },
+  "skelos_pieces": {
+    "page": "backfire-6",
+    "rect": [
+      1276,
+      1343,
+      1706,
+      1716
+    ],
+    "rotation": 0
+  },
+  "sketos_again": {
+    "page": "backfire-7",
+    "rect": [
+      476,
+      68,
+      906,
+      441
+    ],
+    "rotation": 0
+  },
+  "sketos_cleave": {
+    "page": "backfire-7",
+    "rect": [
+      476,
+      493,
+      906,
+      866
+    ],
+    "rotation": 0
+  },
+  "sketos_advance": {
+    "page": "backfire-7",
+    "rect": [
+      476,
+      918,
+      906,
+      1291
+    ],
+    "rotation": 0
+  },
+  "sketos_guard": {
+    "page": "backfire-7",
+    "rect": [
+      476,
+      1343,
+      906,
+      1716
+    ],
+    "rotation": 0
+  },
+  "sketos_dodge": {
+    "page": "backfire-7",
+    "rect": [
+      876,
+      280,
+      1306,
+      653
+    ],
+    "rotation": 0
+  },
+  "sketos_charge": {
+    "page": "backfire-7",
+    "rect": [
+      876,
+      705,
+      1306,
+      1078
+    ],
+    "rotation": 0
+  },
+  "sketos_right": {
+    "page": "backfire-7",
+    "rect": [
+      876,
+      1130,
+      1306,
+      1503
+    ],
+    "rotation": 0
+  },
+  "sketos_left": {
+    "page": "backfire-7",
+    "rect": [
+      1276,
+      68,
+      1706,
+      441
+    ],
+    "rotation": 0
+  },
+  "sketos_parry_r": {
+    "page": "backfire-7",
+    "rect": [
+      1276,
+      493,
+      1706,
+      866
+    ],
+    "rotation": 0
+  },
+  "sketos_parry_l": {
+    "page": "backfire-7",
+    "rect": [
+      1276,
+      918,
+      1706,
+      1291
+    ],
+    "rotation": 0
+  },
+  "sketos_pieces": {
+    "page": "backfire-7",
+    "rect": [
+      1276,
+      1343,
+      1706,
+      1716
+    ],
+    "rotation": 0
+  },
+  "golem_advance": {
+    "page": "backfire-4",
+    "rect": [
+      2076,
+      918,
+      2506,
+      1291
+    ],
+    "rotation": 0
+  },
+  "golem_guard": {
+    "page": "backfire-4",
+    "rect": [
+      2076,
+      1343,
+      2506,
+      1716
+    ],
+    "rotation": 0
+  },
+  "effect_vortex": {
+    "page": "backfire-7",
+    "rect": [
+      1676,
+      705,
+      2106,
+      1078
+    ],
+    "rotation": 0
+  },
+  "effect_fire": {
+    "page": "backfire-4",
+    "rect": [
+      1676,
+      280,
+      2106,
+      653
+    ],
+    "rotation": 0
+  },
+  "effect_wall": {
+    "page": "backfire-7",
+    "rect": [
+      2076,
+      493,
+      2506,
+      866
+    ],
+    "rotation": 0
+  },
+  "effect_abyss": {
+    "page": "backfire-6",
+    "rect": [
+      2076,
+      68,
+      2506,
+      441
+    ],
+    "rotation": 0
+  },
+  "effect_frog": {
+    "page": "backfire-6",
+    "rect": [
+      1676,
+      1130,
+      2106,
+      1503
+    ],
+    "rotation": 0
+  }
+}

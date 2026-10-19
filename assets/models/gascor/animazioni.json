@@ -1,0 +1,10 @@
+{
+  "character": "gascor",
+  "model": "gascor-animated.glb",
+  "base": false,
+  "skeleton_bones": 17,
+  "status": "prototipo",
+  "clips": {"idle":"Riposo", "walk":"Camminata", "thrust":"Affondo", "parry":"Parata"},
+  "walk_in_place": true,
+  "integrated_in_match": false
+}

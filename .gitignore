@@ -1,0 +1,12 @@
+.godot/
+tmp/
+build/
+.DS_Store
+*.pdf
+*.heic
+*.jpeg
+*.log
+.env*
+
+# Editable high-resolution artwork (local masters)
+source_art/
