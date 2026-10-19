@@ -1,0 +1,42 @@
+{
+  "character": "anteos",
+  "model": "anteos.glb",
+  "pipeline": "Meshy: concept in posa A senza armi -> image-to-3d (4K PBR) -> remesh 50k -> rig automatico -> animazioni di libreria; spada e scudo modelli separati agganciati alle ossa RightHand e LeftForeArm",
+  "skeleton_bones": 24,
+  "fps": 24,
+  "clips": {
+    "idle": "Riposo",
+    "walk": "Camminata",
+    "walk_guard": "Camminata in guardia",
+    "run": "Corsa",
+    "thrust": "Affondo",
+    "parry": "Parata",
+    "parry_sword": "Parata di spada"
+  },
+  "meshy_actions": {
+    "Riposo": 0,
+    "Camminata in guardia": 21,
+    "Affondo": 240,
+    "Parata": 138,
+    "Parata di spada": 147,
+    "Camminata": "rig",
+    "Corsa": "rig"
+  },
+  "status": "prototipo",
+  "integrated_in_match": false,
+  "assemble": "tools/anteos/assemble.py",
+  "meshy_tasks": {
+    "concept (image-to-image)": "01a15462-09ab-74a0-ba97-1bf3f37c87cf",
+    "modello (image-to-3d)": "01a15463-0f36-7556-9600-af51b089f011",
+    "remesh 50k": "01a15466-2227-71cf-8226-abdc290311d1",
+    "rig": "01a15469-689b-7057-bce1-3d715e47e392",
+    "spada (text-to-3d refine)": "01a15465-aa2b-70d7-bb0c-76700fb18f2e",
+    "scudo (text-to-3d refine)": "01a15465-b061-7376-ae15-72f3adb7f18e",
+    "Affondo": "01a1546a-f193-705b-8bc7-b3c04349e06d",
+    "Parata di spada": "01a1546a-f9f5-7570-b102-58cad7f05001",
+    "Parata": "01a1546b-01fb-73c5-a1e0-a0c9cd2de3d7",
+    "Camminata in guardia": "01a1546b-09b6-714c-857b-355ff7907f20",
+    "Riposo": "01a1546b-125a-7499-a33a-0e31db34ec78"
+  },
+  "crediti_meshy": 124
+}

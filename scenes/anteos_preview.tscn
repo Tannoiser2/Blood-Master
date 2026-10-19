@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gascor_preview.gd" id="1"]
+
+[node name="AnteosPreview" type="Node3D"]
+script = ExtResource("1")
+model_path = "res://assets/models/anteos/anteos.glb"
+title_text = "ANTEOS  /  LO SPIETATO"
+subtitle_text = "Prova 3D Meshy (posa A, rig e animazioni Meshy, armi agganciate) · trascina per ruotare"
+card_path = "res://assets/modern/anteos/anteos-concept-meshy.webp"
+card_label = "Concept generato (posa A)"
+looping = PackedStringArray("Riposo", "Camminata", "Camminata in guardia", "Corsa")
+other_scene = "res://scenes/gascor_preview.tscn"
+other_label = "Confronta: Gascor"

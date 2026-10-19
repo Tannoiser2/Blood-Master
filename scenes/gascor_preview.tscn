@@ -4,3 +4,5 @@
 
 [node name="GascorPreview" type="Node3D"]
 script = ExtResource("1")
+other_scene = "res://scenes/anteos_preview.tscn"
+other_label = "Confronta: Anteos (Meshy)"
