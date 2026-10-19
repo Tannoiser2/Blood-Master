@@ -19,14 +19,25 @@ SRC = Path(sys.argv[sys.argv.index('--') + 1]) if '--' in sys.argv else root / '
 OUT = root / 'assets/models/anteos'
 OUT.mkdir(parents=True, exist_ok=True)
 
-CLIPS = [  # nome in gioco, file Meshy (azione di libreria)
+CLIPS = [  # nome della clip = nome della pedina; (file Meshy, azione di libreria)
     ('Riposo', 'anim_riposo.glb'),                  # Idle (0)
     ('Camminata', 'anim_walking.glb'),              # Walking (incluso nel rig)
-    ('Camminata in guardia', 'anim_camminata_guardia.glb'),  # Walk Fight Forward (21)
-    ('Corsa', 'anim_running.glb'),                  # Running (incluso nel rig)
+    ('In guardia', 'anim_guard.glb'),               # Combat Idle (89)
+    ('Avanzare', 'anim_camminata_guardia.glb'),     # Walk Fight Forward (21)
+    ('Correre', 'anim_running.glb'),                # Running (incluso nel rig)
+    ('Carica', 'anim_charge.glb'),                  # Standard Forward Charge (510)
     ('Affondo', 'anim_affondo.glb'),                # Thrust Slash (240)
-    ('Parata', 'anim_parata_block.glb'),            # Block1 (138)
-    ('Parata di spada', 'anim_parata_spada.glb'),   # Sword Parry (147)
+    ('Fendente', 'anim_cleave.glb'),                # Attack (4)
+    ('Taglio Sx', 'anim_left.glb'),                 # Left Slash (97)
+    ('Taglio Dx', 'anim_right.glb'),                # Right-hand Sword Slash (219)
+    ('Parata Sx', 'anim_parata_block.glb'),         # Block1 (138) - scudo
+    ('Parata Dx', 'anim_parata_spada.glb'),         # Sword Parry (147) - spada
+    ('Schivata', 'anim_dodge.glb'),                 # Stand Dodge (156)
+    ('Rotolare', 'anim_roll.glb'),                  # Roll Dodge (158)
+    ('Calcio', 'anim_kick.glb'),                    # Simple Kick (103)
+    ('A terra', 'anim_down.glb'),                   # Falling Down (366)
+    ('Rialzarsi', 'anim_rise.glb'),                 # Stand Up 2 (345)
+    ('Sbilanciato', 'anim_unbalanced.glb'),         # Hit Reaction (178)
 ]
 
 

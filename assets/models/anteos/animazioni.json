@@ -6,21 +6,27 @@
   "fps": 24,
   "clips": {
     "idle": "Riposo",
-    "walk": "Camminata",
-    "walk_guard": "Camminata in guardia",
-    "run": "Corsa",
-    "thrust": "Affondo",
-    "parry": "Parata",
-    "parry_sword": "Parata di spada"
+    "walk": "Camminata"
   },
   "meshy_actions": {
     "Riposo": 0,
-    "Camminata in guardia": 21,
-    "Affondo": 240,
-    "Parata": 138,
-    "Parata di spada": 147,
     "Camminata": "rig",
-    "Corsa": "rig"
+    "Correre": "rig",
+    "In guardia": 89,
+    "Avanzare": 21,
+    "Carica": 510,
+    "Affondo": 240,
+    "Fendente": 4,
+    "Taglio Sx": 97,
+    "Taglio Dx": 219,
+    "Parata Sx": 138,
+    "Parata Dx": 147,
+    "Schivata": 156,
+    "Rotolare": 158,
+    "Calcio": 103,
+    "A terra": 366,
+    "Rialzarsi": 345,
+    "Sbilanciato": 178
   },
   "status": "prototipo",
   "integrated_in_match": false,
@@ -33,10 +39,42 @@
     "spada (text-to-3d refine)": "01a15465-aa2b-70d7-bb0c-76700fb18f2e",
     "scudo (text-to-3d refine)": "01a15465-b061-7376-ae15-72f3adb7f18e",
     "Affondo": "01a1546a-f193-705b-8bc7-b3c04349e06d",
-    "Parata di spada": "01a1546a-f9f5-7570-b102-58cad7f05001",
-    "Parata": "01a1546b-01fb-73c5-a1e0-a0c9cd2de3d7",
-    "Camminata in guardia": "01a1546b-09b6-714c-857b-355ff7907f20",
-    "Riposo": "01a1546b-125a-7499-a33a-0e31db34ec78"
+    "Riposo": "01a1546b-125a-7499-a33a-0e31db34ec78",
+    "Parata Sx": "01a1546b-01fb-73c5-a1e0-a0c9cd2de3d7",
+    "Parata Dx": "01a1546a-f9f5-7570-b102-58cad7f05001",
+    "Avanzare": "01a1546b-09b6-714c-857b-355ff7907f20",
+    "In guardia": "01a154a7-0c9e-77e1-a0a3-6f26ef829ad0",
+    "Carica": "01a154a7-16bf-7572-9275-9d73e7f5366b",
+    "Fendente": "01a154a7-2073-7522-b942-76865f294170",
+    "Taglio Sx": "01a154a7-2977-75ef-8ae6-8d5297f6756e",
+    "Taglio Dx": "01a154a7-32cd-70c8-846e-0a5658f7bc5c",
+    "Schivata": "01a154a7-3c11-76d6-bb12-9cebd1855f76",
+    "Rotolare": "01a154a7-44bc-71ec-95d6-fc9bb7b38d3a",
+    "Calcio": "01a154a7-4d8c-736a-83da-180d9d0245ec",
+    "A terra": "01a154a7-575a-72b2-aa1f-c6bb60a345b4",
+    "Rialzarsi": "01a154a7-5fb7-71d1-8a03-3e9538237d70",
+    "Sbilanciato": "01a154a7-68bc-72b0-a816-e2fda112332d"
   },
-  "crediti_meshy": 124
+  "crediti_meshy": 157,
+  "pedine": {
+    "advance": "Avanzare",
+    "guard": "In guardia",
+    "charge": "Carica",
+    "cleave": "Fendente",
+    "left": "Taglio Sx",
+    "right": "Taglio Dx",
+    "parry_l": "Parata Sx",
+    "parry_r": "Parata Dx",
+    "dodge": "Schivata",
+    "roll": "Rotolare",
+    "kick": "Calcio",
+    "down": "A terra",
+    "rise": "Rialzarsi",
+    "unbalanced": "Sbilanciato",
+    "run": "Correre",
+    "thrust": "Affondo"
+  },
+  "da_migliorare": [
+    "Sbilanciato: Hit Reaction è un sussulto, la pedina mostra una perdita d'equilibrio"
+  ]
 }

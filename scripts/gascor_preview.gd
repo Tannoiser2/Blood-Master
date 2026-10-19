@@ -8,6 +8,7 @@ extends Node3D
 @export var card_path="res://assets/modern/gascor/gascor-concept-v1.png"
 @export var card_label="Illustrazione di riferimento"
 @export var looping:PackedStringArray=["Riposo","Camminata"]
+@export var stay_down:PackedStringArray=["A terra"]  # clip dopo cui il personaggio resta a terra
 @export var other_scene=""
 @export var other_label=""
 
@@ -41,7 +42,7 @@ func _ready():
 	var layer=CanvasLayer.new();add_child(layer)
 	var title=Label.new();title.text=title_text;title.position=Vector2(28,24);title.add_theme_font_size_override("font_size",28);layer.add_child(title)
 	info=Label.new();info.text=subtitle_text;info.position=Vector2(28,65);layer.add_child(info)
-	var row=HBoxContainer.new();row.position=Vector2(28,105);row.add_theme_constant_override("separation",10);layer.add_child(row)
+	var row=HFlowContainer.new();row.position=Vector2(28,105);row.size=Vector2(1000,0);row.add_theme_constant_override("h_separation",10);row.add_theme_constant_override("v_separation",6);layer.add_child(row)
 	var back=Button.new();back.text="Torna al gioco";back.pressed.connect(func():get_tree().change_scene_to_file("res://scenes/main.tscn"));row.add_child(back)
 	if other_scene!="":
 		var other=Button.new();other.text=other_label;other.pressed.connect(func():get_tree().change_scene_to_file(other_scene));row.add_child(other)
@@ -51,7 +52,7 @@ func _ready():
 			if action=="RESET":continue
 			animation_player.get_animation(action).loop_mode=Animation.LOOP_LINEAR if action in looping else Animation.LOOP_NONE
 			var b=Button.new();b.text=action;b.pressed.connect(func():animation_player.play(action,0.18));row.add_child(b)
-		animation_player.animation_finished.connect(func(_name):animation_player.play("Riposo",0.18))
+		animation_player.animation_finished.connect(func(name):if not name in stay_down:animation_player.play("Riposo",0.18))
 		if animation_player.has_animation("Riposo"):animation_player.play("Riposo")
 	var card=TextureRect.new();card.texture=load(card_path);card.position=Vector2(1060,210);card.custom_minimum_size=Vector2(300,450);card.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;card.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;layer.add_child(card)
 	var label=Label.new();label.text=card_label;label.position=Vector2(1080,675);layer.add_child(label)
