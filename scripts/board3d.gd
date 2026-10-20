@@ -339,7 +339,7 @@ func _clip_for(i: int,id: String,bow: bool) -> String:
 	if bow and info.get("ap")!=null and info.ap.has_animation(base+" arco"):return base+" arco"
 	return base
 func _view(p: Dictionary) -> Dictionary:
-	return {"cell":p.cell,"facing":int(p.facing),"current":p.current,"done":p.done,"hp":int(p.hp),"unbalanced":p.unbalanced,"down":p.down,"alive":p.alive,"team":int(p.team),"character":p.character}
+	return {"cell":p.cell,"facing":int(p.facing),"current":p.current,"done":p.done,"hp":int(p.hp),"unbalanced":p.unbalanced,"down":p.down,"alive":p.alive,"team":int(p.team),"character":p.character,"pieces":bool(p.get("pieces",false))}
 
 # ---------------------------------------------------------------- sincronizzazione
 func copy_from(b) -> void:
@@ -361,8 +361,12 @@ func sync() -> void:
 		var was=prev[i]
 		if now.done and not was.done and now.alive:actors.append(i)
 		elif now.cell!=was.cell or now.facing!=was.facing:actors.append(i)
-		if now.hp<was.hp or (now.unbalanced and not was.unbalanced) or (now.down and not was.down) or (was.alive and not now.alive):victims.append(i)
+		if now.hp<was.hp or (now.unbalanced and not was.unbalanced) or (now.down and not was.down) or (now.pieces and not was.get("pieces",false)) or (was.alive and not now.alive):victims.append(i)
 		elif was.down and not now.down and not i in actors:actors.append(i)
+	for i in game.state.fighters.size():
+		if prev.has(i) and prev[i].get("pieces",false) and not game.state.fighters[i].get("pieces",false) and minis.has(i) and game.state.fighters[i].cell!="":
+			step.append({"i":i,"clip":"Rialzarsi","from":cell_pos(game.state.fighters[i].cell),"to":cell_pos(game.state.fighters[i].cell),"yaw":facing_yaw(int(game.state.fighters[i].facing)),"facing":int(game.state.fighters[i].facing),"delay":.6,"move":"rise","strike":false})
+			actors.erase(i)
 	for i in actors:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
@@ -390,7 +394,7 @@ func sync() -> void:
 		if t.get("strike",false) and minis[t.i].ap:strike_delay=maxf(strike_delay,minis[t.i].ap.get_animation(t.clip).length*.45)
 	for i in victims:
 		var p=game.state.fighters[i]
-		var clip="A terra" if (p.down or not p.alive) else _clip_for(i,"unbalanced",bool(p.get("bow",false)))
+		var clip="A terra" if (p.down or not p.alive or p.get("pieces",false)) else _clip_for(i,"unbalanced",bool(p.get("bow",false)))
 		var moved=step.any(func(t):return t.get("i",-1)==i)
 		if not moved and prev[i].cell!=p.cell:
 			# si è spostato ma la mossa corrente è già cambiata (es. sbilanciato durante lo sprint):
@@ -399,7 +403,7 @@ func sync() -> void:
 			step.append({"i":i,"clip":CLIP[was_move],"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":was_move,"strike":false})
 			moved=true
 		# chi ha anche un suo movimento in questo passo prima lo completa, poi reagisce sul posto
-		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive,"dead":not p.alive})
+		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive})
 	for i in game.state.fighters.size():
 		if game.state.fighters[i].cell!="":prev[i]=_view(game.state.fighters[i])
 	if not step.is_empty():
@@ -562,6 +566,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
 	tw.tween_callback(func():
+		root.visible=true
 		_set_rim(t.i,t.move,t.get("facing",-1))
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
@@ -570,6 +575,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
 		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
 		if info.get("spirit",false):_spirit_move(t,info)
+		if t.get("dead",false) and str(game.state.fighters[t.i].character)=="golem":_shatter(info)
 		_sound_track(t,info,length,mode)
 		if t.get("hit",0)>0:
 			_float(root.position,"-%d" % t.hit)
@@ -736,7 +742,7 @@ func _cast_fx(t: Dictionary,info: Dictionary,clip_time: float) -> void:
 			await _projectile(hand,dest,color,.16,true)
 			_explosion(dest,color,1.2)
 		"firestaff":
-			for p in targets:_stream(hand,p,color,.5,false)
+			for p in targets:_fire_jet(hand,p,.7)
 		"lightning","shock":
 			var chain=[hand]+targets
 			for k in chain.size()-1:_bolt(chain[k],chain[k+1],color)
@@ -780,31 +786,173 @@ func _projectile(from: Vector3,to: Vector3,color: Color,size: float,trail: bool)
 	var tw=create_tween();tw.tween_property(orb,"global_position",to,clampf(from.distance_to(to)/8.0,.15,.6))
 	await tw.finished
 	orb.queue_free()
+# --- Fuoco: fiamme vere (sprite morbidi additivi con rampa giallo-arancio-rosso), fumo, scintille
+var _soft_tex: Texture2D
+func _soft() -> Texture2D:
+	if _soft_tex==null:
+		var g=Gradient.new();g.set_color(0,Color(1,1,1,1));g.set_color(1,Color(1,1,1,0));g.add_point(.35,Color(1,1,1,.75))
+		var t=GradientTexture2D.new();t.gradient=g;t.fill=GradientTexture2D.FILL_RADIAL;t.fill_from=Vector2(.5,.5);t.fill_to=Vector2(.5,0);t.width=64;t.height=64
+		_soft_tex=t
+	return _soft_tex
+func _sprite_particles(amount: int,additive: bool) -> CPUParticles3D:
+	var p=CPUParticles3D.new();p.amount=amount;var q=QuadMesh.new();q.size=Vector2(.16,.16);p.mesh=q
+	var m=StandardMaterial3D.new();m.albedo_texture=_soft();m.vertex_color_use_as_albedo=true;m.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;m.billboard_mode=BaseMaterial3D.BILLBOARD_PARTICLES;m.depth_draw_mode=BaseMaterial3D.DEPTH_DRAW_DISABLED
+	if additive:m.blend_mode=BaseMaterial3D.BLEND_MODE_ADD
+	p.material_override=m;p.angle_min=0;p.angle_max=360
+	return p
+func _ramp(cols: Array) -> Gradient:
+	var g=Gradient.new();g.offsets=PackedFloat32Array(cols.map(func(c):return c[0]));g.colors=PackedColorArray(cols.map(func(c):return c[1]));return g
+func _curve(pts: Array) -> Curve:
+	var c=Curve.new()
+	for pt in pts:c.add_point(Vector2(pt[0],pt[1]))
+	return c
+var _fx_tex={}
+func _fx_texture(name: String) -> Texture2D:
+	if not _fx_tex.has(name):_fx_tex[name]=load("res://assets/fx/%s.png"%name)
+	return _fx_tex[name]
+func _flame(amount: int,extent: Vector3,rise: float,size: float=1.0) -> CPUParticles3D:
+	var f=_sprite_particles(amount,true)
+	f.material_override.albedo_texture=_fx_texture("flame");f.angle_min=-12;f.angle_max=12;(f.mesh as QuadMesh).size=Vector2(.13,.26);f.lifetime=.75;f.explosiveness=0;f.randomness=.5;f.local_coords=false
+	f.emission_shape=CPUParticles3D.EMISSION_SHAPE_BOX;f.emission_box_extents=extent
+	f.direction=Vector3.UP;f.spread=6;f.initial_velocity_min=rise*.6;f.initial_velocity_max=rise;f.gravity=Vector3(0,rise*.6,0);f.damping_min=.3;f.damping_max=.8;f.lifetime=.6
+	f.radial_accel_min=-.6;f.radial_accel_max=-.2   # le lingue di fuoco si stringono verso l'alto
+	f.scale_amount_min=.8*size;f.scale_amount_max=1.6*size;f.scale_amount_curve=_curve([[0,.4],[.25,1],[1,.1]])
+	f.color_ramp=_ramp([[0,Color(1,1,.75,0)],[.06,Color(1,.92,.55,.85)],[.3,Color(1,.55,.12,.75)],[.65,Color(.9,.22,.05,.45)],[1,Color(.35,.06,.02,0)]])
+	return f
+func _smoke(amount: int,extent: Vector3,rise: float) -> CPUParticles3D:
+	var s=_sprite_particles(amount,false);s.lifetime=1.8;s.explosiveness=0;s.randomness=.6;s.local_coords=false
+	s.emission_shape=CPUParticles3D.EMISSION_SHAPE_BOX;s.emission_box_extents=extent
+	s.direction=Vector3.UP;s.spread=20;s.initial_velocity_min=rise*.3;s.initial_velocity_max=rise*.7;s.gravity=Vector3(0,rise*.3,0)
+	s.scale_amount_min=2.0;s.scale_amount_max=3.5;s.scale_amount_curve=_curve([[0,.3],[1,1]])
+	s.color_ramp=_ramp([[0,Color(.55,.52,.48,0)],[.25,Color(.5,.47,.44,.22)],[1,Color(.62,.6,.57,0)]])
+	return s
+func _sparks(amount: int,speed: float,color:=Color(1,.8,.35)) -> CPUParticles3D:
+	var k=CPUParticles3D.new();k.amount=amount;k.one_shot=true;k.explosiveness=.95;k.lifetime=.7;k.local_coords=false
+	var q=QuadMesh.new();q.size=Vector2(.015,.09);k.mesh=q;k.material_override=_fx_mat(color,6.0)
+	k.material_override.billboard_mode=BaseMaterial3D.BILLBOARD_FIXED_Y;k.material_override.blend_mode=BaseMaterial3D.BLEND_MODE_ADD
+	k.direction=Vector3.UP;k.spread=180;k.initial_velocity_min=speed*.5;k.initial_velocity_max=speed;k.gravity=Vector3(0,-6,0)
+	k.color_ramp=_ramp([[0,Color(1,1,1,1)],[1,Color(1,1,1,0)]])
+	return k
+func _flicker_light(at: Vector3,color: Color,energy: float,rng_: float,dur: float) -> void:
+	var l=OmniLight3D.new();l.light_color=color;l.light_energy=energy;l.omni_range=rng_;viewport.add_child(l);l.global_position=at
+	var tw=create_tween()
+	for k in int(dur/.08):tw.tween_property(l,"light_energy",energy*randf_range(.5,1.1)*(1.0-float(k)*.08/dur),.08)
+	tw.tween_callback(l.queue_free)
+func _one_shot(n: Node3D,at: Vector3,life: float) -> void:
+	viewport.add_child(n);n.global_position=at
+	if n is CPUParticles3D:n.emitting=true
+	get_tree().create_timer(life).timeout.connect(n.queue_free)
 func _explosion(at: Vector3,color: Color,radius: float) -> void:
-	var g=_glow(color,160,.2);g.initial_velocity_min=1.5;g.initial_velocity_max=3.5;g.gravity=Vector3(0,-1.5,0);g.lifetime=1.0
-	viewport.add_child(g);g.global_position=at;g.emitting=true;get_tree().create_timer(1.8).timeout.connect(g.queue_free)
-	var ball=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.2;sm.height=.4;ball.mesh=sm;var m=_fx_mat(Color(1,.8,.3),5.0);ball.material_override=m
+	# palla di fuoco: vampata, fumo che sale, scintille, onda d'urto e luce che tremola
+	var f=_flame(90,Vector3.ONE*.12,2.2,1.6);f.one_shot=true;f.explosiveness=.9;f.direction=Vector3.UP;f.spread=180;f.initial_velocity_min=1.0;f.initial_velocity_max=2.4;f.gravity=Vector3(0,1.5,0);f.lifetime=.9
+	_one_shot(f,at,2.0)
+	var s=_smoke(40,Vector3.ONE*.25,1.0);s.one_shot=true;s.explosiveness=.7;_one_shot(s,at+Vector3(0,.2,0),3.5)
+	_one_shot(_sparks(60,4.0),at,1.5)
+	var ball=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.2;sm.height=.4;ball.mesh=sm;var m=_fx_mat(Color(1,.7,.3,.6),2.5);m.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;ball.material_override=m
 	viewport.add_child(ball);ball.global_position=at
-	var tw=create_tween();tw.tween_property(ball,"scale",Vector3.ONE*radius*5,.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(m,"albedo_color:a",0.0,.4);tw.tween_callback(ball.queue_free)
-	var light=OmniLight3D.new();light.light_color=color;light.light_energy=6.0;light.omni_range=4.0;viewport.add_child(light);light.global_position=at
-	var lt=create_tween();lt.tween_property(light,"light_energy",0.0,.6);lt.tween_callback(light.queue_free)
+	var tw=create_tween();tw.tween_property(ball,"scale",Vector3.ONE*radius*2.6,.3).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(m,"albedo_color:a",0.0,.35);tw.tween_callback(ball.queue_free)
+	_ring(Vector3(at.x,.05,at.z),Color(1,.6,.2),radius*1.4,.45)
+	_flicker_light(at,Color(1,.55,.2),3.5,4.0,1.0)
+# Il golem caduto va in mille pezzi: i sassi volano, rimbalzano, poi sprofondano e spariscono
+func _shatter(info: Dictionary) -> void:
+	var root: Node3D=info.root;var base=root.global_position
+	await get_tree().create_timer(.25).timeout
+	if not is_instance_valid(root):return
+	root.visible=false
+	var mats=[]
+	var stone: Material=null
+	if info.get("model")!=null:
+		for mi in info.model.find_children("*","MeshInstance3D",true,false):
+			if mi.mesh and mi.mesh.get_surface_count()>0:stone=mi.get_active_material(0);break
+	for c in [Color(.75,.72,.65),Color(.6,.58,.5),Color(.85,.82,.72),Color(.55,.58,.45)]:
+		var m: StandardMaterial3D=stone.duplicate() if stone is StandardMaterial3D else StandardMaterial3D.new()
+		if stone is StandardMaterial3D:m.albedo_color=m.albedo_color*c
+		else:m.albedo_color=c
+		m.roughness=.95;m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mats.append(m)
+	var rocks=[]
+	for k in 46:
+		var r=MeshInstance3D.new();var sm=SphereMesh.new();var sz=randf_range(.05,.16);sm.radius=sz;sm.height=sz*2;sm.radial_segments=5;sm.rings=3;r.mesh=sm
+		r.material_override=mats[k%mats.size()];r.scale=Vector3(randf_range(.7,1.3),randf_range(.6,1.1),randf_range(.7,1.3))
+		viewport.add_child(r)
+		var start=base+Vector3(randf_range(-.3,.3),randf_range(.1,1.4),randf_range(-.3,.3))
+		var out=(start-base);out.y=0;out=out.normalized() if out.length()>.01 else Vector3(1,0,0)
+		var vel=out*randf_range(.8,2.6)+Vector3(0,randf_range(.5,2.6),0)
+		var spin=Vector3(randf_range(-8,8),randf_range(-8,8),randf_range(-8,8))
+		r.global_position=start;rocks.append(r)
+		var tw=create_tween()
+		tw.tween_method(func(x: float):
+			# caduta con gravità e un rimbalzo smorzato sul terreno
+			var pos=start+vel*x+Vector3(0,-4.9*x*x,0)
+			if pos.y<sz*.6:pos.y=sz*.6+absf(sin(x*9.0))*.05*maxf(0,1.3-x)
+			r.global_position=pos;r.rotation=spin*minf(x,.7),0.0,1.3,1.3)
+	_one_shot(_smoke(50,Vector3(.35,.4,.35),.5),base+Vector3(0,.5,0),3.0)
+	var dust=_glow(Color(.6,.55,.45),80,.4);dust.gravity=Vector3(0,-1.0,0);_one_shot(dust,base+Vector3(0,.7,0),2.0)
+	_sfx("rocks",base+Vector3(0,.5,0),0.0,0.0)
+	await get_tree().create_timer(2.8).timeout
+	for r in rocks:   # i sassi sprofondano nella sabbia e svaniscono
+		if not is_instance_valid(r):continue
+		var tw=create_tween();tw.tween_property(r,"global_position:y",r.global_position.y-.25,1.2);tw.parallel().tween_property(r.material_override,"albedo_color:a",0.0,1.2)
+		tw.tween_callback(r.queue_free)
+func _fireball(from: Vector3,to: Vector3) -> void:
+	# sfera incandescente con una scia di fiamme e fumo
+	var orb=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.09;sm.height=.18;orb.mesh=sm;var om=_fx_mat(Color(1,.8,.45),3.0);om.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;orb.material_override=om
+	viewport.add_child(orb);orb.global_position=from
+	var tr=_flame(80,Vector3.ONE*.06,.4,1.2);tr.lifetime=.4;orb.add_child(tr);tr.emitting=true
+	var sk=_smoke(25,Vector3.ONE*.05,.3);sk.lifetime=1.0;orb.add_child(sk);sk.emitting=true
+	var l=OmniLight3D.new();l.light_color=Color(1,.55,.2);l.light_energy=1.8;l.omni_range=2.0;orb.add_child(l)
+	var arc=from.distance_to(to)*.18
+	var tw=create_tween();tw.tween_method(func(x: float):orb.global_position=from.lerp(to,x)+Vector3(0,sin(x*PI)*arc,0),0.0,1.0,clampf(from.distance_to(to)/6.0,.25,.8))
+	await tw.finished
+	orb.queue_free()
+func _fire_jet(from: Vector3,to: Vector3,dur: float) -> void:
+	# getto di fiamme dal bastone al bersaglio
+	var f=_flame(120,Vector3.ONE*.04,.3,1.0);f.lifetime=.35;viewport.add_child(f);f.global_position=from;f.emitting=true
+	var d=(to-from);f.direction=d.normalized();f.spread=6;f.initial_velocity_min=d.length()/.35*.8;f.initial_velocity_max=d.length()/.35;f.gravity=Vector3(0,.5,0)
+	get_tree().create_timer(dur).timeout.connect(func():f.emitting=false)
+	get_tree().create_timer(dur+1.0).timeout.connect(f.queue_free)
+	var hit=_flame(40,Vector3(.12,.2,.12),1.2,1.0);viewport.add_child(hit);hit.global_position=to;hit.emitting=true
+	get_tree().create_timer(dur+.3).timeout.connect(func():hit.emitting=false)
+	get_tree().create_timer(dur+1.3).timeout.connect(hit.queue_free)
+	_flicker_light(to,Color(1,.5,.15),2.0,2.5,dur+.3)
+func _bolt_points(a: Vector3,b: Vector3,jag: float,n: int) -> Array:
+	var pts=[a]
+	for k in range(1,n):pts.append(a.lerp(b,float(k)/n)+Vector3(randf_range(-jag,jag),randf_range(-jag,jag),randf_range(-jag,jag)))
+	pts.append(b);return pts
+func _ribbon(im: ImmediateMesh,pts: Array,width: float,cam: Vector3) -> void:
+	for k in pts.size()-1:
+		var a: Vector3=pts[k];var b: Vector3=pts[k+1]
+		var side=(b-a).cross(cam-a).normalized()*width
+		if side.length()<.0001:side=Vector3(width,0,0)
+		var w2=side*(1.0-float(k)/pts.size()*.5)   # si assottiglia verso la fine
+		for v in [a-side,a+side,b+w2,a-side,b+w2,b-w2]:im.surface_add_vertex(v)
 func _bolt(from: Vector3,to: Vector3,color: Color) -> void:
-	# saetta a zig-zag che sfarfalla per un attimo
-	var node=MeshInstance3D.new();var im=ImmediateMesh.new();node.mesh=im;node.material_override=_fx_mat(Color(.85,.95,1),6.0);viewport.add_child(node)
-	var light=OmniLight3D.new();light.light_color=color;light.light_energy=4.0;light.omni_range=3.5;viewport.add_child(light);light.global_position=(from+to)/2
-	for flick in 5:
-		im.clear_surfaces();im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-		var pts=[from];var n=9
-		for k in range(1,n):pts.append(from.lerp(to,float(k)/n)+Vector3(randf_range(-.15,.15),randf_range(-.15,.15),randf_range(-.15,.15)))
-		pts.append(to)
-		for k in pts.size()-1:
-			var a: Vector3=pts[k];var b: Vector3=pts[k+1];var side=(b-a).cross(Vector3.UP).normalized()*.025
-			if side.length()<.001:side=Vector3(.025,0,0)
-			for v in [a-side,a+side,b+side,a-side,b+side,b-side]:im.surface_add_vertex(v)
+	# fulmine: nucleo bianco, alone azzurro, rami secondari; sfarfalla e illumina la scena
+	var core=MeshInstance3D.new();var im=ImmediateMesh.new();core.mesh=im;var cm=_fx_mat(Color(.95,.97,1),3.0);cm.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;cm.cull_mode=BaseMaterial3D.CULL_DISABLED;core.material_override=cm;viewport.add_child(core)
+	var halo=MeshInstance3D.new();var ih=ImmediateMesh.new();halo.mesh=ih;var hm=_fx_mat(Color(color.r,color.g,color.b,.22),1.5);hm.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;hm.cull_mode=BaseMaterial3D.CULL_DISABLED;halo.material_override=hm;viewport.add_child(halo)
+	var cam: Vector3=camera.global_position if camera else from+Vector3(0,5,5)
+	var light=OmniLight3D.new();light.light_color=color;light.omni_range=6.0;viewport.add_child(light);light.global_position=(from+to)/2
+	var n=maxi(6,int(from.distance_to(to)/.12))
+	for flick in 7:
+		im.clear_surfaces();ih.clear_surfaces()
+		var pts=_bolt_points(from,to,.18,n)
+		im.surface_begin(Mesh.PRIMITIVE_TRIANGLES);_ribbon(im,pts,.009,cam)
+		var branches=[]
+		for b in 3:   # rami che si staccano dal fulmine principale
+			var k=randi_range(1,pts.size()-2);var start: Vector3=pts[k]
+			var end=start+((to-from).normalized()*.35+Vector3(randf_range(-.3,.3),randf_range(-.25,.1),randf_range(-.3,.3)))
+			var bp=_bolt_points(start,end,.08,4);branches.append(bp);_ribbon(im,bp,.004,cam)
 		im.surface_end()
-		await get_tree().create_timer(.06).timeout
-	_burst(to,color,30,.15);node.queue_free();light.queue_free()
+		ih.surface_begin(Mesh.PRIMITIVE_TRIANGLES);_ribbon(ih,pts,.035,cam)
+		for bp in branches:_ribbon(ih,bp,.015,cam)
+		ih.surface_end()
+		light.light_energy=randf_range(2.5,4.5) if flick%2==0 else 1.0
+		core.visible=flick!=3;halo.visible=core.visible
+		await get_tree().create_timer(.05).timeout
+	core.queue_free();halo.queue_free();light.queue_free()
+	_one_shot(_sparks(40,3.0,Color(.75,.9,1)),to,1.2)
+	var g=_glow(color,30,.12);_one_shot(g,to,1.4)
 func _stream(from: Vector3,to: Vector3,color: Color,dur: float,reverse_glow: bool) -> void:
 	# flusso di particelle che scorre da un punto all'altro
 	var g=_glow(color,90,.08);g.one_shot=false;g.explosiveness=0;g.local_coords=false;g.lifetime=.35;g.gravity=Vector3.ZERO;g.initial_velocity_min=0;g.initial_velocity_max=.1
@@ -838,8 +986,12 @@ func _apply_states(states) -> void:
 		var st: Dictionary=states.get(i,states.get(str(i),{}))
 		var info=minis[i]
 		_state_node(info,"burning",st.get("burning",false),func():
-			var g=_glow(Color(1,.5,.1),40,.2);g.one_shot=false;g.explosiveness=0;g.lifetime=.7;g.direction=Vector3.UP;g.spread=15;g.gravity=Vector3(0,1.2,0)
-			g.emission_shape=CPUParticles3D.EMISSION_SHAPE_BOX;g.emission_box_extents=Vector3(.15,.3,.15);g.position.y=.5;g.emitting=true;return g)
+			var n=Node3D.new();var f=_flame(40,Vector3(.13,.3,.13),.9,.8);f.position.y=.5;f.emitting=true;n.add_child(f)
+			var s2=_smoke(12,Vector3(.1,.1,.1),.6);s2.position.y=1.0;s2.emitting=true;n.add_child(s2)
+			var l=OmniLight3D.new();l.light_color=Color(1,.5,.15);l.light_energy=1.6;l.omni_range=1.8;l.position.y=.7;n.add_child(l)
+			var tw=l.create_tween().set_loops()
+			for k in 4:tw.tween_property(l,"light_energy",randf_range(.9,2.2),.09)
+			return n)
 		_state_node(info,"shield",st.get("shield",false),func():
 			var b=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.55;sm.height=1.3;b.mesh=sm;var m=_fx_mat(Color(.45,.7,1,.18),1.5);m.cull_mode=BaseMaterial3D.CULL_DISABLED;b.material_override=m;b.position.y=.6;return b)
 		_state_node(info,"plague",st.get("plague",false),func():
@@ -878,18 +1030,37 @@ func _show_effects(list) -> void:
 		var k=str(e.get("cell",""))
 		if not game.cells.has(k):continue
 		var kind=str(e.get("kind",""));var root=Node3D.new();viewport.add_child(root);root.position=cell_pos(k);effect_nodes.append(root)
-		var tex=load("res://assets/tokens/effect_"+("fire" if kind=="livingfire" else kind)+".webp") if ResourceLoader.exists("res://assets/tokens/effect_"+("fire" if kind=="livingfire" else kind)+".webp") else null
-		if tex:
-			var q=MeshInstance3D.new();var pm=PlaneMesh.new();pm.size=Vector2(1.0,1.0);q.mesh=pm;q.position.y=.075
-			var mm=StandardMaterial3D.new();mm.albedo_texture=tex;mm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;q.material_override=mm;root.add_child(q)
-		var col={"wall":Color(1,.4,.1),"livingfire":Color(1,.55,.1),"vortex":Color(.5,.8,1),"abyss":Color(.35,.1,.5)}.get(kind,Color(1,1,1))
-		var f=CPUParticles3D.new();f.amount=36;f.lifetime=1.1;f.emission_shape=CPUParticles3D.EMISSION_SHAPE_BOX;f.emission_box_extents=Vector3(.35,.02,.35)
-		f.direction=Vector3.UP;f.spread=12;f.initial_velocity_min=.4;f.initial_velocity_max=1.1 if kind!="abyss" else .3
-		f.gravity=Vector3(0,.3,0) if kind!="abyss" else Vector3(0,-1.2,0);f.scale_amount_min=.6;f.scale_amount_max=1.6
-		if kind=="vortex":f.tangential_accel_min=2.0;f.tangential_accel_max=3.0
-		var sm=SphereMesh.new();sm.radius=.03;sm.height=.06;sm.radial_segments=6;sm.rings=3;f.mesh=sm
-		var fm=StandardMaterial3D.new();fm.albedo_color=col;fm.emission_enabled=true;fm.emission=col;fm.emission_energy_multiplier=2.5;fm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;f.material_override=fm
-		f.position.y=.1;root.add_child(f);f.emitting=true
+		match kind:
+			"wall","livingfire":   # fiamme alte (muro, ad anello sul bordo dell'esagono) o fuoco che serpeggia (fuoco vivo)
+				var tall=kind=="wall"
+				var fl=_flame(70 if tall else 36,Vector3(.28,.02,.28),1.5 if tall else .9,1.2 if tall else .9);fl.position.y=.08;fl.local_coords=true;root.add_child(fl);fl.emitting=true
+				if tall:fl.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;fl.emission_ring_axis=Vector3.UP;fl.emission_ring_radius=.4;fl.emission_ring_inner_radius=.28;fl.emission_ring_height=.02
+				var sm2=_smoke(12,Vector3(.2,.05,.2),.7);sm2.position.y=.9 if tall else .5;root.add_child(sm2);sm2.emitting=true
+				var lt=OmniLight3D.new();lt.light_color=Color(1,.5,.15);lt.light_energy=1.4;lt.omni_range=2.2;lt.position.y=.6;root.add_child(lt)
+				var tw=lt.create_tween().set_loops()
+				for z in 5:tw.tween_property(lt,"light_energy",randf_range(.8,1.8),.08)
+			"vortex":   # gorgo: spirale azzurra che gira dentro l'esagono, scintille risucchiate al centro
+				var disc=MeshInstance3D.new();var pm=PlaneMesh.new();pm.size=Vector2(1.0,1.0);disc.mesh=pm;disc.position.y=.1
+				var dm=StandardMaterial3D.new();dm.albedo_texture=_fx_texture("spiral");dm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;dm.blend_mode=BaseMaterial3D.BLEND_MODE_ADD
+				dm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;dm.cull_mode=BaseMaterial3D.CULL_DISABLED;disc.material_override=dm;root.add_child(disc)
+				var disc2=disc.duplicate();disc2.scale=Vector3(.6,1,.6);disc2.position.y=.16;root.add_child(disc2)
+				var sp1=disc.create_tween().set_loops();sp1.tween_property(disc,"rotation:y",-TAU,1.6).from(0.0)
+				var sp2=disc2.create_tween().set_loops();sp2.tween_property(disc2,"rotation:y",-TAU,.9).from(0.0)
+				var v=_sprite_particles(40,true);v.lifetime=1.1;v.local_coords=true;v.explosiveness=0;(v.mesh as QuadMesh).size=Vector2(.06,.06)
+				v.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;v.emission_ring_axis=Vector3.UP;v.emission_ring_radius=.45;v.emission_ring_inner_radius=.38;v.emission_ring_height=.02
+				v.direction=Vector3.UP;v.spread=0;v.initial_velocity_min=.02;v.initial_velocity_max=.08;v.gravity=Vector3(0,.35,0)
+				v.tangential_accel_min=-1.6;v.tangential_accel_max=-1.0;v.radial_accel_min=-2.2;v.radial_accel_max=-1.6
+				v.color_ramp=_ramp([[0,Color(.7,.9,1,0)],[.2,Color(.7,.9,1,1)],[1,Color(.4,.6,1,0)]]);v.position.y=.12;root.add_child(v);v.emitting=true
+			"abyss":   # crepaccio: una fenditura nera dai bordi viola incandescenti, vapori che salgono dal fondo
+				var hole=MeshInstance3D.new();var pm=PlaneMesh.new();pm.size=Vector2(1.05,1.05);hole.mesh=pm;hole.position.y=.1;hole.rotation.y=randf()*TAU
+				var hm=StandardMaterial3D.new();hm.albedo_texture=_fx_texture("crack");hm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;hm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;hole.material_override=hm;root.add_child(hole)
+				var pulse=hole.create_tween().set_loops();pulse.tween_property(hm,"albedo_color",Color(1.3,1.1,1.4),.8);pulse.tween_property(hm,"albedo_color",Color(1,1,1),.8)
+				var d=_sprite_particles(40,false);d.lifetime=1.8;d.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;d.emission_ring_axis=Vector3.UP;d.emission_ring_radius=.25;d.emission_ring_inner_radius=.0;d.emission_ring_height=.02
+				d.direction=Vector3.UP;d.spread=10;d.initial_velocity_min=.1;d.initial_velocity_max=.3;d.gravity=Vector3(0,.15,0);d.radial_accel_min=-.3;d.radial_accel_max=-.1
+				d.scale_amount_min=1.2;d.scale_amount_max=2.2;d.color_ramp=_ramp([[0,Color(.2,.05,.3,0)],[.3,Color(.18,.03,.25,.5)],[1,Color(.05,0,.08,0)]]);d.position.y=.12;root.add_child(d);d.emitting=true
+				var glow=_sprite_particles(18,true);glow.lifetime=1.2;glow.emission_shape=CPUParticles3D.EMISSION_SHAPE_SPHERE;glow.emission_sphere_radius=.2;glow.direction=Vector3.UP;glow.spread=8
+				glow.initial_velocity_min=.2;glow.initial_velocity_max=.5;glow.gravity=Vector3.ZERO;glow.color_ramp=_ramp([[0,Color(.7,.2,1,0)],[.4,Color(.6,.15,.9,.35)],[1,Color(.3,0,.5,0)]])
+				glow.position.y=.05;root.add_child(glow);glow.emitting=true
 # --- Suoni (opzione): armi, passi, urla, magie -----------------------------------
 # I file sono in assets/audio (sintetizzati da tools/audio/synth.py): nome_1, nome_2, ...
 var sound=true
@@ -940,6 +1111,7 @@ func _sound_track(t: Dictionary,info: Dictionary,length: float,mode: String) -> 
 	if hit>0:
 		_sfx("hit",pos,t.get("delay",0.0)*0.0,-1.0)
 		var dying=bool(t.get("dead",false))
+		if dying and str(game.state.fighters[t.i].character)=="golem":return
 		_sfx(("death_" if dying else "pain_")+v,pos,.08,-1.0 if dying else -3.0,1.0)
 	if mv=="down" and t.get("stay",false):_sfx("fall",pos,.35,-2.0)
 	if mode=="passi" or (mode=="lineare" and v!="spirit"):   # passi sulla sabbia lungo il tragitto
@@ -1000,6 +1172,8 @@ func replay() -> void:
 		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true;minis[i].pivot.visible=true;minis[i].pivot.scale=Vector3.ONE
 		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
 		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true,0);_set_rim(i,initial[i].current,int(initial[i].facing))
+	for i in minis:
+		if not initial.has(i):minis[i].root.visible=false   # evocati (golem): compaiono quando entrano in scena
 	clear_blood();clear_arrows();_show_effects([]);_apply_states({})
 	await get_tree().create_timer(.6).timeout
 	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme

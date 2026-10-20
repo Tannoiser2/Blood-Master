@@ -39,6 +39,11 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 
 static func command(game: BloodRules,i: int) -> Dictionary:
 	var p=game.state.fighters[i];var m=game.move(p);var targets=game.targets(i)
+	# un mago che si concentra rigenera uno scheletro in pezzi, se ha abbastanza magia da rischiare il tiro
+	if m.id=="concentrate" and int(p.magic)>=4:
+		for j in game.state.fighters.size():
+			var sk=game.state.fighters[j]
+			if sk.alive and sk.get("pieces",false):return {"type":"regenerate","fighter":j}
 	var best=-INF;var selected=p.cell;var facing=int(p.facing)
 	var enemy=-1;var near=999
 	for j in game.state.fighters.size():

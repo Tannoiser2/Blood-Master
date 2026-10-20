@@ -13,7 +13,7 @@ func _init() -> void:
 			var ok=true
 			match r.state.phase:
 				"deploy":
-					var i=int(r.state.active);var team=int(r.state.fighters[i].team);ok=r.deploy(r.entry_cells(team)[i%2],0 if team==0 else 3)
+					var i=int(r.state.active);var team=int(r.state.fighters[i].team);ok=r.deploy(r.entry_cells(team)[0],0 if team==0 else 3)
 				"planning":
 					for i in r.needs_plan():ok=r.plan(i,BloodAI.choose_move(r,i)) and ok
 					ok=r.reveal() and ok

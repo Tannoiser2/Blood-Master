@@ -244,6 +244,14 @@ def build():
     for _ in range(40):
         p = rng.integers(0, len(y) - 900); y[p:p + 900] += bp(rng.standard_normal(900), 700, 3000) * env(900, .0005, .015, 3) * rng.uniform(.2, 1)
     save('death_bones_1', y, .8)
+    y = np.zeros(int(SR * 2.0))      # golem che si sbriciola: tanti sassi che cadono e rotolano
+    for _ in range(70):
+        p = int(rng.uniform(0, .75) ** 1.6 * (len(y) - 9000)); n = int(rng.uniform(.05, .18) * SR)
+        f0 = rng.uniform(70, 260); tt = np.arange(n) / SR
+        rock = np.sin(2 * np.pi * f0 * tt) * env(n, .001, .03, 4) + lp(rng.standard_normal(n), 1400) * env(n, .001, .05, 4) * .8
+        y[p:p + n] += rock * rng.uniform(.2, 1)
+    y += lp(rng.standard_normal(len(y)), 250) * env(len(y), .02, .7, 2.5) * 1.5
+    save('rocks_1', y, .9)
     save('cast_1', shimmer()); save('cast_2', shimmer(1.0, 660))
     save('spell_fire_1', fire()); save('spell_lightning_1', thunder()); save('spell_dark_1', dark())
     save('spell_heal_1', heal()); save('spell_wind_1', swirl())

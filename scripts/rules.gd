@@ -88,19 +88,40 @@ func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int
 	note("Blood Master · schieramento nell’arena")
 	state.active=0
 
-func entry_cells(team: int) -> Array:
-	var out=[]
+func start_cells(team: int) -> Array:
+	# Esagoni di partenza della squadra: i due ingressi originali, poi le celle vicine lungo il
+	# fondo e i lati dell'arena (a parità di distanza prima quelle sui lati), quanti ne servono.
+	var base=[]
 	for k in cells:
 		var c=cells[k]
-		if c.entry and ((c.y<1000 and team==1) or (c.y>1700 and team==0)):out.append(k)
+		if c.entry and ((c.y<1000 and team==1) or (c.y>1700 and team==0)):base.append(k)
+	base.sort()
+	var need=0
+	for p in state.get("fighters",[]):
+		if int(p.team)==team:need+=1
+	if need<=base.size():return base
+	var mid=0.0
+	for k in cells:mid+=float(cells[k].x)
+	mid/=cells.size()
+	var rest=[]
+	for k in cells:
+		if k in base:continue
+		var d=999
+		for e in base:d=mini(d,distance(k,e))
+		rest.append([d,-absf(float(cells[k].x)-mid),k])
+	rest.sort()
+	var out=base.duplicate()
+	for r in rest:
+		if out.size()>=need:break
+		out.append(r[2])
 	return out
+func entry_cells(team: int) -> Array:
+	# solo quelli ancora liberi: due personaggi non partono mai dallo stesso esagono
+	return start_cells(team).filter(func(k):return at(k)==-1)
 func deploy(k: String,facing: int) -> bool:
 	if state.phase!="deploy" or not cells.has(k):return false
 	var p=state.fighters[state.active]
 	if not k in entry_cells(p.team):return false
-	# Original scenario permits sharing an entry hex with an ally.
-	var occupant=at(k)
-	if occupant!=-1 and state.fighters[occupant].team!=p.team:return false
 	p.cell=k;p.facing=posmod(facing,6)
 	state.active+=1
 	if state.active>=state.fighters.size():begin_turn()
@@ -256,6 +277,7 @@ func act(command: Dictionary) -> bool:
 	if rotation>max_rotation:return false
 	if command.get("wait",false) and m.id=="guard":
 		p.facing=facing;p.guarding=true;state.phase="draw";state.active=-1;note(p.name+" resta in guardia, pronto a intervenire.");return true
+	if command.get("type","")=="regenerate":return regenerate(int(command.get("fighter",-1)))
 	if command.get("pass",false):
 		_finish_action(i,m,false,facing);return true
 	if not k in targets(i):return false

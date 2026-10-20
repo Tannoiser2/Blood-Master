@@ -156,7 +156,7 @@ func _card_widget(id: String,width: float,on_click: Callable,halves:=false) -> T
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index==MOUSE_BUTTON_LEFT:on_click.call(ev.position.x/maxf(t.size.x,1.0)))
 	return t
 func _add_to_team(id: String,team: int) -> void:
-	if roster.size()>=10:message="Al massimo dieci personaggi nello scontro.";_show_menu();return
+	if roster.size()>=16:message="Al massimo sedici personaggi nello scontro.";_show_menu();return
 	if _locked(id):team=int(game.catalog[id].team)                          # lucchetto: resta nel suo Ordine
 	var human=roster.any(func(r):return r.controller=="human")
 	roster.append({"character":id,"team":team,"controller":"ai" if mode=="solo" and human else "human","seat":roster.size()})
@@ -476,7 +476,7 @@ func _heading(i: int,text: String) -> void:
 func _deployment_panel() -> void:
 	var i=int(game.state.active);var p=game.state.fighters[i];_heading(i,"Schieramento")
 	board.highlights=game.entry_cells(int(p.team));board.preview_facing=selected_facing
-	_wrap("Scegli uno degli ingressi evidenziati. Puoi condividere la zona di ingresso con un alleato.")
+	_wrap("Scegli un esagono di partenza evidenziato: ognuno può ospitare un solo personaggio.")
 	if _human(i):
 		_facing_controls()
 		var b=button("Schiera il personaggio",func():_submit({"type":"deploy","target":selected_cell,"facing":selected_facing}),true);b.disabled=not selected_cell in board.highlights;sidebar.add_child(b)
