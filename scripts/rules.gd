@@ -628,8 +628,8 @@ func finish_turn() -> void:
 		if not p.alive:continue
 		var m=move(p)
 		if m.get("rest",false):
-			var rd=die();var amount=int(definition(p).recovery[rd-1]);p.fatigue=maxi(0,int(p.fatigue)-amount)
-			if amount>0 and int(p.fatigue)+amount>0:note("%s riposa: dado %d, recupera %d fatica." % [p.name,rd,mini(amount,99)])
+			var rd=die();var amount=int(definition(p).recovery[rd-1]);var before=int(p.fatigue);p.fatigue=maxi(0,before-amount)
+			if before>0:note("%s riposa: dado %d, %s." % [p.name,rd,"recupera tutta la fatica" if amount>=99 else "recupera %d fatica" % mini(amount,before)])
 		if p.current=="concentrate":
 			var d=die();p.magic+=1 if d==1 else (3 if d==6 else 2)
 		if p.burning:

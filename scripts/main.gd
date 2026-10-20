@@ -355,7 +355,7 @@ func _build_game() -> void:
 	row.add_child(_bar_check("Sangue",blood_on,func(v):blood_on=v;board3d.blood=v;_save_settings()))
 	row.add_child(_bar_check("Suoni",sound_on,func(v):sound_on=v;board3d.sound=v;_save_settings()))
 	row.add_child(_bar_check("Basette trasparenti",clear_plates,func(v):clear_plates=v;board3d.set_clear_plates(v);_save_settings()))
-	row.add_child(_bar_check("Nomi e barre",labels_on,func(v):labels_on=v;board3d.set_labels(v);_save_settings();_refresh_portraits(),"Nomi, ferite e fatica sopra le miniature; se spenti compaiono i ritratti"))
+	row.add_child(_bar_check("Nomi e barre",labels_on,func(v):labels_on=v;board3d.set_labels(v);_save_settings(),"Nomi, ferite e fatica sopra le miniature"))
 	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
 	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
 	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
@@ -368,7 +368,9 @@ func _build_game() -> void:
 	var over=MarginContainer.new();over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);over.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	for side in ["left","right","top","bottom"]:over.add_theme_constant_override("margin_"+side,12)
 	stage.add_child(over)
-	var cols=HBoxContainer.new();cols.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_theme_constant_override("separation",12);over.add_child(cols)
+	var stack=VBoxContainer.new();stack.mouse_filter=Control.MOUSE_FILTER_IGNORE;stack.add_theme_constant_override("separation",10);over.add_child(stack)
+	portraits=HFlowContainer.new();portraits.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.alignment=FlowContainer.ALIGNMENT_CENTER;portraits.add_theme_constant_override("h_separation",8);portraits.add_theme_constant_override("v_separation",6);stack.add_child(portraits)   # faccette in alto, a tutta larghezza
+	var cols=HBoxContainer.new();cols.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_theme_constant_override("separation",12);cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;stack.add_child(cols)
 	var left=VBoxContainer.new();left.mouse_filter=Control.MOUSE_FILTER_IGNORE;left.alignment=BoxContainer.ALIGNMENT_END;cols.add_child(left)
 	picker=_overlay_panel(.88);left.add_child(picker)
 	var mid=VBoxContainer.new();mid.mouse_filter=Control.MOUSE_FILTER_IGNORE;mid.alignment=BoxContainer.ALIGNMENT_END;mid.size_flags_horizontal=Control.SIZE_EXPAND_FILL;cols.add_child(mid)
@@ -385,15 +387,14 @@ func _build_game() -> void:
 	jh.add_child(_bar_button("−",func():log_box.visible=not log_box.visible,"Riduci o apri il diario"))
 	var fill=Control.new();fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
 	right.add_child(hint_label)
-	portraits=HBoxContainer.new();portraits.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.alignment=BoxContainer.ALIGNMENT_CENTER;portraits.add_theme_constant_override("separation",8)
-	portraits.anchor_left=0;portraits.anchor_right=1;portraits.offset_left=12;portraits.offset_right=-336;portraits.offset_top=10;stage.add_child(portraits)   # lascia libero il diario a destra
 	_refresh_portraits()
-var portraits: HBoxContainer
+var portraits: HFlowContainer
 func _refresh_portraits() -> void:
-	# riquadri con ritratto, ferite e fatica: al posto di nomi e barre sopra le miniature
+	# riquadri sempre visibili: ritratto, ferite e fatica, l'ultima mossa e la sua formula coi dadi
 	if portraits==null:return
-	clear(portraits);portraits.visible=not labels_on and not game.state.is_empty()
+	clear(portraits);portraits.visible=not game.state.is_empty() and game.state.phase!="deploy"
 	if not portraits.visible:return
+	var notes=_fighter_notes()
 	for i in game.state.fighters.size():
 		var p=game.state.fighters[i]
 		if p.cell=="" and p.alive:continue
@@ -402,19 +403,51 @@ func _refresh_portraits() -> void:
 		sb.content_margin_left=4;sb.content_margin_right=4;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
 		card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);portraits.add_child(card)
 		var v=VBoxContainer.new();v.add_theme_constant_override("separation",3);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
+		var top=HBoxContainer.new();top.add_theme_constant_override("separation",5);top.mouse_filter=Control.MOUSE_FILTER_IGNORE;v.add_child(top)
 		var path="res://assets/reborn/minis/%s.webp"%p.character
 		if not ResourceLoader.exists(path):path=card_path(p.character) if game.catalog.has(p.character) else ""
-		var img=TextureRect.new();img.custom_minimum_size=Vector2(64,64);img.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;img.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		var img=TextureRect.new();img.custom_minimum_size=Vector2(60,60);img.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;img.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		img.mouse_filter=Control.MOUSE_FILTER_IGNORE;img.clip_contents=true
 		if path!="":img.texture=load(path)
-		v.add_child(img)
-		var nm=label(p.name.split(" ")[0]+("" if p.alive else " †"),11,team_col);nm.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;nm.custom_minimum_size.x=64;nm.clip_text=true;v.add_child(nm)
-		v.add_child(_meter(float(p.hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%int(p.hp)))
-		v.add_child(_meter(clampf((float(p.fatigue)+float(p.permanent))/10.0,0,1),Color("b48cff"),"%d fatica"%(int(p.fatigue)+int(p.permanent))))
-		var nums=label("%d fer · %d fat"%[int(p.hp),int(p.fatigue)+int(p.permanent)],10,MUTED);nums.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;nums.custom_minimum_size.x=64;v.add_child(nums)
+		top.add_child(img)
+		var side=VBoxContainer.new();side.add_theme_constant_override("separation",2);side.mouse_filter=Control.MOUSE_FILTER_IGNORE;top.add_child(side)
+		var nm=label(p.name.split(" ")[0]+("" if p.alive else " †"),12,team_col);nm.custom_minimum_size.x=96;nm.clip_text=true;side.add_child(nm)
+		var hp=maxi(0,int(p.hp));var fat=int(p.fatigue)+int(p.permanent)
+		side.add_child(_meter(float(hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%hp))
+		side.add_child(_meter(clampf(float(fat)/10.0,0,1),Color("b48cff"),"%d fatica"%fat))
+		side.add_child(label("%d ferite · %d fatica"%[hp,fat],11,MUTED))
+		if bool(game.definition(p).get("mage",false)):side.add_child(label("%d punti magia"%int(p.magic),11,Color("8fb8ff")))
+		var n=notes.get(i,{})
+		var mv=label(str(n.get("move","")),12,GOLD);mv.custom_minimum_size.x=166;mv.clip_text=true;v.add_child(mv)
+		if not n.get("lines",[]).is_empty():
+			var rt=RichTextLabel.new();rt.bbcode_enabled=true;rt.fit_content=true;rt.scroll_active=false;rt.custom_minimum_size.x=166;rt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+			rt.add_theme_font_size_override("normal_font_size",11);rt.mouse_filter=Control.MOUSE_FILTER_IGNORE
+			rt.text=_log_bbcode(n.lines.slice(maxi(0,n.lines.size()-2))).replace("width=18 height=18","width=15 height=15");v.add_child(rt)
+func _fighter_notes() -> Dictionary:
+	# dal diario: per ogni personaggio la mossa rivelata per ultima e i tiri di dado che ne sono seguiti
+	var names=[]
+	for i in game.state.fighters.size():names.append([str(game.state.fighters[i].name),i])
+	names.sort_custom(func(a,b):return a[0].length()>b[0].length())   # prima i nomi lunghi ("Golem di Thorn")
+	var out={};var last_attacker=-1
+	for raw in game.state.log:
+		var line=str(raw)
+		if line.begins_with("Sbilanciamento:") and last_attacker>=0:
+			out[last_attacker].lines.append(line.trim_suffix(".").replace("Sbilanciamento: ","sbil. "));continue
+		var who=-1;var rest=""
+		for nm in names:
+			if line.begins_with(nm[0]+" ") or line.begins_with(nm[0]+","):who=nm[1];rest=line.substr(nm[0].length()).strip_edges();break
+		if who<0:continue
+		if not out.has(who):out[who]={"move":"","lines":[]}
+		if rest.begins_with("rivela: "):out[who]={"move":rest.substr(8).trim_suffix("."),"lines":[]};continue
+		if rest.begins_with("lancia "):out[who].move=rest.substr(7).trim_suffix(".");continue
+		if rest.begins_with("attacca "):
+			last_attacker=who
+			out[who].lines.append("su "+rest.substr(8).trim_suffix(".").replace("; "," · "));continue
+		if "dado" in rest:out[who].lines.append(rest.trim_prefix(",").trim_prefix(":").strip_edges().trim_suffix("."))
+	return out
 func _meter(f: float,col: Color,tip: String) -> Control:
-	var back=ColorRect.new();back.color=Color("131d20");back.custom_minimum_size=Vector2(64,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
-	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(64*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
+	var back=ColorRect.new();back.color=Color("131d20");back.custom_minimum_size=Vector2(96,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
+	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(96*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
 	return back
 var _dice_re: RegEx
 func _log_bbcode(lines: Array) -> String:

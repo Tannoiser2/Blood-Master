@@ -126,7 +126,7 @@ def arrow_ground(d=.35):
 
 
 # ---------------------------------------------------------------- voci (sintesi a formanti)
-VOWELS = {'a': (800, 1200, 2500, 3400), 'o': (500, 900, 2400, 3300), 'e': (550, 1800, 2500, 3500),
+VOWELS = {'m': (250, 1100, 2300, 3200), 'a': (800, 1200, 2500, 3400), 'o': (500, 900, 2400, 3300), 'e': (550, 1800, 2500, 3500),
           'u': (350, 750, 2400, 3300), 'aa_f': (950, 1400, 2900, 3900), 'e_f': (650, 2100, 2900, 4000)}
 
 
@@ -172,6 +172,38 @@ def growl(d=.9, f0=55):
 
 
 # ---------------------------------------------------------------- magia
+def om(d=2.6, f0=110):
+    """Concentrazione: un "Hooommmm" grave, con un'altra voce un'ottava sotto e un po' di coro."""
+    x = t(d); out = np.zeros(len(x))
+    for k, (ff, amp) in enumerate([(f0, 1.0), (f0 * 1.005, .6), (f0 / 2, .45)]):
+        f = ff * (1 + .006 * np.sin(2 * np.pi * (4.5 + k) * x))
+        v1 = voice(f, 'o', 'o', d * .45, rasp=.05, breath=.05)                 # "Hooo"
+        v2 = voice(f[int(len(x) * .45):], 'o', 'm', d - d * .45, rasp=.03, breath=.02)  # "...mmmm"
+        v = np.concatenate([v1, lp(v2, 900)])[:len(x)]
+        out[:len(v)] += v * amp
+    shape = np.minimum(1, x / .35) * np.minimum(1, (d - x) / .6)
+    return lp(out * shape, 2400) + lp(noise(d), 300) * shape * .03
+
+
+def magic_swell(d=1.2, f0=220):
+    """Lancio di un incantesimo: un soffio d'aria che sale con un accordo basso, niente campanelli."""
+    x = t(d); n = noise(d); out = np.zeros(len(x)); seg = 256
+    for s0 in range(0, len(x), seg):
+        f = 300 + 1200 * (s0 / len(x)) ** 1.5
+        out[s0:s0 + seg] = bp(n[max(0, s0 - 512):s0 + seg], f * .7, f * 1.3)[-len(n[s0:s0 + seg]):]
+    pad = sum(np.sin(2 * np.pi * f0 * r * x + k) for k, r in enumerate((1, 1.5, 2))) / 3
+    shape = np.sin(np.pi * np.clip(x / d, 0, 1)) ** 1.5
+    return mix(out * shape * .8, pad * shape * .35)
+
+
+def croak(d=.32, f0=70):
+    """Il "cra" della rana: impulsi ruvidi e nasali."""
+    x = t(d); f = f0 * (1 + .25 * np.sin(np.pi * x / d))
+    pulses = (np.sin(2 * np.pi * np.cumsum(f) / SR) > .7).astype(float) * (1 + .3 * rng.standard_normal(len(x)))
+    v = bp(pulses, 300, 1400) + bp(pulses, 1800, 2600) * .4
+    return v * env(len(x), .01, d * .6, 2.5) * (1 + .5 * np.sin(2 * np.pi * 25 * x))
+
+
 def shimmer(d=1.1, base=880):
     x = t(d); y = np.zeros_like(x)
     for k in range(9):
@@ -252,7 +284,11 @@ def build():
         y[p:p + n] += rock * rng.uniform(.2, 1)
     y += lp(rng.standard_normal(len(y)), 250) * env(len(y), .02, .7, 2.5) * 1.5
     save('rocks_1', y, .9)
-    save('cast_1', shimmer()); save('cast_2', shimmer(1.0, 660))
+    save('cast_1', magic_swell(1.2, 220)); save('cast_2', magic_swell(1.0, 196))
+    save('concentrate_1', om(2.6, 110), .8); save('concentrate_2', om(2.4, 98), .8)
+    for k in range(2):
+        y = mix(croak(.3, 70 + 8 * k), at(croak(.34, 62 + 8 * k), .42, 1.0))   # "cra-cra"
+        save(f'frog_{k + 1}', y, .8)
     save('spell_fire_1', fire()); save('spell_lightning_1', thunder()); save('spell_dark_1', dark())
     save('spell_heal_1', heal()); save('spell_wind_1', swirl())
     print('suoni:', len(list(OUT.glob('*.ogg'))))

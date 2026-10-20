@@ -1074,6 +1074,7 @@ func _frog(info: Dictionary,on: bool) -> void:
 			f=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.18;sm.height=.25;f.mesh=sm;f.material_override=_fx_mat(Color(.3,.75,.3),.3);f.position.y=.15
 		info.pivot.add_child(f);info.frog_node=f;info.model.visible=false
 		var hop=f.create_tween().set_loops();hop.tween_interval(1.2);hop.tween_property(f,"position:y",f.position.y+.15,.15);hop.tween_property(f,"position:y",f.position.y,.15)
+		hop.tween_callback(func():if randf()<.25:_sfx("frog",f.global_position,0.0,-6.0))   # ogni tanto gracida
 	elif not on and info.has("frog_node"):
 		if is_instance_valid(info.frog_node):info.frog_node.queue_free()
 		info.erase("frog_node");info.model.visible=true
@@ -1159,8 +1160,12 @@ func _sound_track(t: Dictionary,info: Dictionary,length: float,mode: String) -> 
 	if mv in ["parry_l","parry_r"]:_sfx("clash",pos,length*.35,-2.0)
 	if mv=="load":_sfx("bow_draw",pos,.1,-6.0)
 	if mv=="shoot":_sfx("bow_release",pos,length*.55,-2.0)
+	if mv in ["concentrate","meditate"]:_sfx("concentrate",pos,.15,-2.0,1.0 if _voice(t.i)!="f" else 1.6)   # "Hooommmm"
+	if mv=="transform":
+		for tv in t.get("targets",[]):
+			if minis.has(int(tv)):_sfx("frog",minis[int(tv)].root.global_position,length*.6,0.0)   # cra cra
 	if SPELL_FX.has(mv):
-		_sfx("cast",pos,.1,-4.0)
+		_sfx("cast",pos,.1,-6.0)
 		var kind={"firestaff":"fire","fireball":"fire","wall":"fire","livingfire":"fire","lightning":"lightning","shock":"lightning",
 			"heal":"heal","shield":"heal","vortex":"wind","teleport":"wind","dematerialize":"wind","float":"wind"}.get(mv,"dark")
 		_sfx("spell_"+kind,pos,length*.45,-3.0)
