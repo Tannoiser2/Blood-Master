@@ -129,24 +129,40 @@ func _free_agent(id: String) -> bool:
 	return int(game.catalog[id].team)<0                       # maghi e scheletri
 func _selectable() -> Array:
 	return game.catalog.keys().filter(func(k):return game.catalog[k].kind!="golem")   # il Golem si evoca in partita
-func _card_widget(id: String,width: float,on_click: Callable) -> TextureRect:
+func _locked(id: String) -> bool:
+	# negli scontri a squadre ogni combattente sta nel suo Ordine; nello scontro libero no
+	return scenario!="libero" and not _free_agent(id)
+func _card_widget(id: String,width: float,on_click: Callable,halves:=false) -> TextureRect:
 	var t=TextureRect.new();t.texture=load(card_path(id));t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var tex: Texture2D=t.texture;t.custom_minimum_size=Vector2(width,width*tex.get_height()/tex.get_width())
 	t.mouse_filter=Control.MOUSE_FILTER_STOP;t.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	t.tooltip_text=game.catalog[id].name+" · "+game.catalog[id].title
+	if halves:   # la metà sotto il mouse si colora della squadra in cui andrà la scheda
+		var tint=ColorRect.new();tint.mouse_filter=Control.MOUSE_FILTER_IGNORE;tint.visible=false;t.add_child(tint)
+		var locked=_locked(id);var own=int(game.catalog[id].team)
+		t.gui_input.connect(func(ev):
+			if ev is InputEventMouseMotion:
+				var side=own if locked else (0 if ev.position.x<t.size.x*.5 else 1)
+				var c=TEAM_COLOR[side];c.a=.28;tint.color=c;tint.visible=true
+				tint.position=Vector2(0 if locked or side==0 else t.size.x*.5,0);tint.size=Vector2(t.size.x if locked else t.size.x*.5,t.size.y))
+		t.mouse_exited.connect(func():tint.visible=false)
 	t.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index==MOUSE_BUTTON_LEFT:on_click.call(ev.position.x/maxf(t.size.x,1.0)))
 	return t
 func _add_to_team(id: String,team: int) -> void:
-	detail_id=id
 	if roster.size()>=10:message="Al massimo dieci personaggi nello scontro.";_show_menu();return
-	if not _free_agent(id) and int(game.catalog[id].team)!=team:return    # lucchetto: un Rosso non va coi Blu
+	if _locked(id):team=int(game.catalog[id].team)                          # lucchetto: resta nel suo Ordine
 	var human=roster.any(func(r):return r.controller=="human")
 	roster.append({"character":id,"team":team,"controller":"ai" if mode=="solo" and human else "human","seat":roster.size()})
 	message="";_show_menu()
 func _remove_from_team(i: int) -> void:
-	detail_id=roster[i].character;roster.remove_at(i)
+	roster.remove_at(i)
 	for k in roster.size():roster[k].seat=k
+	_show_menu()
+func _set_scenario(n: int) -> void:
+	scenario=["frontale","libero","bloodmaster"][n]
+	for r in roster:
+		if _locked(r.character):r.team=int(game.catalog[r.character].team)    # chi era nella squadra sbagliata torna nel suo Ordine
 	_show_menu()
 func _show_menu() -> void:
 	showing_game=false;clear(page);menu_options=[]
@@ -155,57 +171,65 @@ func _show_menu() -> void:
 	if roster.is_empty() and not has_meta("roster_default"):
 		set_meta("roster_default",true)
 		roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
-	if detail_id=="":detail_id=roster[0].character if not roster.is_empty() else "gascor"
-	var content=HBoxContainer.new();content.size_flags_vertical=Control.SIZE_EXPAND_FILL;content.add_theme_constant_override("separation",16);page.add_child(content)
-	# pannello del personaggio
-	var detail=panel_content(content,14);detail.get_parent().get_parent().custom_minimum_size.x=430;_detail_panel(detail)
-	# preparazione
-	var right=VBoxContainer.new();right.size_flags_horizontal=Control.SIZE_EXPAND_FILL;content.add_child(right)
-	var top=HBoxContainer.new();right.add_child(top)
+	var top=HBoxContainer.new();page.add_child(top)
 	for option in [["solo","Contro IA"],["local","Stesso schermo"],["online","Online"]]:
 		var b=button(option[1],func():mode=option[0];_show_menu())
 		if mode==option[0]:b.add_theme_color_override("font_color",GOLD)
 		top.add_child(b)
+	top.add_child(spacer())
+	top.add_child(label("SCENARIO",13,GOLD))
+	var scene_choice=OptionButton.new();scene_choice.add_item("Scontro frontale · squadre e pace/guerra");scene_choice.add_item("Scontro libero · squadre a scelta");scene_choice.add_item("Blood Master · asta e 3 round")
+	scene_choice.select(["frontale","libero","bloodmaster"].find(scenario));scene_choice.item_selected.connect(_set_scenario);top.add_child(scene_choice)
 	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))
 	for option in [["classica","Classica"],["reborn","Reborn"]]:
 		var b=button(option[1],func():art=option[0];_save_settings();_show_menu())
 		if art==option[0]:b.add_theme_color_override("font_color",GOLD)
 		top.add_child(b)
-	var scene_row=HBoxContainer.new();right.add_child(scene_row)
-	scene_row.add_child(label("PREPARA LO SCONTRO",13,GOLD))
-	var scene_choice=OptionButton.new();scene_choice.add_item("Scontro frontale · squadre e pace/guerra");scene_choice.add_item("Scontro libero · squadre a scelta");scene_choice.add_item("Blood Master · asta e 3 round")
-	scene_choice.select(["frontale","libero","bloodmaster"].find(scenario));scene_choice.item_selected.connect(func(n):scenario=["frontale","libero","bloodmaster"][n]);scene_row.add_child(scene_choice)
-	var cols=HBoxContainer.new();cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;cols.add_theme_constant_override("separation",12);right.add_child(cols)
+	var cols=HBoxContainer.new();cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;cols.add_theme_constant_override("separation",14);page.add_child(cols)
 	_team_column(cols,0)
 	var pool=panel_content(cols,12);pool.get_parent().get_parent().size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	var hint="Clic sulla metà sinistra della scheda: Blu · sulla metà destra: Rossi" if scenario=="libero" else "Clic su una scheda: va nel suo Ordine · maghi e scheletri: metà sinistra Blu, metà destra Rossi"
+	var h=label(hint,13,MUTED);h.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;pool.add_child(h)
 	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;pool.add_child(scroll)
 	var inner=VBoxContainer.new();inner.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(inner)
 	var taken=roster.map(func(r):return r.character)
-	inner.add_child(label("COMBATTENTI · clic per mandarli nella loro squadra",13,GOLD))
-	var grid=GridContainer.new();grid.columns=2;grid.add_theme_constant_override("h_separation",10);grid.add_theme_constant_override("v_separation",8);inner.add_child(grid)
-	for id in _selectable():
-		if _free_agent(id) or id in taken:continue
-		var team=int(game.catalog[id].team);var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);grid.add_child(v)
-		v.add_child(_card_widget(id,215,func(_x):_add_to_team(id,team)))
-		v.add_child(label(("◀ solo Blu" if team==0 else "solo Rossi ▶"),12,TEAM_COLOR[team]))
-	inner.add_child(label("MAGHI E SCHELETRI · metà sinistra: Blu · metà destra: Rossi",13,GOLD))
-	var grid2=GridContainer.new();grid2.columns=2;grid2.add_theme_constant_override("h_separation",10);grid2.add_theme_constant_override("v_separation",8);inner.add_child(grid2)
-	for id in _selectable():
-		if not _free_agent(id) or id in taken:continue
-		var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);grid2.add_child(v)
-		v.add_child(_card_widget(id,215,func(x):_add_to_team(id,0 if x<.5 else 1)))
-		var hb=HBoxContainer.new();v.add_child(hb)
-		hb.add_child(label("◀ Blu",12,TEAM_COLOR[0]));hb.add_child(spacer());hb.add_child(label("Rossi ▶",12,TEAM_COLOR[1]))
+	for group in [["COMBATTENTI",false],["MAGHI E SCHELETRI",true]]:
+		var t=label(group[0],13,GOLD);t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;inner.add_child(t)
+		var center=CenterContainer.new();inner.add_child(center)
+		var grid=GridContainer.new();grid.columns=3;grid.add_theme_constant_override("h_separation",12);grid.add_theme_constant_override("v_separation",8);center.add_child(grid)
+		for id in _selectable():
+			if _free_agent(id)!=group[1] or id in taken:continue
+			grid.add_child(_pool_card(id))
 	_team_column(cols,1)
-	var bottom=HBoxContainer.new();right.add_child(bottom)
+	var bottom=HBoxContainer.new();page.add_child(bottom)
 	if mode=="online":
 		var online=VBoxContainer.new();online.size_flags_horizontal=Control.SIZE_EXPAND_FILL;bottom.add_child(online);_online_menu(online)
 	else:
 		bottom.add_child(button("Entra nell’arena",_start_local,true))
 	if FileAccess.file_exists("user://battle.json"):bottom.add_child(button("Riprendi la partita salvata",_load_game))
 	status=label(message,14,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;status.size_flags_horizontal=Control.SIZE_EXPAND_FILL;bottom.add_child(status)
+func _pool_card(id: String) -> Control:
+	var v=VBoxContainer.new();v.add_theme_constant_override("separation",2)
+	var locked=_locked(id);var own=int(game.catalog[id].team)
+	v.add_child(_card_widget(id,262,func(x):_add_to_team(id,own if locked else (0 if x<.5 else 1)),true))
+	var row=HBoxContainer.new();row.add_theme_constant_override("separation",4);v.add_child(row)
+	if locked:
+		row.add_child(label("◀ solo Blu" if own==0 else "",12,TEAM_COLOR[0]))
+	else:
+		row.add_child(label("◀ Blu",12,TEAM_COLOR[0]))
+	row.add_child(spacer())
+	var info=Button.new();info.text="Mosse";info.tooltip_text="Scheda e tessere";info.add_theme_font_size_override("font_size",12)
+	for st in ["normal","hover","pressed","focus"]:
+		var sb=box(Color("233234") if st!="hover" else Color("40534c"),6);sb.content_margin_left=8;sb.content_margin_right=8;sb.content_margin_top=2;sb.content_margin_bottom=2;info.add_theme_stylebox_override(st,sb)
+	info.pressed.connect(func():_show_detail(id));row.add_child(info)
+	row.add_child(spacer())
+	if locked:
+		row.add_child(label("solo Rossi ▶" if own==1 else "",12,TEAM_COLOR[1]))
+	else:
+		row.add_child(label("Rossi ▶",12,TEAM_COLOR[1]))
+	return v
 func _team_column(parent: Node,team: int) -> void:
-	var v=panel_content(parent,12);v.get_parent().get_parent().custom_minimum_size.x=236
+	var v=panel_content(parent,12);v.get_parent().get_parent().custom_minimum_size.x=250
 	var members=[]
 	for i in roster.size():
 		if int(roster[i].team)==team:members.append(i)
@@ -214,15 +238,26 @@ func _team_column(parent: Node,team: int) -> void:
 	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;v.add_child(scroll)
 	var list=VBoxContainer.new();list.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(list)
 	if members.is_empty():
-		var l=label("Clicca una scheda al centro per aggiungere un personaggio.",13,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=200;list.add_child(l)
+		var l=label("Clicca una scheda al centro per aggiungere un personaggio.",13,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=210;list.add_child(l)
 	for i in members:
 		var id: String=roster[i].character
-		list.add_child(_card_widget(id,205,func(_x):detail_id=id;_show_menu()))
+		list.add_child(_card_widget(id,218,func(_x):_show_detail(id)))
 		var row=HBoxContainer.new();row.add_theme_constant_override("separation",6);list.add_child(row)
 		var who=Button.new();who.text="Persona" if roster[i].controller=="human" else "IA";who.tooltip_text="Chi muove questo personaggio"
 		who.pressed.connect(func():roster[i].controller="ai" if roster[i].controller=="human" else "human";_show_menu());row.add_child(who)
 		row.add_child(spacer())
 		var out=Button.new();out.text="✕";out.tooltip_text="Rimetti al centro";out.pressed.connect(func():_remove_from_team(i));row.add_child(out)
+func _show_detail(id: String) -> void:
+	# finestra sopra il menu con scheda e tessere; si chiude cliccando fuori o su Chiudi
+	detail_id=id
+	var layer=Control.new();layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);add_child(layer)
+	var dim=ColorRect.new();dim.color=Color(0,0,0,.6);dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);layer.add_child(dim)
+	dim.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed:layer.queue_free())
+	var center=CenterContainer.new();center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);center.mouse_filter=Control.MOUSE_FILTER_IGNORE;layer.add_child(center)
+	var v=panel_content(center,18);v.get_parent().get_parent().custom_minimum_size.x=460
+	_detail_panel(v)
+	v.add_child(button("Chiudi",layer.queue_free))
 func _detail_panel(v: VBoxContainer) -> void:
 	var d=game.catalog[detail_id]
 	var head=HBoxContainer.new();v.add_child(head)
@@ -232,7 +267,7 @@ func _detail_panel(v: VBoxContainer) -> void:
 	names.add_child(label(["Ordine della Lama · Blu","Ordine dell’Ombra · Rossi"][team] if team>=0 else ("Mago · gioca con chiunque" if d.mage else "Scheletro · gioca con chiunque"),13,TEAM_COLOR[team] if team>=0 else INK))
 	var mp=mini_path(detail_id)
 	if mp!="":
-		var m=TextureRect.new();m.texture=load(mp);m.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;m.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;m.custom_minimum_size=Vector2(110,110);head.add_child(m)
+		var m=TextureRect.new();m.texture=load(mp);m.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;m.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;m.custom_minimum_size=Vector2(140,140);head.add_child(m)
 	var card=TextureRect.new();card.texture=load(card_path(detail_id));card.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;card.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	card.custom_minimum_size=Vector2(400,400.0*card.texture.get_height()/card.texture.get_width());v.add_child(card)
 	v.add_child(label("LE SUE TESSERE · %d"%d.moves.size(),13,GOLD))
