@@ -32,6 +32,7 @@ var busy=false
 var auto_draw=true
 var board_grid=false
 var blood_on=false
+var sound_on=true
 var clear_plates=false
 var _last_hp={}
 var showing_game=false
@@ -118,10 +119,10 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));clear_plates=bool(d.get("clear_plates",false))
+	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));clear_plates=bool(d.get("clear_plates",false))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"clear_plates":clear_plates}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"clear_plates":clear_plates}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -349,13 +350,14 @@ func _build_game() -> void:
 	row.add_child(_bar_check("Griglia",board_grid,func(v):board_grid=v;board.show_grid=v;board.queue_redraw();_refresh()))
 	row.add_child(_bar_check("Estrazione automatica",auto_draw,func(v):auto_draw=v;_drive()))
 	row.add_child(_bar_check("Sangue",blood_on,func(v):blood_on=v;board3d.blood=v;_save_settings()))
+	row.add_child(_bar_check("Suoni",sound_on,func(v):sound_on=v;board3d.sound=v;_save_settings()))
 	row.add_child(_bar_check("Basette trasparenti",clear_plates,func(v):clear_plates=v;board3d.set_clear_plates(v);_save_settings()))
 	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
 	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
 	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
 	board=ArenaBoard.new();board.game=game;board.show_grid=board_grid;board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board.cell_clicked.connect(_cell_clicked);stage.add_child(board)
 	_last_hp={}
-	board3d=ArenaBoard3D.new();board3d.game=game;board3d.blood=blood_on;board3d.clear_plates=clear_plates;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
+	board3d=ArenaBoard3D.new();board3d.game=game;board3d.blood=blood_on;board3d.sound=sound_on;board3d.clear_plates=clear_plates;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
 	board.visible=not minis_3d
 	# sovraimpressioni: colonna sinistra (nido d'ape), centro (azioni), destra (diario).
 	# Contenitori trasparenti al mouse, così la mappa resta trascinabile ovunque.

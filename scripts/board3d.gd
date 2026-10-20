@@ -16,12 +16,27 @@ const MODELS={"gascor":"res://assets/models/gascor/gascor.glb","anteos":"res://a
 	"ut":"res://assets/models/ut/ut.glb","shannon":"res://assets/models/shannon/shannon.glb",
 	"nuchra":"res://assets/models/nuchra/nuchra.glb","ramok":"res://assets/models/ramok/ramok.glb",
 	"zenyo":"res://assets/models/zenyo/zenyo.glb","shaara":"res://assets/models/shaara/shaara.glb",
-	"zak":"res://assets/models/zak/zak.glb","kylvia":"res://assets/models/kylvia/kylvia.glb"}
+	"zak":"res://assets/models/zak/zak.glb","kylvia":"res://assets/models/kylvia/kylvia.glb",
+	"gandy":"res://assets/models/gandy/gandy.glb","thorn":"res://assets/models/thorn/thorn.glb",
+	"sanguinaria":"res://assets/models/sanguinaria/sanguinaria.glb","ziggy":"res://assets/models/ziggy/ziggy.glb"}
 const CLIP={"guard":"In guardia","advance":"Avanzare","run":"Correre","charge":"Carica","cleave":"Fendente",
 	"left":"Taglio Sx","right":"Taglio Dx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
 	"dodge":"Schivata","roll":"Rotolare","unbalanced":"Sbilanciato","down":"A terra","rise":"Rialzarsi","again":"In guardia",
 	"spin":"Taglio Dx","sweep":"Taglio Sx","meditate":"Riposo",
-	"load":"Incoccare","shoot":"Tirare","weapon":"Riposo"}   # rotazione e spazzata: le clip di taglio più vicine
+	"load":"Incoccare","shoot":"Tirare","weapon":"Riposo",
+	# maghi: ogni incantesimo ha la sua clip, generata sul rig del mago
+	"concentrate":"Concentrarsi","punch":"Pugno","float":"Fluttuare",
+	"firestaff":"Bastone di fuoco","shield":"Scudo","vortex":"Vortice","sleep":"Sonno","fireball":"Palla di fuoco",
+	"pustules":"Pustole","fear":"Paura","age":"Vecchiaia","summon":"Evocare","plague":"Peste",
+	"wall":"Muro","teleport":"Teletrasporto","transform":"Trasformazione","livingfire":"Fuoco vivo","abyss":"Abisso",
+	"shock":"Scossa","heal":"Cura","drain":"Drenare","control":"Controllo","lightning":"Fulmine","dematerialize":"Smaterializzare"}
+# colore della magia: lampo sul mago e sfera che vola verso chi viene colpito
+const SPELL_FX={"firestaff":Color(1,.45,.1),"shield":Color(.45,.7,1),"vortex":Color(.5,.8,1),"sleep":Color(.75,.6,1),"fireball":Color(1,.4,.05),
+	"pustules":Color(.75,.85,.2),"fear":Color(.55,.2,.6),"age":Color(.7,.65,.5),"summon":Color(.6,.45,.3),"plague":Color(.55,.8,.15),
+	"wall":Color(1,.35,.1),"teleport":Color(1,.3,.25),"transform":Color(.3,.9,.4),"livingfire":Color(1,.5,.1),"abyss":Color(.35,.1,.45),
+	"shock":Color(.4,.8,1),"heal":Color(.4,1,.6),"drain":Color(.6,.2,.8),"control":Color(.85,.4,1),"lightning":Color(.6,.85,1),"dematerialize":Color(.5,.5,1)}   # rotazione e spazzata: le clip di taglio più vicine
+const REPLAY_PACE=.8
+const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","dodge","guard"]
 const TEAL=Color("69cec1")
@@ -136,6 +151,7 @@ func _place_camera() -> void:
 	camera.look_at(target)
 
 # ---------------------------------------------------------------- miniature
+func _exit_tree() -> void:Engine.time_scale=1.0
 func _mini(i: int) -> Dictionary:
 	if minis.has(i):return minis[i]
 	var p=game.state.fighters[i];var d=game.definition(p)
@@ -158,6 +174,18 @@ func _mini(i: int) -> Dictionary:
 	if path!="":
 		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;pivot.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
 		info.ap=_find_animation(model)
+		var grip_rest=model.find_child("Arma",true,false);var grip_act=model.find_child("ArmaAzione",true,false)
+		if info.ap and grip_rest and grip_act:   # bastone/tridente: dritto a riposo, testa in avanti negli incantesimi e nei colpi
+			var sync_grip=func(n):
+				var rest_pose=str(n) in REST_GRIP;grip_rest.visible=rest_pose;grip_act.visible=not rest_pose
+			info.ap.animation_started.connect(sync_grip);sync_grip.call("Riposo")
+		if p.character=="ziggy":   # lo spirito fluttua sopra la basetta
+			model.position.y=.14
+			var bob=create_tween().set_loops();bob.bind_node(model)
+			bob.tween_property(model,"position:y",.24,1.3).set_trans(Tween.TRANS_SINE);bob.tween_property(model,"position:y",.14,1.3).set_trans(Tween.TRANS_SINE)
+			var sway=create_tween().set_loops();sway.bind_node(model)   # le spire ondeggiano piano
+			sway.tween_property(model,"rotation:y",.22,1.9).set_trans(Tween.TRANS_SINE);sway.tween_property(model,"rotation:y",-.22,1.9).set_trans(Tween.TRANS_SINE)
+			info["spirit"]=true
 		if info.ap:_extract_root_motion(info)
 		for n in ["In guardia","Riposo","Avanzare","Correre","Carica"]:
 			if info.ap and info.ap.has_animation(n):info.ap.get_animation(n).loop_mode=Animation.LOOP_LINEAR
@@ -333,6 +361,7 @@ func sync() -> void:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
 		var track={"i":i,"clip":_clip_for(i,id,bool(p.get("bow",false))),"bow":bool(p.get("bow",false)),"loaded":bool(p.get("loaded",false)) or id=="shoot","from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		if SPELL_FX.has(id):track["targets"]=victims.filter(func(v):return v!=i)
 		if id=="shoot" and int(game.state.get("shots",0))>_shots_seen:
 			_shots_seen=int(game.state.get("shots",0))
 			var v=int(game.state.get("last_shot",{}).get("victim",-1))
@@ -357,14 +386,14 @@ func sync() -> void:
 			step.append({"i":i,"clip":CLIP[was_move],"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":was_move,"strike":false})
 			moved=true
 		# chi ha anche un suo movimento in questo passo prima lo completa, poi reagisce sul posto
-		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive})
+		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive,"dead":not p.alive})
 	for i in game.state.fighters.size():
 		if game.state.fighters[i].cell!="":prev[i]=_view(game.state.fighters[i])
 	if not step.is_empty():
 		var labels={}   # etichette dopo questo passo, per il replay
 		for i in minis:
 			var q=game.state.fighters[i];labels[i]=[int(q.hp),int(q.max_hp),q.alive]
-		step.append({"labels":labels})
+		step.append({"labels":labels,"turn":int(game.state.get("turn",0)),"effects":game.state.effects.duplicate(true)})
 		if is_visible_in_tree():
 			queue.append(step)
 			if not playing:_play_queue()
@@ -455,6 +484,7 @@ func _play_step(step: Array,fluid: bool) -> void:
 	await get_tree().create_timer(longest).timeout
 	for t in step:
 		if t.has("labels"):
+			if t.has("effects"):_show_effects(t.effects)
 			if fluid:
 				for i in t.labels:
 					if minis.has(i):_set_status(i,t.labels[i][0],t.labels[i][1],t.labels[i][2])
@@ -487,7 +517,15 @@ func _plan(t: Dictionary,info: Dictionary) -> Dictionary:
 func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> float:
 	# forced: durata imposta al movimento (replay fluido: tutti arrivano insieme)
 	var ap=info.ap;var root=info.root;var pivot=info.pivot
-	var pl=_plan(t,info);var anim: Animation=pl.anim;var length: float=pl.length;var turn: float=pl.turn
+	var pl=_plan(t,info)
+	if pl.mode=="lineare" and info.ap and info.ap.has_animation("Camminata") and not info.get("spirit",false) and not t.get("split",false) and not t.get("move","") in ["teleport","dematerialize"]:
+		# si sposta con una clip che non cammina (es. Concentrarsi): prima cammina fino alla cella, poi la esegue lì
+		var walk=t.duplicate();walk.clip="Camminata";walk.split=true;walk.move="advance";walk.strike=false
+		for k in ["hit","arrow","targets","bow"]:walk.erase(k)
+		var d1=_run_track(walk,info,fluid,forced)
+		var act=t.duplicate();act.split=true;act.from=t.to;act.delay=t.delay+d1
+		return d1+_run_track(act,info,fluid)
+	var anim: Animation=pl.anim;var length: float=pl.length;var turn: float=pl.turn
 	var dist: float=pl.dist;var m: Dictionary=pl.m;var mode: String=pl.mode;var loops: int=pl.loops
 	var natural=length;var rate=1.0
 	if forced>0 and mode!="fermo":rate=clampf(natural/forced,.35,2.5);length=forced
@@ -502,11 +540,20 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 			ap.play(t.clip,.12 if fluid else .18);ap.speed_scale=rate
 		if t.has("bow"):_set_gear(t.i,t.bow,t.get("loaded",false))
 		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
+		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
+		if info.get("spirit",false):_spirit_move(t,info)
+		_sound_track(t,info,length,mode)
 		if t.get("hit",0)>0:
 			_float(root.position,"-%d" % t.hit)
 			if blood:_bleed(root.position,int(t.hit)))
 	if mode=="fermo":
 		tw.tween_interval(length)
+	elif t.get("move","") in ["teleport","dematerialize"]:
+		# sparisce in un lampo e ricompare nella cella di arrivo
+		var to3: Vector3=t.to
+		tw.tween_interval(length*.35);tw.tween_property(pivot,"scale",Vector3(.05,1.6,.05),.18)
+		tw.tween_callback(func():root.position=to3);tw.tween_property(pivot,"scale",Vector3.ONE,.22)
+		tw.tween_interval(maxf(length*.65-.4,.05))
 	else:
 		root.position=t.from
 		var from: Vector3=t.from;var to: Vector3=t.to
@@ -519,6 +566,11 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 			tw.tween_property(root,"position",to,length)
 		if mode=="profilo" and anim and not t.clip in ["Carica"]:
 			tw.tween_callback(func():anim.loop_mode=Animation.LOOP_NONE)
+		# arrivato: smette di camminare e si mette in guardia (niente passi sul posto mentre aspetta)
+		if ap and not t.get("stay",false):
+			tw.tween_callback(func():
+				if anim:anim.loop_mode=Animation.LOOP_NONE
+				if ap.current_animation==t.clip and ap.has_animation("In guardia"):ap.play("In guardia",.2))
 		if rate!=1.0 and ap:tw.tween_callback(func():ap.speed_scale=1.0)
 	return turn+length
 
@@ -604,11 +656,126 @@ func _shoot(t: Dictionary,info: Dictionary,clip_time: float) -> void:
 		if ahead.distance_to(p)>.001:a.look_at(ahead,Vector3.UP,true),0.0,1.0,dur)
 	tw.tween_callback(func():
 		a.global_position=target-(-a.global_basis.z)*0.0
+		_sfx("arrow_hit" if hit else "arrow_ground",target,0.0,-3.0)
 		if hit and victim.has("pivot"):
 			var gt=a.global_transform;a.get_parent().remove_child(a);_stick_parent(victim,target).add_child(a);a.global_transform=gt   # resta conficcata
 			a.translate_object_local(Vector3(0,0,-.12))   # la punta resta dentro, l'asta fuori
 		else:
 			a.rotate_object_local(Vector3.RIGHT,randf_range(.2,.5)))   # piantata a terra, un po' inclinata
+# --- Magie: lampo sul mago, sfera verso i bersagli, effetti che restano sulle celle ----
+func _glow(color: Color,amount: int,radius: float) -> CPUParticles3D:
+	var g=CPUParticles3D.new();g.one_shot=true;g.amount=amount;g.lifetime=.8;g.explosiveness=.85
+	g.emission_shape=CPUParticles3D.EMISSION_SHAPE_SPHERE;g.emission_sphere_radius=radius;g.direction=Vector3.UP;g.spread=180
+	g.initial_velocity_min=.2;g.initial_velocity_max=.9;g.gravity=Vector3(0,.6,0);g.scale_amount_min=.5;g.scale_amount_max=1.2
+	var q=SphereMesh.new();q.radius=.025;q.height=.05;q.radial_segments=6;q.rings=3;g.mesh=q
+	var m=StandardMaterial3D.new();m.albedo_color=color;m.emission_enabled=true;m.emission=color;m.emission_energy_multiplier=3.0
+	m.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;g.material_override=m
+	return g
+# Ziggynowskij non ha scheletro: si anima ruotando, pulsando e tremando
+func _spirit_move(t: Dictionary,info: Dictionary) -> void:
+	var fig: Node3D=info.pivot
+	var mv=str(t.get("move",""))
+	if not (SPELL_FX.has(mv) or t.get("hit",0)>0 or mv in ["unbalanced","float","advance"]):return
+	var tw=create_tween()
+	if SPELL_FX.has(t.get("move","")):          # incantesimo: vortice veloce e gonfiarsi
+		tw.tween_property(fig,"scale",Vector3(1.18,1.1,1.18),.25).set_trans(Tween.TRANS_SINE)
+		tw.parallel().tween_property(fig,"rotation:y",fig.rotation.y+TAU,.7).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(fig,"scale",Vector3.ONE,.3)
+	elif t.get("hit",0)>0 or t.get("move","")=="unbalanced":   # colpito: si contrae e trema
+		tw.tween_property(fig,"scale",Vector3(.85,.92,.85),.12)
+		for k in 4:tw.tween_property(fig,"rotation:z",(.12 if k%2==0 else -.12),.06)
+		tw.tween_property(fig,"rotation:z",0.0,.08);tw.tween_property(fig,"scale",Vector3.ONE,.2)
+	elif t.get("move","") in ["float","advance"]:     # si allunga nella direzione del volo
+		tw.tween_property(fig,"scale",Vector3(.92,1.12,.92),.3);tw.tween_interval(.4);tw.tween_property(fig,"scale",Vector3.ONE,.3)
+func _cast_fx(t: Dictionary,info: Dictionary,clip_time: float) -> void:
+	var color: Color=SPELL_FX[t.move];var caster: Node3D=info.root
+	await get_tree().create_timer(clip_time*.45).timeout
+	if not is_instance_valid(caster):return
+	var burst=_glow(color,40,.25);viewport.add_child(burst);burst.global_position=caster.global_position+Vector3(0,.75,0);burst.emitting=true
+	get_tree().create_timer(1.5).timeout.connect(burst.queue_free)
+	for v in t.get("targets",[]):
+		var victim=minis.get(int(v),{})
+		if victim.is_empty():continue
+		var orb=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.07;sm.height=.14;orb.mesh=sm
+		var om=StandardMaterial3D.new();om.albedo_color=color;om.emission_enabled=true;om.emission=color;om.emission_energy_multiplier=4.0;om.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;orb.material_override=om
+		viewport.add_child(orb);var from=caster.global_position+Vector3(0,.8,0);var to=victim.root.global_position+Vector3(0,.65,0);orb.global_position=from
+		var tw=create_tween();tw.tween_property(orb,"global_position",to,clampf(from.distance_to(to)/9.0,.12,.5))
+		tw.tween_callback(func():
+			var hit=_glow(color,30,.18);viewport.add_child(hit);hit.global_position=to;hit.emitting=true
+			get_tree().create_timer(1.5).timeout.connect(hit.queue_free);orb.queue_free())
+var effect_nodes: Array=[]
+func _show_effects(list) -> void:
+	for n in effect_nodes:
+		if is_instance_valid(n):n.queue_free()
+	effect_nodes=[]
+	if list==null:return
+	for e in list:
+		var k=str(e.get("cell",""))
+		if not game.cells.has(k):continue
+		var kind=str(e.get("kind",""));var root=Node3D.new();viewport.add_child(root);root.position=cell_pos(k);effect_nodes.append(root)
+		var tex=load("res://assets/tokens/effect_"+("fire" if kind=="livingfire" else kind)+".webp") if ResourceLoader.exists("res://assets/tokens/effect_"+("fire" if kind=="livingfire" else kind)+".webp") else null
+		if tex:
+			var q=MeshInstance3D.new();var pm=PlaneMesh.new();pm.size=Vector2(1.0,1.0);q.mesh=pm;q.position.y=.075
+			var mm=StandardMaterial3D.new();mm.albedo_texture=tex;mm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;q.material_override=mm;root.add_child(q)
+		var col={"wall":Color(1,.4,.1),"livingfire":Color(1,.55,.1),"vortex":Color(.5,.8,1),"abyss":Color(.35,.1,.5)}.get(kind,Color(1,1,1))
+		var f=CPUParticles3D.new();f.amount=36;f.lifetime=1.1;f.emission_shape=CPUParticles3D.EMISSION_SHAPE_BOX;f.emission_box_extents=Vector3(.35,.02,.35)
+		f.direction=Vector3.UP;f.spread=12;f.initial_velocity_min=.4;f.initial_velocity_max=1.1 if kind!="abyss" else .3
+		f.gravity=Vector3(0,.3,0) if kind!="abyss" else Vector3(0,-1.2,0);f.scale_amount_min=.6;f.scale_amount_max=1.6
+		if kind=="vortex":f.tangential_accel_min=2.0;f.tangential_accel_max=3.0
+		var sm=SphereMesh.new();sm.radius=.03;sm.height=.06;sm.radial_segments=6;sm.rings=3;f.mesh=sm
+		var fm=StandardMaterial3D.new();fm.albedo_color=col;fm.emission_enabled=true;fm.emission=col;fm.emission_energy_multiplier=2.5;fm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;f.material_override=fm
+		f.position.y=.1;root.add_child(f);f.emitting=true
+# --- Suoni (opzione): armi, passi, urla, magie -----------------------------------
+# I file sono in assets/audio (sintetizzati da tools/audio/synth.py): nome_1, nome_2, ...
+var sound=true
+var _sfx_cache={}
+const FEMALE=["kylvia","sanguinaria","shaara","shannon"]
+func _variants(name: String) -> Array:
+	if not _sfx_cache.has(name):
+		var list=[]
+		for k in range(1,6):
+			for ext in [".ogg",".wav"]:
+				var path="res://assets/audio/%s_%d%s"%[name,k,ext]
+				if ResourceLoader.exists(path):list.append(load(path));break
+		_sfx_cache[name]=list
+	return _sfx_cache[name]
+func _sfx(name: String,at: Vector3,delay:=0.0,db:=0.0,pitch:=1.0) -> void:
+	if not sound:return
+	var list=_variants(name)
+	if list.is_empty():return
+	if delay>0:await get_tree().create_timer(delay).timeout
+	var p=AudioStreamPlayer3D.new();p.stream=list[randi()%list.size()];p.volume_db=db;p.unit_size=6.0
+	p.pitch_scale=pitch*randf_range(.94,1.06);viewport.add_child(p);p.global_position=at;p.play()
+	p.finished.connect(p.queue_free)
+func _voice(i: int) -> String:
+	var c=str(game.state.fighters[i].character)
+	if c=="thorn" or c=="golem":return "monster"
+	if c=="ziggy":return "spirit"
+	return "f" if c in FEMALE else "m"
+func _sound_track(t: Dictionary,info: Dictionary,length: float,mode: String) -> void:
+	if not sound or not minis.has(t.i):return
+	var pos: Vector3=info.root.global_position+Vector3(0,.6,0);var v=_voice(t.i);var mv=str(t.get("move",""))
+	if t.get("strike",false) and mv!="shoot":
+		if v!="spirit":_sfx("grunt_"+("monster" if v=="monster" else v),pos,.05,-4.0)
+		_sfx("swing",pos,length*.3,-3.0)
+	if mv in ["parry_l","parry_r"]:_sfx("clash",pos,length*.35,-2.0)
+	if mv=="load":_sfx("bow_draw",pos,.1,-6.0)
+	if mv=="shoot":_sfx("bow_release",pos,length*.55,-2.0)
+	if SPELL_FX.has(mv):
+		_sfx("cast",pos,.1,-4.0)
+		var kind={"firestaff":"fire","fireball":"fire","wall":"fire","livingfire":"fire","lightning":"lightning","shock":"lightning",
+			"heal":"heal","shield":"heal","vortex":"wind","teleport":"wind","dematerialize":"wind","float":"wind"}.get(mv,"dark")
+		_sfx("spell_"+kind,pos,length*.45,-3.0)
+	var hit=int(t.get("hit",0))
+	if hit>0:
+		_sfx("hit",pos,t.get("delay",0.0)*0.0,-1.0)
+		var dying=bool(t.get("dead",false))
+		_sfx(("death_" if dying else "pain_")+v,pos,.08,-1.0 if dying else -3.0,1.0)
+	if mv=="down" and t.get("stay",false):_sfx("fall",pos,.35,-2.0)
+	if mode=="passi" or (mode=="lineare" and v!="spirit"):   # passi sulla sabbia lungo il tragitto
+		var fast=t.clip in ["Correre","Carica"];var gap=.27 if fast else .42
+		var n=mini(int(length/gap),24)
+		for k in n:_sfx("step",info.root.global_position,k*gap+.05,-14.0 if not fast else -11.0)
 # --- Sangue (opzione) -------------------------------------------------------------
 # Uno sbuffo proporzionato alle ferite; poi le gocce cadono nell'esagono e restano lì.
 var blood=false
@@ -653,7 +820,7 @@ func _float(at: Vector3,text: String) -> void:
 func replay() -> void:
 	# Riproduce tutto lo scontro dall'inizio, un passo dopo l'altro senza pause fra i turni.
 	if replaying or history.is_empty():return
-	replaying=true
+	replaying=true;Engine.time_scale=REPLAY_PACE   # il replay va un po' più piano della partita
 	while playing:await get_tree().create_timer(.1).timeout   # aspetto che finisca la mossa in corso
 	playing=true
 	var final={}
@@ -663,7 +830,7 @@ func replay() -> void:
 		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true
 		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
 		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true,0);_set_rim(i,initial[i].current,int(initial[i].facing))
-	clear_blood();clear_arrows()
+	clear_blood();clear_arrows();_show_effects([])
 	await get_tree().create_timer(.6).timeout
 	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
 	# (ognuno alla sua velocità), poi attacchi e difese; il turno dopo parte subito.
@@ -672,12 +839,12 @@ func replay() -> void:
 		var tn=-1
 		for t in step:
 			if t.has("labels"):tn=int(t.get("turn",-1))
-		if tn!=cur_turn and not cur.is_empty():turns.append(cur);cur=[]
+		if (tn!=cur_turn or tn<0) and not cur.is_empty():turns.append(cur);cur=[]   # senza turno registrato: un passo alla volta
 		cur_turn=tn;cur.append(step)
 	if not cur.is_empty():turns.append(cur)
 	for group in turns:
 		await _play_turn(group)
-	replaying=false;playing=false;_refresh_tokens()
+	replaying=false;playing=false;Engine.time_scale=1.0;_refresh_tokens()
 
 func _play_turn(group: Array) -> void:
 	var moves={};var acts=[];var labels={}
@@ -697,6 +864,9 @@ func _play_turn(group: Array) -> void:
 	longest=0.0
 	for t in acts:longest=maxf(longest,t.delay+_run_track(t,minis[t.i],true))
 	if longest>0:await get_tree().create_timer(longest).timeout
+	for step in group:
+		for t in step:
+			if t.has("effects"):_show_effects(t.effects)
 	for i in labels:
 		if minis.has(i):_set_status(i,labels[i][0],labels[i][1],labels[i][2],labels[i][3] if labels[i].size()>3 else -1)
 	for t in moves.values()+acts:

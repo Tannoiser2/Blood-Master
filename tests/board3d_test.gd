@@ -24,8 +24,9 @@ func run():
 	print("CLIP USATE ",clips)
 	for i in b.minis:print(main.game.state.fighters[i].name," modello 3D: ",b.minis[i].model!=null," cella ",main.game.state.fighters[i].cell)
 	assert(b.history.size()>3,"Troppo pochi passi animati")
-	assert(b.minis.size()==main.roster.size(),"Miniature mancanti")
-	for i in b.minis:assert(b.minis[i].model!=null,"Modello 3D mancante")
+	assert(b.minis.size()>=main.roster.size(),"Miniature mancanti")   # più i golem evocati
+	for i in b.minis:
+		if b.MODELS.has(main.game.state.fighters[i].character):assert(b.minis[i].model!=null,"Modello 3D mancante")
 	b.replay()
 	await create_timer(3.0).timeout
 	assert(b.replaying,"Il replay non è partito")
