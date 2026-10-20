@@ -30,6 +30,7 @@ var auction_amount=1
 var speed=.65
 var busy=false
 var auto_draw=true
+var board_grid=false
 var showing_game=false
 var manual_window: Window
 var manual_page=2
@@ -303,47 +304,91 @@ func _start_local() -> void:
 		game.start_campaign(roster,int(Time.get_unix_time_from_system()))
 	else:game.new_game(roster,scenario,int(Time.get_unix_time_from_system()))
 	_build_game();_refresh();_drive()
+# --- Schermata di gioco ---------------------------------------------------------
+# Mappa a tutto schermo; sopra una barra con tutti i comandi; diario a destra e scelte in
+# sovraimpressione: il nido d'ape delle tessere in basso a sinistra (sparisce dopo la
+# scelta) e i tasti dell'azione corrente in basso al centro, solo quando servono.
+var stage: Control
+var picker: Control
+var action_panel: PanelContainer
+var journal_panel: PanelContainer
+var hint_label: Label
+func _bar_button(text: String,cb: Callable,tip:="") -> Button:
+	var b=button(text,cb);b.add_theme_font_size_override("font_size",14);b.tooltip_text=tip
+	for st in ["normal","hover","pressed","focus"]:
+		var sb=b.get_theme_stylebox(st).duplicate() if b.has_theme_stylebox(st) else box(Color("233234"),8)
+		if sb is StyleBoxFlat:sb.content_margin_left=10;sb.content_margin_right=10;sb.content_margin_top=6;sb.content_margin_bottom=6
+		b.add_theme_stylebox_override(st,sb)
+	return b
+func _bar_check(text: String,on: bool,cb: Callable) -> CheckButton:
+	var c=CheckButton.new();c.text=text;c.button_pressed=on;c.toggled.connect(cb);c.add_theme_font_size_override("font_size",14);return c
+func _overlay_panel(alpha:=.86) -> PanelContainer:
+	var p=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,alpha),12);sb.content_margin_left=14;sb.content_margin_right=14;sb.content_margin_top=10;sb.content_margin_bottom=10
+	p.add_theme_stylebox_override("panel",sb);return p
 func _build_game() -> void:
-	showing_game=true;clear(page);_header("DELUXE · MOSSE SEGRETE, COMBATTIMENTO TATTICO")
-	var body=HBoxContainer.new();body.size_flags_vertical=Control.SIZE_EXPAND_FILL;page.add_child(body)
-	var left=VBoxContainer.new();left.custom_minimum_size.x=210;body.add_child(left)
-	left.add_child(label("NELL’ARENA",13,GOLD))
-	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;left.add_child(scroll)
-	roster_box=VBoxContainer.new();roster_box.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(roster_box)
-	var middle=VBoxContainer.new();middle.size_flags_horizontal=Control.SIZE_EXPAND_FILL;body.add_child(middle)
-	board=ArenaBoard.new();board.game=game;board.size_flags_vertical=Control.SIZE_EXPAND_FILL;board.cell_clicked.connect(_cell_clicked);middle.add_child(board)
-	board3d=ArenaBoard3D.new();board3d.game=game;board3d.size_flags_vertical=Control.SIZE_EXPAND_FILL;board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;middle.add_child(board3d)
+	showing_game=true;clear(page)
+	var bar=_overlay_panel(1.0);page.add_child(bar)
+	var row=HBoxContainer.new();row.add_theme_constant_override("separation",6);bar.add_child(row)
+	row.add_child(label("BLOOD MASTER",20,GOLD))
+	turn_label=label("",15,GOLD);row.add_child(turn_label)
+	status=label("",13,MUTED);status.size_flags_horizontal=Control.SIZE_EXPAND_FILL;status.clip_text=true;status.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;row.add_child(status)
+	row.add_child(_bar_button("Inquadra",func():board.fit();board3d.fit(),"Riporta la vista al centro dello scontro"))
+	row.add_child(_bar_button("⟲",func():board.rotate_view(-PI/3);board3d.rotate_view(PI/3),"Ruota la mappa"))
+	row.add_child(_bar_button("⟳",func():board.rotate_view(PI/3);board3d.rotate_view(-PI/3),"Ruota la mappa"))
+	row.add_child(_bar_button("−",func():board.zoom=maxf(.8,board.zoom-.15);board.queue_redraw();board3d.zoom=maxf(.6,board3d.zoom/1.15);board3d.fit_zoom(),"Allontana"))
+	row.add_child(_bar_button("+",func():board.zoom=minf(3.5,board.zoom+.15);board.queue_redraw();board3d.zoom=minf(3.0,board3d.zoom*1.15);board3d.fit_zoom(),"Avvicina"))
+	row.add_child(_bar_check("Miniature 3D",minis_3d,func(v):minis_3d=v;board.visible=not v;board3d.visible=v;_refresh()))
+	row.add_child(_bar_check("Griglia",board_grid,func(v):board_grid=v;board.show_grid=v;board.queue_redraw();_refresh()))
+	row.add_child(_bar_check("Estrazione automatica",auto_draw,func(v):auto_draw=v;_drive()))
+	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
+	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
+	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
+	board=ArenaBoard.new();board.game=game;board.show_grid=board_grid;board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board.cell_clicked.connect(_cell_clicked);stage.add_child(board)
+	board3d=ArenaBoard3D.new();board3d.game=game;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
 	board.visible=not minis_3d
-	var toolbar=HBoxContainer.new();middle.add_child(toolbar)
-	toolbar.add_child(button("Inquadra",func():board.fit();board3d.fit()))
-	var minis=CheckButton.new();minis.text="Miniature 3D";minis.button_pressed=minis_3d;minis.toggled.connect(func(v):minis_3d=v;board.visible=not v;board3d.visible=v;_refresh());toolbar.add_child(minis)
-	var grid=CheckButton.new();grid.text="Griglia";grid.toggled.connect(func(v):board.show_grid=v;board.queue_redraw());toolbar.add_child(grid)
-	var auto=CheckButton.new();auto.text="Estrazione automatica";auto.button_pressed=auto_draw;auto.toggled.connect(func(v):auto_draw=v;_drive());toolbar.add_child(auto)
-	toolbar.add_child(spacer());toolbar.add_child(button("−",func():board.zoom=maxf(.8,board.zoom-.15);board.queue_redraw();board3d.zoom=maxf(.6,board3d.zoom/1.15);board3d.fit_zoom()));toolbar.add_child(button("+",func():board.zoom=minf(3.5,board.zoom+.15);board.queue_redraw();board3d.zoom=minf(3.0,board3d.zoom*1.15);board3d.fit_zoom()))
-	var right_scroll=ScrollContainer.new();right_scroll.custom_minimum_size.x=355;body.add_child(right_scroll)
-	sidebar=VBoxContainer.new();sidebar.custom_minimum_size.x=335;sidebar.size_flags_horizontal=Control.SIZE_EXPAND_FILL;right_scroll.add_child(sidebar)
-	var journal=PanelContainer.new();journal.custom_minimum_size.y=100;page.add_child(journal)
-	log_box=RichTextLabel.new();log_box.bbcode_enabled=true;log_box.scroll_following=true;log_box.custom_minimum_size=Vector2(0,100);log_box.add_theme_font_size_override("normal_font_size",14);journal.add_child(log_box)
-	status=label("",14,MUTED);page.add_child(status)
+	# sovraimpressioni: colonna sinistra (nido d'ape), centro (azioni), destra (diario).
+	# Contenitori trasparenti al mouse, così la mappa resta trascinabile ovunque.
+	var over=MarginContainer.new();over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);over.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	for side in ["left","right","top","bottom"]:over.add_theme_constant_override("margin_"+side,12)
+	stage.add_child(over)
+	var cols=HBoxContainer.new();cols.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_theme_constant_override("separation",12);over.add_child(cols)
+	var left=VBoxContainer.new();left.mouse_filter=Control.MOUSE_FILTER_IGNORE;left.alignment=BoxContainer.ALIGNMENT_END;cols.add_child(left)
+	picker=_overlay_panel(.88);left.add_child(picker)
+	var mid=VBoxContainer.new();mid.mouse_filter=Control.MOUSE_FILTER_IGNORE;mid.alignment=BoxContainer.ALIGNMENT_END;mid.size_flags_horizontal=Control.SIZE_EXPAND_FILL;cols.add_child(mid)
+	var midrow=HBoxContainer.new();midrow.mouse_filter=Control.MOUSE_FILTER_IGNORE;midrow.alignment=BoxContainer.ALIGNMENT_CENTER;mid.add_child(midrow)
+	action_panel=_overlay_panel(.9);midrow.add_child(action_panel)
+	sidebar=VBoxContainer.new();sidebar.add_theme_constant_override("separation",8);action_panel.add_child(sidebar)
+	hint_label=label("Trascina: sposta · tasto destro o ⟲ ⟳: ruota · rotellina: zoom · clic su un personaggio: scheda",12,MUTED)
+	hint_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;hint_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	var right=VBoxContainer.new();right.mouse_filter=Control.MOUSE_FILTER_IGNORE;right.custom_minimum_size.x=320;cols.add_child(right)
+	journal_panel=_overlay_panel(.72);right.add_child(journal_panel)
+	var jv=VBoxContainer.new();journal_panel.add_child(jv)
+	var jh=HBoxContainer.new();jv.add_child(jh);jh.add_child(label("DIARIO",13,GOLD));jh.add_child(spacer())
+	log_box=RichTextLabel.new();log_box.bbcode_enabled=true;log_box.scroll_following=true;log_box.custom_minimum_size=Vector2(290,240);log_box.add_theme_font_size_override("normal_font_size",14);jv.add_child(log_box)
+	jh.add_child(_bar_button("−",func():log_box.visible=not log_box.visible,"Riduci o apri il diario"))
+	var fill=Control.new();fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
+	right.add_child(hint_label)
+func _layout_overlays() -> void:
+	# i pulsanti consecutivi stanno sulla stessa riga; il pannello sparisce se è vuoto
+	var kids=sidebar.get_children();var row: HBoxContainer=null
+	for c in kids:
+		if c is Button and not c is CheckButton:
+			if row==null:
+				row=HBoxContainer.new();row.alignment=BoxContainer.ALIGNMENT_CENTER;row.add_theme_constant_override("separation",8)
+				sidebar.add_child(row);sidebar.move_child(row,c.get_index())
+			sidebar.remove_child(c);row.add_child(c)
+		elif c is Label and c.autowrap_mode!=TextServer.AUTOWRAP_OFF:
+			c.custom_minimum_size.x=520;row=null
+		else:row=null
+	action_panel.visible=sidebar.get_child_count()>0
+	picker.visible=picker.get_child_count()>0
 func _refresh() -> void:
 	if not showing_game:return
-	clear(roster_box);clear(sidebar)
+	clear(sidebar);clear(picker)
 	turn_label.text=("STANZA "+room_code+" · " if room_code!="" else "")+"TURNO %d" % game.state.turn
-	for i in game.state.fighters.size():
-		var p=game.state.fighters[i];var d=game.definition(p)
-		var b=button(p.name+ ("  †" if not p.alive else ""),func():_inspect(i))
-		b.alignment=HORIZONTAL_ALIGNMENT_LEFT;b.add_theme_font_size_override("font_size",16)
-		b.add_theme_color_override("font_color",Color("79cfbf") if p.team==0 else Color("ed9992"));roster_box.add_child(b)
-		var info=label("%d / %d vita  ·  %d fatica%s" % [p.hp,p.max_hp,p.fatigue+p.permanent,"  ·  %d magia"%p.magic if d.mage else ""],12,MUTED);roster_box.add_child(info)
-		var hp=ProgressBar.new();hp.max_value=maxi(1,int(p.max_hp));hp.value=p.hp;hp.show_percentage=false;hp.custom_minimum_size.y=5;roster_box.add_child(hp)
-		var phase=game.move(p).get("name","")
-		if game.state.phase=="planning" and (game.state.plans.has(str(i)) or str(i) in remote_ready):phase="Mossa scelta · segreta"
-		if p.pieces:phase="In pezzi"
-		if p.frog:phase="Trasformato in ranocchio"
-		roster_box.add_child(label(phase+ (" · ha agito" if p.done else ""),12,MUTED))
-	log_box.text="\n".join(game.state.log.slice(maxi(0,game.state.log.size()-20)))
+	log_box.text="\n".join(game.state.log.slice(maxi(0,game.state.log.size()-40)))
 	board.highlights=[];board.preview_facing=-1;board.focus_fighter=-1;board.selected=selected_cell
-	status.text="Rotellina: zoom · Trascina con il tasto destro: sposta l’arena · Tocca un nome per vedere la scheda."
+	status.text=""
 	match game.state.phase:
 		"handicap":_handicap_panel()
 		"auction":_auction_panel()
@@ -357,7 +402,8 @@ func _refresh() -> void:
 		"draw":_draw_panel()
 		"upkeep":_upkeep_panel()
 		"finished":_finish_panel()
-		"net_reveal":sidebar.add_child(label("Tutti hanno scelto.\nApertura delle mosse…",21,GOLD))
+		"net_reveal":sidebar.add_child(label("Tutti hanno scelto. Apertura delle mosse…",19,GOLD))
+	_layout_overlays()
 	board.queue_redraw()
 	if board3d:board3d.copy_from(board)
 func _human(i: int) -> bool:
@@ -367,8 +413,8 @@ func _human(i: int) -> bool:
 	return p.controller=="human" and (room_code=="" or int(p.seat)==net_seat)
 func _heading(i: int,text: String) -> void:
 	var p=game.state.fighters[i]
-	sidebar.add_child(label(text.to_upper(),13,GOLD))
-	sidebar.add_child(label(p.name,27))
+	var h=HBoxContainer.new();h.alignment=BoxContainer.ALIGNMENT_CENTER;sidebar.add_child(h)
+	h.add_child(label(text.to_upper()+" ·",13,GOLD));h.add_child(label(p.name,21,Color("79cfbf") if int(p.team)==0 else Color("ed9992")))
 	board.focus_fighter=i
 func _deployment_panel() -> void:
 	var i=int(game.state.active);var p=game.state.fighters[i];_heading(i,"Schieramento")
@@ -383,27 +429,44 @@ func _planning_panel() -> void:
 	for j in game.needs_plan():
 		if _human(j) and not str(j) in remote_ready:i=j;break
 	if i==-1:
-		sidebar.add_child(label("MOSSE SEGRETE",13,GOLD));_wrap("La tua scelta è al sicuro. Aspettiamo gli altri personaggi.")
+		sidebar.add_child(label("MOSSE SEGRETE · la tua scelta è al sicuro, aspettiamo gli altri personaggi.",14,GOLD))
 		return
-	focus_index=i;_heading(i,"Scegli in segreto")
-	_wrap("Scegli solo la mossa: deciderai spostamento e bersaglio quando verrà estratta.")
-	var grid=GridContainer.new();grid.columns=3;grid.add_theme_constant_override("h_separation",6);grid.add_theme_constant_override("v_separation",8);sidebar.add_child(grid)
-	for id in game.legal_moves(i):
-		var m=game.move(game.state.fighters[i],id)
-		var col=VBoxContainer.new();grid.add_child(col)
-		var b=TextureButton.new();b.texture_normal=load(m.texture);b.ignore_texture_size=true;b.stretch_mode=TextureButton.STRETCH_KEEP_ASPECT_CENTERED;b.custom_minimum_size=Vector2(101,87);b.tooltip_text=_move_tip(m);b.pressed.connect(func():selected_move=id;_refresh());col.add_child(b)
-		var text=label(m.name,12,GOLD if selected_move==id else INK);text.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;text.custom_minimum_size.x=101;text.clip_text=true;col.add_child(text)
-	if selected_move!="" and selected_move in game.legal_moves(i):
-		var m=game.move(game.state.fighters[i],selected_move);_wrap(_move_tip(m))
-		var move_id=selected_move
-		sidebar.add_child(button("Conferma "+m.name,func():_submit({"type":"plan","fighter":i,"move":move_id}),true))
+	focus_index=i;board.focus_fighter=i
+	var p=game.state.fighters[i]
+	var v=VBoxContainer.new();v.add_theme_constant_override("separation",6);picker.add_child(v)
+	var h=HBoxContainer.new();v.add_child(h)
+	h.add_child(label("SCEGLI IN SEGRETO ·",13,GOLD));h.add_child(label(p.name,21,Color("79cfbf") if int(p.team)==0 else Color("ed9992")))
+	var info=label("Tocca una tessera per sceglierla. Spostamento e bersaglio li decidi quando verrà estratta.",13,MUTED)
+	info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;info.custom_minimum_size=Vector2(380,40)
+	v.add_child(_move_honeycomb(game.legal_moves(i),p,info,func(id):_submit({"type":"plan","fighter":i,"move":id})));v.add_child(info)
+func _move_honeycomb(ids: Array,p: Dictionary,info: Label,on_pick: Callable) -> Control:
+	# tessere esagonali coi lati piatti in alto e in basso, a colonne sfalsate
+	var w=92.0;var h=w*.8625;var cols=5;var gap=3.0
+	var rows=ceili(float(ids.size())/cols)
+	var c=Control.new();c.custom_minimum_size=Vector2(w+(cols-1)*(w*.75+gap),rows*(h+gap)+h*.5)
+	var k=0
+	for id in ids:
+		var m=game.move(p,id);var col=k%cols;var row=k/cols
+		var t=TextureButton.new();t.texture_normal=load(m.texture);t.ignore_texture_size=true;t.stretch_mode=TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		t.custom_minimum_size=Vector2(w,h);t.size=Vector2(w,h);t.position=Vector2(col*(w*.75+gap),row*(h+gap)+((h+gap)*.5 if col%2==1 else 0.0))
+		t.tooltip_text=_move_tip(m);t.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+		var tip=_move_tip(m).replace("\n"," · ")
+		t.mouse_entered.connect(func():info.text=tip)
+		t.pressed.connect(func():on_pick.call(id))
+		c.add_child(t);k+=1
+	return c
 func _action_panel() -> void:
-	var i=int(game.state.active);var p=game.state.fighters[i];var m=game.move(p);_heading(i,"Pedina estratta")
-	sidebar.add_child(label(m.name,23,GOLD));_tile(m.texture,180)
-	_wrap(_move_tip(m))
-	board.highlights=game.targets(i);board.preview_facing=selected_facing
-	if not _human(i):_wrap("Il personaggio sta decidendo la sua azione…");return
-	_wrap("Tocca una casella evidenziata nell’arena. Scegli l’orientamento finale e conferma.")
+	var i=int(game.state.active);var p=game.state.fighters[i];var m=game.move(p)
+	# una riga compatta: tessera estratta, chi la gioca, valori e cosa fare
+	var row=HBoxContainer.new();row.add_theme_constant_override("separation",12);sidebar.add_child(row)
+	var t=TextureRect.new();t.texture=load(m.texture);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;t.custom_minimum_size=Vector2(86,74);row.add_child(t)
+	var col=VBoxContainer.new();col.add_theme_constant_override("separation",2);row.add_child(col)
+	var h=HBoxContainer.new();col.add_child(h)
+	h.add_child(label(p.name,20,Color("79cfbf") if int(p.team)==0 else Color("ed9992")));h.add_child(label("· "+m.name,20,GOLD))
+	col.add_child(label(_move_tip(m).split("\n",true,1)[1] if "\n" in _move_tip(m) else "",13,MUTED))
+	board.highlights=game.targets(i);board.preview_facing=selected_facing;board.focus_fighter=i
+	if not _human(i):col.add_child(label("Il personaggio sta decidendo la sua azione…",13,MUTED));return
+	col.add_child(label("Tocca una casella evidenziata, scegli l’orientamento e conferma.",13,MUTED))
 	if selected_cell!="":sidebar.add_child(label("Destinazione / bersaglio: "+selected_cell,15,GOLD))
 	_facing_controls()
 	if m.get("spell",false) and m.id in ["fireball","lightning","control","abyss"]:

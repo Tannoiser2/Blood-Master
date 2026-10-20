@@ -125,17 +125,20 @@ func _mini(i: int) -> Dictionary:
 	var p=game.state.fighters[i];var d=game.definition(p)
 	var root=Node3D.new();viewport.add_child(root)
 	var team=TEAL if int(p.team)==0 else RED
-	# basetta esagonale (allineata alle celle) con il bordo luminoso del colore della pedina
-	var rim=MeshInstance3D.new();var rc=CylinderMesh.new();rc.top_radius=.385;rc.bottom_radius=.385;rc.height=.045;rc.radial_segments=6;rc.rings=1;rim.mesh=rc;rim.position.y=.0225
-	var rm=StandardMaterial3D.new();rm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;rim.material_override=rm;root.add_child(rim)  # colore pieno, non saturato dalle luci
-	var top=MeshInstance3D.new();var tc=CylinderMesh.new();tc.top_radius=.335;tc.bottom_radius=.335;tc.height=.05;tc.radial_segments=6;tc.rings=1;top.mesh=tc;top.position.y=.026
-	var tm=StandardMaterial3D.new();tm.albedo_color=Color("1d2628");tm.roughness=.75;top.material_override=tm;root.add_child(top)
-	var notch=MeshInstance3D.new();var bx=BoxMesh.new();bx.size=Vector3(.09,.02,.07);notch.mesh=bx;notch.position=Vector3(0,.055,.29)
-	var nm=StandardMaterial3D.new();nm.albedo_color=team;nm.emission_enabled=true;nm.emission=team*.5;notch.material_override=nm;root.add_child(notch)
-	var info={"root":root,"model":null,"ap":null,"token":null,"rim":rm}
+	# basetta: esagono grande quanto la cella e allineato alla griglia; non ruota col facing.
+	# Sui lati compaiono solo i colori della pedina giocata (rosso, verde, blu), negli stessi
+	# lati in cui li ha la pedina rispetto al suo orientamento.
+	var plate=MeshInstance3D.new();plate.mesh=_hex_plate(.04);root.add_child(plate)
+	var pm=StandardMaterial3D.new();pm.albedo_color=Color("1d2628");pm.roughness=.8;plate.material_override=pm
+	var sides=Node3D.new();root.add_child(sides)
+	var pivot=Node3D.new();root.add_child(pivot)     # ruota col facing: figura e segno del fronte
+	var notch=MeshInstance3D.new();var pr=PrismMesh.new();pr.size=Vector3(.16,.12,.02);notch.mesh=pr
+	notch.rotation=Vector3(PI/2,0,0);notch.position=Vector3(0,.052,.4)   # punta verso +Z, il fronte dei modelli
+	var nm=StandardMaterial3D.new();nm.albedo_color=team;nm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;notch.material_override=nm;pivot.add_child(notch)
+	var info={"root":root,"pivot":pivot,"sides":sides,"model":null,"ap":null,"token":null}
 	var path=MODELS.get(p.character,"")
 	if path!="":
-		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;root.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
+		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;pivot.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
 		info.ap=_find_animation(model)
 		if info.ap:_extract_root_motion(info)
 		for n in ["In guardia","Riposo","Avanzare","Correre","Carica"]:
@@ -143,7 +146,7 @@ func _mini(i: int) -> Dictionary:
 		if info.ap:info.ap.play("In guardia")
 	else:
 		# personaggio senza modello 3D: pedina in piedi con il disegno della mossa corrente
-		var s=Sprite3D.new();s.pixel_size=.0019;s.position.y=.47;s.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y;s.shaded=false;root.add_child(s);info.token=s
+		var s=Sprite3D.new();s.pixel_size=.0019;s.position.y=.47;s.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y;s.shaded=false;pivot.add_child(s);info.token=s
 	# barra di stato sopra la testa: nome e ferite (sempre rivolta alla camera)
 	var bar=Node3D.new();bar.position.y=1.32+.16*(i%2);root.add_child(bar);info.bar=bar
 	var label=Label3D.new();label.text=p.name;label.font_size=26;label.outline_size=8;label.modulate=team;label.position.y=.085;label.no_depth_test=true;label.render_priority=3;bar.add_child(label);info.label=label
@@ -164,9 +167,49 @@ func token_color(m: Dictionary) -> Color:
 	if not m.get("blue",[]).is_empty():return Color("3d8bff")   # difesa: blu
 	if not m.get("green",[]).is_empty():return Color("3ddc6a")  # movimento: verde
 	return Color("8f9a9e")
-func _set_rim(i: int,move_id: String) -> void:
+const SIDE_COLORS=[["red",Color("ff4a3d")],["green",Color("3ddc6a")],["blue",Color("3d8bff")]]
+var _dir3=[]               # direzione 3D verso la cella vicina in ciascuna delle 6 direzioni delle regole
+func _directions() -> Array:
+	if _dir3.is_empty():
+		for k in game.cells:   # una cella con tutti e sei i vicini
+			var ok=true
+			for d in 6:ok=ok and game.cells.has(BloodRules.neighbor(k,d))
+			if ok:
+				for d in 6:_dir3.append((cell_pos(BloodRules.neighbor(k,d))-cell_pos(k)).normalized())
+				break
+	return _dir3
+func _edge(d: int) -> int:
+	# indice del lato dell'esagono (fra i vertici s e s+1) rivolto verso la direzione d
+	var best=-1.0;var e=0
+	for s in 6:
+		var mid=(_corner(s)+_corner(s+1)).normalized().dot(_directions()[d])
+		if mid>best:best=mid;e=s
+	return e
+func _hex_plate(h: float) -> ArrayMesh:
+	var st=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for s in 6:
+		var a=_corner(s);var b=_corner(s+1)
+		st.set_normal(Vector3.UP);st.add_vertex(Vector3(0,h,0));st.add_vertex(a+Vector3(0,h,0));st.add_vertex(b+Vector3(0,h,0))
+		var n=((a+b)*.5).normalized()
+		st.set_normal(n);st.add_vertex(a);st.add_vertex(b);st.add_vertex(b+Vector3(0,h,0))
+		st.set_normal(n);st.add_vertex(a);st.add_vertex(b+Vector3(0,h,0));st.add_vertex(a+Vector3(0,h,0))
+	return st.commit()
+func _set_rim(i: int,move_id: String,facing:=-1) -> void:
 	var p=game.state.fighters[i];var m=game.definition(p).moves.get(move_id,{})
-	minis[i].rim.albedo_color=token_color(m)
+	if facing<0:facing=int(p.facing)
+	var sides: Node3D=minis[i].sides
+	for c in sides.get_children():c.queue_free()
+	if _directions().size()<6:return
+	var used={}
+	for sc in SIDE_COLORS:
+		for rel in m.get(sc[0],[]):
+			var d=posmod(facing+int(rel),6);var e=_edge(d);var layer=used.get(e,0);used[e]=layer+1
+			var a=_corner(e);var b=_corner(e+1);var inset=1.0-.075*layer
+			var bar=MeshInstance3D.new();var bx=BoxMesh.new();bx.size=Vector3((b-a).length()*.9*inset,.05,.06);bar.mesh=bx
+			var mid=(a+b)*.5*inset-((a+b)*.5).normalized()*.035
+			bar.position=mid+Vector3(0,.035,0);bar.rotation.y=atan2(-(b-a).z,(b-a).x)
+			var mat=StandardMaterial3D.new();mat.albedo_color=sc[1];mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;bar.material_override=mat
+			sides.add_child(bar)
 # --- Movimento senza pattinamento ------------------------------------------------
 # Le clip Meshy spostano il bacino (affondo, calcio, carica, capriola fino a 2,7 m):
 # la figura usciva dalla basetta e poi rientrava di scatto. Al caricamento tolgo lo
@@ -244,7 +287,7 @@ func sync() -> void:
 		if p.cell=="" or not game.cells.has(p.cell):prev[i]=now;continue
 		var info=_mini(i)
 		if not prev.has(i) or prev[i].cell=="":
-			info.root.position=cell_pos(p.cell);info.root.rotation.y=facing_yaw(int(p.facing));_token(i)
+			info.root.position=cell_pos(p.cell);info.pivot.rotation.y=facing_yaw(int(p.facing));_token(i)
 			initial[i]=now;prev[i]=now;continue
 		var was=prev[i]
 		if now.done and not was.done and now.alive:actors.append(i)
@@ -254,20 +297,20 @@ func sync() -> void:
 	for i in actors:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
-		var track={"i":i,"clip":CLIP.get(id,"In guardia"),"from":cell_pos(was.cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		var track={"i":i,"clip":CLIP.get(id,"In guardia"),"from":cell_pos(was.cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
 		step.append(track)
 		# il difensore di fronte mostra la sua pedina difensiva mentre arriva il colpo
 		if track.strike:
 			var front=game.at(BloodRules.neighbor(p.cell,int(p.facing)),i)
 			if front!=-1 and not front in victims and game.state.fighters[front].current in DEFENSIVE and minis.has(front):
-				step.append({"i":front,"clip":CLIP[game.state.fighters[front].current],"from":cell_pos(game.state.fighters[front].cell),"to":cell_pos(game.state.fighters[front].cell),"yaw":facing_yaw(int(game.state.fighters[front].facing)),"delay":.1,"move":game.state.fighters[front].current,"strike":false})
+				step.append({"i":front,"clip":CLIP[game.state.fighters[front].current],"from":cell_pos(game.state.fighters[front].cell),"to":cell_pos(game.state.fighters[front].cell),"yaw":facing_yaw(int(game.state.fighters[front].facing)),"facing":int(game.state.fighters[front].facing),"delay":.1,"move":game.state.fighters[front].current,"strike":false})
 	var strike_delay=0.0
 	for t in step:
 		if t.get("strike",false) and minis[t.i].ap:strike_delay=maxf(strike_delay,minis[t.i].ap.get_animation(t.clip).length*.45)
 	for i in victims:
 		var p=game.state.fighters[i]
 		var clip="A terra" if (p.down or not p.alive) else "Sbilanciato"
-		step.append({"i":i,"clip":clip,"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"delay":strike_delay,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive})
+		step.append({"i":i,"clip":clip,"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive})
 	for i in game.state.fighters.size():
 		if game.state.fighters[i].cell!="":prev[i]=_view(game.state.fighters[i])
 	if not step.is_empty():
@@ -300,7 +343,7 @@ func _refresh_tokens() -> void:
 			if info.ap and p.down and info.ap.current_animation!="A terra":info.ap.play("A terra",0.0);info.ap.seek(info.ap.get_animation("A terra").length-.05,true)
 			var f=int(p.facing)
 			if i==focus_fighter and preview_facing>=0:f=preview_facing
-			info.root.rotation.y=lerp_angle(info.root.rotation.y,facing_yaw(f),1.0)
+			info.pivot.rotation.y=lerp_angle(info.pivot.rotation.y,facing_yaw(f),1.0)
 
 # ---------------------------------------------------------------- riproduzione
 func _play_queue() -> void:
@@ -329,12 +372,12 @@ func _play_step(step: Array,fluid: bool) -> void:
 		if info and info.ap and not t.get("stay",false) and t.clip!="A terra":info.ap.play("In guardia",.25)
 
 func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
-	var ap=info.ap;var root=info.root
+	var ap=info.ap;var root=info.root;var pivot=info.pivot
 	var anim: Animation=ap.get_animation(t.clip) if ap and ap.has_animation(t.clip) else null
 	var length=anim.length if anim else 1.2
 	if t.clip in ["In guardia","Avanzare","Correre","Carica"]:length=minf(length,1.6)
 	length=minf(length,3.2)
-	var turn=.22 if absf(angle_difference(root.rotation.y,t.yaw))>.05 else 0.0
+	var turn=.22 if absf(angle_difference(pivot.rotation.y,t.yaw))>.05 else 0.0
 	var dist=t.from.distance_to(t.to)
 	var m=_motion.get(anim.get_instance_id(),{}) if anim else {}
 	var mode="fermo"
@@ -350,9 +393,9 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 		loops=maxi(1,roundi(dist/m.net.length()));length=anim.length*loops
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
-	if turn>0:tw.tween_property(root,"rotation:y",root.rotation.y+angle_difference(root.rotation.y,t.yaw),turn)
+	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
 	tw.tween_callback(func():
-		_set_rim(t.i,t.move)
+		_set_rim(t.i,t.move,t.get("facing",-1))
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
 			ap.play(t.clip,.12 if fluid else .18)
@@ -385,12 +428,12 @@ func replay() -> void:
 	while playing:await get_tree().create_timer(.1).timeout   # aspetto che finisca la mossa in corso
 	playing=true
 	var final={}
-	for i in minis:final[i]={"pos":minis[i].root.position,"yaw":minis[i].root.rotation.y}
+	for i in minis:final[i]={"pos":minis[i].root.position,"yaw":minis[i].pivot.rotation.y}
 	for i in initial:
 		if not minis.has(i):continue
-		minis[i].root.position=cell_pos(initial[i].cell);minis[i].root.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true
+		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true
 		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
-		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true);_set_rim(i,initial[i].current)
+		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true);_set_rim(i,initial[i].current,int(initial[i].facing))
 	await get_tree().create_timer(.6).timeout
 	for step in history:
 		await _play_step(step,true)
@@ -398,6 +441,7 @@ func replay() -> void:
 
 # ---------------------------------------------------------------- celle evidenziate
 func _draw_overlay() -> void:
+	# disegnato sopra le basette (che sono alte 4 cm), così bersagli e selezione si vedono
 	var im: ImmediateMesh=overlay.mesh;im.clear_surfaces()
 	if game==null or game.state.is_empty():return
 	var fills=[]
@@ -405,29 +449,24 @@ func _draw_overlay() -> void:
 		for k in game.cells:
 			if game.cells[k].entry:fills.append([k,Color(.1,.8,.7,.22)])
 	for k in highlights:fills.append([k,Color(.85,.68,.3,.3)])
-	if not fills.is_empty():
-		im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-		for f in fills:
-			var c=cell_pos(f[0])+Vector3(0,.02,0)
-			for s in 6:
-				im.surface_set_color(f[1]);im.surface_add_vertex(c)
-				im.surface_set_color(f[1]);im.surface_add_vertex(c+_corner(s))
-				im.surface_set_color(f[1]);im.surface_add_vertex(c+_corner(s+1))
-		im.surface_end()
 	var lines=[]
 	if show_grid:
-		for k in game.cells:lines.append([k,Color(.05,.07,.06,.45)])
-	for k in highlights:lines.append([k,Color("e0ba77")])
-	if hovered!="":lines.append([hovered,Color(1,1,1,.8)])
-	if selected!="":lines.append([selected,Color("fff0bf")])
-	if not lines.is_empty():
-		im.surface_begin(Mesh.PRIMITIVE_LINES)
-		for l in lines:
-			var c=cell_pos(l[0])+Vector3(0,.03,0)
-			for s in 6:
-				im.surface_set_color(l[1]);im.surface_add_vertex(c+_corner(s))
-				im.surface_set_color(l[1]);im.surface_add_vertex(c+_corner(s+1))
-		im.surface_end()
+		for k in game.cells:lines.append([k,Color(1,1,1,.85),.03])
+	for k in highlights:lines.append([k,Color("e0ba77"),.045])
+	if hovered!="":lines.append([hovered,Color(1,1,1,.85),.035])
+	if selected!="":lines.append([selected,Color("fff0bf"),.06])
+	if fills.is_empty() and lines.is_empty():return
+	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for f in fills:
+		var c=cell_pos(f[0])+Vector3(0,.062,0)
+		for s in 6:
+			for v in [c,c+_corner(s),c+_corner(s+1)]:im.surface_set_color(f[1]);im.surface_add_vertex(v)
+	for l in lines:   # linee spesse: un nastro per lato (le linee GL sono larghe un pixel)
+		var c=cell_pos(l[0])+Vector3(0,.07,0)
+		for s in 6:
+			var a=c+_corner(s);var b=c+_corner(s+1);var n=(b-a).cross(Vector3.UP).normalized()*l[2]*.5
+			for v in [a-n,b-n,b+n,a-n,b+n,a+n]:im.surface_set_color(l[1]);im.surface_add_vertex(v)
+	im.surface_end()
 func _corner(s: int) -> Vector3:
 	# stessi vertici dell'esagono 2D (punta in alto sullo schermo), riportati sul pavimento
 	var a=s*PI/3-PI/2;return Vector3(cos(a),0,sin(a))*121.0*U*.97
@@ -444,20 +483,27 @@ func _cell_at(pos: Vector2) -> String:
 		if dd<best:best=dd;cell=k
 	return cell if best<110.0*U else ""
 
+var _press=Vector2.ZERO
+var _dragging=false
+func rotate_view(step: float) -> void:
+	follow=false;yaw+=step;_place_camera()
 func _gui_input(event: InputEvent) -> void:
 	if game==null:return
 	if event is InputEventMouseButton:
 		if event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_UP:zoom=clampf(zoom*1.1,.6,3.0);_place_camera();accept_event()
 		elif event.pressed and event.button_index==MOUSE_BUTTON_WHEEL_DOWN:zoom=clampf(zoom/1.1,.6,3.0);_place_camera();accept_event()
-		elif event.pressed and event.button_index==MOUSE_BUTTON_LEFT and hovered!="":cell_clicked.emit(hovered)
+		elif event.button_index==MOUSE_BUTTON_LEFT:
+			if event.pressed:_press=event.position;_dragging=false
+			elif not _dragging and hovered!="":cell_clicked.emit(hovered)   # clic = rilascio senza trascinamento
 	if event is InputEventMouseMotion:
 		if event.button_mask & MOUSE_BUTTON_MASK_RIGHT:
 			follow=false
 			yaw-=event.relative.x*.008;pitch=clampf(pitch+event.relative.y*.005,.25,1.45);_place_camera()
-		elif event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
-			follow=false
-			var right=camera.global_transform.basis.x;var fwd=Vector3(-sin(yaw),0,-cos(yaw))
-			target+=(-right*event.relative.x+fwd*event.relative.y)*.012*dist/(zoom*10);_place_camera()
+		elif event.button_mask & (MOUSE_BUTTON_MASK_LEFT|MOUSE_BUTTON_MASK_MIDDLE):
+			if event.position.distance_to(_press)>6 or _dragging or event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
+				_dragging=true;follow=false
+				var right=camera.global_transform.basis.x;var fwd=Vector3(-sin(yaw),0,-cos(yaw))
+				target+=(-right*event.relative.x+fwd*event.relative.y)*.012*dist/(zoom*10);_place_camera()
 		var cell=_cell_at(event.position)
 		if cell!=hovered:hovered=cell;_draw_overlay()
 		tooltip_text=""

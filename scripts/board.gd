@@ -15,6 +15,10 @@ var arena_texture=preload("res://assets/arena/arena.webp")
 var hovered=""
 var origin=Vector2.ZERO
 var scale_factor=1.0
+var rot=0.0                # rotazione della mappa (radianti), attorno al centro della vista
+var view=Transform2D()     # trasformazione della vista: rotazione attorno al centro
+var _press=Vector2.ZERO
+var _dragging=false
 const GOLD=Color("e0ba77")
 const TEAL=Color("69cec1")
 const RED=Color("e68078")
@@ -27,7 +31,8 @@ func texture(path: String) -> Texture2D:
 	if path=="":return null
 	if not textures.has(path):textures[path]=load(path)
 	return textures[path]
-func fit() -> void:zoom=1;pan=Vector2.ZERO;queue_redraw()
+func fit() -> void:zoom=1;pan=Vector2.ZERO;rot=0.0;queue_redraw()
+func rotate_view(step: float) -> void:rot+=step;queue_redraw()
 func world(k: String) -> Vector2:
 	var c=game.cells[k];return Vector2(float(c.x),float(c.y))
 func screen(p: Vector2) -> Vector2:return origin+Vector2(p.y,1956-p.x)*scale_factor
@@ -36,12 +41,13 @@ func _draw() -> void:
 	if game==null:return
 	scale_factor=minf((size.x-24)/2736.0,(size.y-24)/1956.0)*zoom
 	origin=(size-Vector2(2736,1956)*scale_factor)*.5+pan
-	draw_set_transform(origin+Vector2(0,1956*scale_factor),-PI/2,Vector2.ONE*scale_factor)
+	view=Transform2D(0,size*.5)*Transform2D(rot,Vector2.ZERO)*Transform2D(0,-size*.5)
+	draw_set_transform_matrix(view*Transform2D(-PI/2,Vector2.ONE*scale_factor,0,origin+Vector2(0,1956*scale_factor)))
 	draw_texture(arena_texture,Vector2.ZERO)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform_matrix(view)
 	for k in game.cells:
 		var center=screen(world(k));var poly=hexagon(center,121*scale_factor)
-		if show_grid:draw_polyline(poly,Color(0.1,0.12,0.1,.28),1.0,true)
+		if show_grid:draw_polyline(poly,Color(1,.97,.85,.6),2.0,true)
 		if game.cells[k].entry and game.state.get("phase","")=="deploy":draw_colored_polygon(poly,Color(0.1,.8,.7,.2))
 		if k in highlights:
 			draw_colored_polygon(poly,Color(.8,.65,.3,.23));draw_polyline(poly,GOLD,2.0,true)
@@ -70,13 +76,17 @@ func _draw() -> void:
 		if i==focus_fighter:draw_arc(center,radius+7,0,TAU,40,GOLD,3,true)
 		var facing=int(p.facing)
 		if i==focus_fighter and preview_facing>=0:facing=preview_facing
-		draw_set_transform(center,-PI/2+facing*PI/3)
+		draw_set_transform_matrix(view*Transform2D(-PI/2+facing*PI/3,center))
 		if tex:draw_texture_rect(tex,Rect2(Vector2(-radius,-radius*.866),Vector2(radius*2,radius*1.732)),false,Color(1,1,1,.72 if p.done else 1))
-		draw_set_transform(Vector2.ZERO)
+		draw_set_transform_matrix(view)
 		var forward=Vector2.UP.rotated(-PI/2+facing*PI/3)
 		draw_circle(center+forward*(radius+9),3,color)
-		var bar=Rect2(center+Vector2(-radius,radius+9),Vector2(radius*2,5))
+		# barretta delle ferite sempre orizzontale sullo schermo, sotto la pedina
+		draw_set_transform(Vector2.ZERO)
+		var sc=view*center
+		var bar=Rect2(sc+Vector2(-radius,radius+9),Vector2(radius*2,5))
 		draw_rect(bar,Color("131d20"));bar.size.x*=clampf(float(p.hp)/maxf(1,p.max_hp),0,1);draw_rect(bar,color)
+		draw_set_transform_matrix(view)
 		if p.burning:draw_circle(center+Vector2(radius,-radius),5,Color("f5a34b"))
 		if p.fatigue>0:draw_circle(center+Vector2(-radius,-radius),4,Color("a38bdd"))
 		if p.unbalanced:draw_arc(center,radius+10,0,TAU,30,Color("f5a34b"),2,true)
@@ -91,13 +101,19 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
 			zoom=clampf(zoom*(1.12 if event.button_index==MOUSE_BUTTON_WHEEL_UP else .89),.8,3.5);queue_redraw();accept_event()
-		elif event.pressed and event.button_index==MOUSE_BUTTON_LEFT and hovered!="":
-			cell_clicked.emit(hovered)
+		elif event.button_index==MOUSE_BUTTON_LEFT:
+			if event.pressed:_press=event.position;_dragging=false
+			elif not _dragging and hovered!="":cell_clicked.emit(hovered)   # clic = rilascio senza trascinamento
 	if event is InputEventMouseMotion:
-		if event.button_mask & (MOUSE_BUTTON_MASK_RIGHT|MOUSE_BUTTON_MASK_MIDDLE):pan+=event.relative
+		if event.button_mask & MOUSE_BUTTON_MASK_RIGHT:
+			rot+=event.relative.x*.006                                       # tasto destro: ruota la mappa
+		elif event.button_mask & (MOUSE_BUTTON_MASK_LEFT|MOUSE_BUTTON_MASK_MIDDLE):
+			if event.position.distance_to(_press)>6 or _dragging or event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
+				_dragging=true;pan+=event.relative.rotated(-rot)                 # trascina: sposta la mappa
+		var local=view.affine_inverse()*event.position
 		var best=100000.0;var cell=""
 		for k in game.cells:
-			var dist=screen(world(k)).distance_to(event.position)
+			var dist=screen(world(k)).distance_to(local)
 			if dist<best:best=dist;cell=k
 		hovered=cell if best<110*scale_factor else ""
 		tooltip_text=""
