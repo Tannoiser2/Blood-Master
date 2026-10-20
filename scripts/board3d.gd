@@ -217,6 +217,7 @@ func _set_rim(i: int,move_id: String,facing:=-1) -> void:
 # basetta) e lo conservo come profilo: quando la miniatura cambia cella si sposta
 # l'intera miniatura seguendo quel profilo, oppure, per camminata e corsa (clip sul
 # posto), alla velocità reale dei piedi misurata in Blender.
+const ROOT_MOTION=["Carica","Rotolare"]   # clip che avanzano davvero: la miniatura segue il loro tragitto
 const STEP_SPEED={"Avanzare":.72,"Camminata":1.50,"Correre":3.49}   # velocità dei piedi / altezza del bacino (1/s)
 var _motion={}             # id dell'Animation -> {"net": Vector3, "times": PackedFloat32Array, "prog": PackedFloat32Array}
 func _find_skeleton(n: Node) -> Skeleton3D:
@@ -310,7 +311,15 @@ func sync() -> void:
 	for i in victims:
 		var p=game.state.fighters[i]
 		var clip="A terra" if (p.down or not p.alive) else "Sbilanciato"
-		step.append({"i":i,"clip":clip,"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive})
+		var moved=step.any(func(t):return t.get("i",-1)==i)
+		if not moved and prev[i].cell!=p.cell:
+			# si è spostato ma la mossa corrente è già cambiata (es. sbilanciato durante lo sprint):
+			# prima il movimento con la mossa che aveva, poi la reazione sul posto
+			var was_move: String=prev[i].current if CLIP.has(prev[i].current) and prev[i].current in MOVING else "run"
+			step.append({"i":i,"clip":CLIP[was_move],"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":was_move,"strike":false})
+			moved=true
+		# chi ha anche un suo movimento in questo passo prima lo completa, poi reagisce sul posto
+		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive})
 	for i in game.state.fighters.size():
 		if game.state.fighters[i].cell!="":prev[i]=_view(game.state.fighters[i])
 	if not step.is_empty():
@@ -354,13 +363,16 @@ func _play_queue() -> void:
 	playing=false;_refresh_tokens()
 
 func _play_step(step: Array,fluid: bool) -> void:
-	var longest=0.0
-	for t in step:
-		if t.has("labels"):continue
-		var info=minis.get(t.i)
-		if info==null:continue
-		var dur=_run_track(t,info,fluid)
-		longest=maxf(longest,t.delay+dur)
+	var longest=0.0;var ends={}
+	for pass_after in [false,true]:   # le reazioni "after" partono quando finisce il movimento dello stesso personaggio
+		for t in step:
+			if t.has("labels") or t.get("after",false)!=pass_after:continue
+			var info=minis.get(t.i)
+			if info==null:continue
+			if pass_after:t.delay=maxf(t.delay,ends.get(t.i,0.0))
+			var dur=_run_track(t,info,fluid)
+			ends[t.i]=maxf(ends.get(t.i,0.0),t.delay+dur)
+			longest=maxf(longest,t.delay+dur)
 	await get_tree().create_timer(longest).timeout
 	for t in step:
 		if t.has("labels"):
@@ -384,13 +396,14 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 	if dist>.05:
 		if anim and STEP_SPEED.has(t.clip) and info.has("hips_h"):
 			mode="passi";length=dist/(STEP_SPEED[t.clip]*info.hips_h)    # stessa velocità dei piedi
-		elif not m.is_empty() and m.net.length()>.15:
+		elif not m.is_empty() and m.net.length()>.15 and t.clip in ROOT_MOTION:
 			mode="profilo"                                                  # la clip avanza da sola
 		else:
 			mode="lineare"
 	var loops=1
 	if mode=="profilo":
 		loops=maxi(1,roundi(dist/m.net.length()));length=anim.length*loops
+	if OS.get_environment("BM_DEBUG")=="1":print("TRACK ",game.state.fighters[t.i].character," ",t.clip," ",mode," dist %.2f len %.2f loops %d"%[dist,length,loops])
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
