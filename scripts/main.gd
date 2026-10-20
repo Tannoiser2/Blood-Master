@@ -369,7 +369,8 @@ func _build_game() -> void:
 	for side in ["left","right","top","bottom"]:over.add_theme_constant_override("margin_"+side,12)
 	stage.add_child(over)
 	var stack=VBoxContainer.new();stack.mouse_filter=Control.MOUSE_FILTER_IGNORE;stack.add_theme_constant_override("separation",10);over.add_child(stack)
-	portraits=HFlowContainer.new();portraits.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.alignment=FlowContainer.ALIGNMENT_CENTER;portraits.add_theme_constant_override("h_separation",8);portraits.add_theme_constant_override("v_separation",6);stack.add_child(portraits)   # faccette in alto, a tutta larghezza
+	portraits=HBoxContainer.new();portraits.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.alignment=BoxContainer.ALIGNMENT_CENTER;portraits.add_theme_constant_override("separation",8);stack.add_child(portraits)   # faccette in alto, una sola fila
+	stage.resized.connect(_refresh_portraits)
 	var cols=HBoxContainer.new();cols.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_theme_constant_override("separation",12);cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;stack.add_child(cols)
 	var left=VBoxContainer.new();left.mouse_filter=Control.MOUSE_FILTER_IGNORE;left.alignment=BoxContainer.ALIGNMENT_END;cols.add_child(left)
 	picker=_overlay_panel(.88);left.add_child(picker)
@@ -388,41 +389,55 @@ func _build_game() -> void:
 	var fill=Control.new();fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
 	right.add_child(hint_label)
 	_refresh_portraits()
-var portraits: HFlowContainer
+var portraits: HBoxContainer
 func _refresh_portraits() -> void:
-	# riquadri sempre visibili: ritratto, ferite e fatica, l'ultima mossa e la sua formula coi dadi
+	# faccette sempre visibili su una sola fila: ritratto, barre (o solo numeri se sono tanti),
+	# punti magia, ultima mossa e formula coi dadi. La larghezza si adatta al numero di personaggi.
 	if portraits==null:return
 	clear(portraits);portraits.visible=not game.state.is_empty() and game.state.phase!="deploy"
 	if not portraits.visible:return
 	var notes=_fighter_notes()
+	var shown=[]
 	for i in game.state.fighters.size():
 		var p=game.state.fighters[i]
 		if p.cell=="" and p.alive:continue
+		if not p.alive and int(p.get("owner",-1))>=0:continue   # golem evocati e caduti: spariscono
+		shown.append(i)
+	if shown.is_empty():return
+	var avail=maxf(400.0,(stage.size.x if stage else 1280.0)-24.0)
+	var w=clampf((avail-8.0*(shown.size()-1))/shown.size()-10.0,58.0,150.0)   # larghezza interna del riquadro
+	var compact=w<104.0
+	var font=11 if w>=90.0 else 10
+	for i in shown:
+		var p=game.state.fighters[i]
 		var team_col=Color("69cec1") if int(p.team)==0 else Color("e68078")
 		var card=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,.88),8);sb.border_color=team_col;sb.set_border_width_all(2)
 		sb.content_margin_left=4;sb.content_margin_right=4;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
-		card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);portraits.add_child(card)
-		var v=VBoxContainer.new();v.add_theme_constant_override("separation",3);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
-		var top=HBoxContainer.new();top.add_theme_constant_override("separation",5);top.mouse_filter=Control.MOUSE_FILTER_IGNORE;v.add_child(top)
+		card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);card.custom_minimum_size.x=w+8;portraits.add_child(card)
+		var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
 		var path="res://assets/reborn/minis/%s.webp"%p.character
 		if not ResourceLoader.exists(path):path=card_path(p.character) if game.catalog.has(p.character) else ""
-		var img=TextureRect.new();img.custom_minimum_size=Vector2(60,60);img.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;img.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		var img=TextureRect.new();img.custom_minimum_size=Vector2(w,minf(w*.62,64.0));img.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;img.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
 		img.mouse_filter=Control.MOUSE_FILTER_IGNORE;img.clip_contents=true
 		if path!="":img.texture=load(path)
-		top.add_child(img)
-		var side=VBoxContainer.new();side.add_theme_constant_override("separation",2);side.mouse_filter=Control.MOUSE_FILTER_IGNORE;top.add_child(side)
-		var nm=label(p.name.split(" ")[0]+("" if p.alive else " †"),12,team_col);nm.custom_minimum_size.x=96;nm.clip_text=true;side.add_child(nm)
+		v.add_child(img)
+		var nm=label(p.name.split(" ")[0]+("" if p.alive else " †"),font+1,team_col);nm.custom_minimum_size.x=w;nm.clip_text=true;v.add_child(nm)
 		var hp=maxi(0,int(p.hp));var fat=int(p.fatigue)+int(p.permanent)
-		side.add_child(_meter(float(hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%hp))
-		side.add_child(_meter(clampf(float(fat)/10.0,0,1),Color("b48cff"),"%d fatica"%fat))
-		side.add_child(label("%d ferite · %d fatica"%[hp,fat],11,MUTED))
-		if bool(game.definition(p).get("mage",false)):side.add_child(label("%d punti magia"%int(p.magic),11,Color("8fb8ff")))
+		var mage=bool(game.definition(p).get("mage",false))
+		if compact:   # tanti personaggi: solo numeri, ferite/fatica (e magia)
+			var t=label("%d/%d · %d%s"%[hp,int(p.max_hp),fat," · %dm"%int(p.magic) if mage else ""],font,MUTED);t.tooltip_text="ferite / massimo · fatica"+(" · punti magia" if mage else "");t.mouse_filter=Control.MOUSE_FILTER_PASS;v.add_child(t)
+		else:
+			v.add_child(_meter(float(hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%hp,w))
+			v.add_child(_meter(clampf(float(fat)/10.0,0,1),Color("b48cff"),"%d fatica"%fat,w))
+			v.add_child(label("%d ferite · %d fatica"%[hp,fat],font,MUTED))
+			if mage:v.add_child(label("%d punti magia"%int(p.magic),font,Color("8fb8ff")))
 		var n=notes.get(i,{})
-		var mv=label(str(n.get("move","")),12,GOLD);mv.custom_minimum_size.x=166;mv.clip_text=true;v.add_child(mv)
+		var mv=label(str(n.get("move","")),font+1,GOLD);mv.custom_minimum_size.x=w;mv.clip_text=true;v.add_child(mv)
 		if not n.get("lines",[]).is_empty():
-			var rt=RichTextLabel.new();rt.bbcode_enabled=true;rt.fit_content=true;rt.scroll_active=false;rt.custom_minimum_size.x=166;rt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
-			rt.add_theme_font_size_override("normal_font_size",11);rt.mouse_filter=Control.MOUSE_FILTER_IGNORE
-			rt.text=_log_bbcode(n.lines.slice(maxi(0,n.lines.size()-2))).replace("width=18 height=18","width=15 height=15");v.add_child(rt)
+			var rt=RichTextLabel.new();rt.bbcode_enabled=true;rt.fit_content=false;rt.scroll_active=false;rt.custom_minimum_size=Vector2(w,(font+4)*3)
+			rt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;rt.clip_contents=true   # al massimo tre righe: la fila resta bassa
+			rt.add_theme_font_size_override("normal_font_size",font);rt.mouse_filter=Control.MOUSE_FILTER_IGNORE
+			rt.text=_log_bbcode(n.lines.slice(maxi(0,n.lines.size()-1))).replace("width=18 height=18","width=%d height=%d"%[font+3,font+3]);v.add_child(rt)
 func _fighter_notes() -> Dictionary:
 	# dal diario: per ogni personaggio la mossa rivelata per ultima e i tiri di dado che ne sono seguiti
 	var names=[]
@@ -445,9 +460,9 @@ func _fighter_notes() -> Dictionary:
 			out[who].lines.append("su "+rest.substr(8).trim_suffix(".").replace("; "," · "));continue
 		if "dado" in rest:out[who].lines.append(rest.trim_prefix(",").trim_prefix(":").strip_edges().trim_suffix("."))
 	return out
-func _meter(f: float,col: Color,tip: String) -> Control:
-	var back=ColorRect.new();back.color=Color("131d20");back.custom_minimum_size=Vector2(96,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
-	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(96*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
+func _meter(f: float,col: Color,tip: String,w:=96.0) -> Control:
+	var back=ColorRect.new();back.color=Color("131d20");back.custom_minimum_size=Vector2(w,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
+	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(w*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
 	return back
 var _dice_re: RegEx
 func _log_bbcode(lines: Array) -> String:
