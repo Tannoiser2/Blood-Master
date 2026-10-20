@@ -15,11 +15,13 @@ const U=0.6/121.0          # metri per pixel della mappa: un esagono (raggio 121
 const MODELS={"gascor":"res://assets/models/gascor/gascor.glb","anteos":"res://assets/models/anteos/anteos.glb",
 	"ut":"res://assets/models/ut/ut.glb","shannon":"res://assets/models/shannon/shannon.glb",
 	"nuchra":"res://assets/models/nuchra/nuchra.glb","ramok":"res://assets/models/ramok/ramok.glb",
-	"zenyo":"res://assets/models/zenyo/zenyo.glb","shaara":"res://assets/models/shaara/shaara.glb"}
+	"zenyo":"res://assets/models/zenyo/zenyo.glb","shaara":"res://assets/models/shaara/shaara.glb",
+	"zak":"res://assets/models/zak/zak.glb","kylvia":"res://assets/models/kylvia/kylvia.glb"}
 const CLIP={"guard":"In guardia","advance":"Avanzare","run":"Correre","charge":"Carica","cleave":"Fendente",
 	"left":"Taglio Sx","right":"Taglio Dx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
 	"dodge":"Schivata","roll":"Rotolare","unbalanced":"Sbilanciato","down":"A terra","rise":"Rialzarsi","again":"In guardia",
-	"spin":"Taglio Dx","sweep":"Taglio Sx","meditate":"Riposo"}   # rotazione e spazzata: le clip di taglio più vicine
+	"spin":"Taglio Dx","sweep":"Taglio Sx","meditate":"Riposo",
+	"load":"Incoccare","shoot":"Tirare","weapon":"Riposo"}   # rotazione e spazzata: le clip di taglio più vicine
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","dodge","guard"]
 const TEAL=Color("69cec1")
@@ -192,6 +194,7 @@ func token_color(m: Dictionary) -> Color:
 	if not m.get("green",[]).is_empty():return Color("3ddc6a")  # movimento: verde
 	return Color("8f9a9e")
 const SIDE_COLORS=[["red",Color("ff4a3d")],["green",Color("3ddc6a")],["blue",Color("3d8bff")]]
+var _shots_seen=0
 var _dir3=[]               # direzione 3D verso la cella vicina in ciascuna delle 6 direzioni delle regole
 func _directions() -> Array:
 	if _dir3.is_empty():
@@ -295,6 +298,12 @@ func _find_animation(n: Node) -> AnimationPlayer:
 		if f:return f
 	return null
 
+func _clip_for(i: int,id: String,bow: bool) -> String:
+	# arcieri: in modalità arco le clip "… arco" (guardia, avanzata, corsa, sbilanciato)
+	var base=CLIP.get(id,"In guardia")
+	var info=minis.get(i,{})
+	if bow and info.get("ap")!=null and info.ap.has_animation(base+" arco"):return base+" arco"
+	return base
 func _view(p: Dictionary) -> Dictionary:
 	return {"cell":p.cell,"facing":int(p.facing),"current":p.current,"done":p.done,"hp":int(p.hp),"unbalanced":p.unbalanced,"down":p.down,"alive":p.alive,"team":int(p.team),"character":p.character}
 
@@ -323,7 +332,11 @@ func sync() -> void:
 	for i in actors:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
-		var track={"i":i,"clip":CLIP.get(id,"In guardia"),"from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		var track={"i":i,"clip":_clip_for(i,id,bool(p.get("bow",false))),"bow":bool(p.get("bow",false)),"loaded":bool(p.get("loaded",false)) or id=="shoot","from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		if id=="shoot" and int(game.state.get("shots",0))>_shots_seen:
+			_shots_seen=int(game.state.get("shots",0))
+			var v=int(game.state.get("last_shot",{}).get("victim",-1))
+			track["arrow"]={"victim":v,"hit":v>=0 and v in victims and int(game.state.fighters[v].hp)<int(prev.get(v,{}).get("hp",0))}
 		step.append(track)
 		# il difensore di fronte mostra la sua pedina difensiva mentre arriva il colpo
 		if track.strike:
@@ -335,7 +348,7 @@ func sync() -> void:
 		if t.get("strike",false) and minis[t.i].ap:strike_delay=maxf(strike_delay,minis[t.i].ap.get_animation(t.clip).length*.45)
 	for i in victims:
 		var p=game.state.fighters[i]
-		var clip="A terra" if (p.down or not p.alive) else "Sbilanciato"
+		var clip="A terra" if (p.down or not p.alive) else _clip_for(i,"unbalanced",bool(p.get("bow",false)))
 		var moved=step.any(func(t):return t.get("i",-1)==i)
 		if not moved and prev[i].cell!=p.cell:
 			# si è spostato ma la mossa corrente è già cambiata (es. sbilanciato durante lo sprint):
@@ -389,6 +402,7 @@ func import_replay(d: Dictionary) -> void:
 				c[k]=Vector3(v[0],v[1],v[2]) if k in ["from","to"] else v
 			for k in ["i","facing","hit","turn"]:
 				if c.has(k):c[k]=int(c[k])                     # il JSON restituisce numeri decimali
+			if c.has("arrow"):c.arrow={"victim":int(c.arrow.victim),"hit":bool(c.arrow.hit)}
 			if c.has("labels"):
 				var lb={}
 				for i in t.labels:
@@ -410,6 +424,7 @@ func _refresh_tokens() -> void:
 		info.root.visible=p.cell!=""
 		if not playing:
 			if info.token:_token(i)
+			_set_gear(i,bool(p.get("bow",false)),bool(p.get("loaded",false)))
 			if p.cell!="":info.root.position=_spot(i,p.cell)
 			var sm=.5 if _shared(i) else 1.0                       # basette ridotte quando l'esagono è condiviso
 			info.plate.scale=Vector3(sm,1,sm);info.sides.scale=Vector3(sm,1,sm)
@@ -485,6 +500,8 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
 			ap.play(t.clip,.12 if fluid else .18);ap.speed_scale=rate
+		if t.has("bow"):_set_gear(t.i,t.bow,t.get("loaded",false))
+		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
 		if t.get("hit",0)>0:
 			_float(root.position,"-%d" % t.hit)
 			if blood:_bleed(root.position,int(t.hit)))
@@ -505,6 +522,93 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if rate!=1.0 and ap:tw.tween_callback(func():ap.speed_scale=1.0)
 	return turn+length
 
+# --- Arcieri: arco o spada in mano, freccia in volo ---------------------------------
+# Il modello contiene i nodi Arco (mano sinistra), ArcoSchiena, Spada e FrecciaIncoccata.
+# In modalità arco l'arco è in mano (con la freccia incoccata se carico); in mischia la
+# spada è in mano e l'arco a tracolla. Al tiro la freccia vola dall'arco al bersaglio:
+# se fa danno resta conficcata nella miniatura, se manca si pianta a terra lì vicino.
+var arrows: Array=[]
+func _gear(info: Dictionary,name: String) -> Node3D:
+	if info.get("model")==null:return null
+	var key="gear_"+name
+	if not info.has(key):info[key]=info.model.find_child(name,true,false)
+	return info[key]
+func _set_gear(i: int,bow: bool,loaded: bool) -> void:
+	var info=minis.get(i,{})
+	var hand=_gear(info,"Arco")
+	if hand==null:return
+	hand.visible=bow;_gear(info,"ArcoSchiena").visible=not bow
+	var sw=_gear(info,"Spada")
+	if sw:sw.visible=not bow
+	var nock=_gear(info,"FrecciaIncoccata")
+	if nock:nock.visible=bow and loaded
+func clear_arrows() -> void:
+	for a in arrows:
+		if is_instance_valid(a):a.queue_free()
+	arrows=[]
+func _arrow_mesh() -> Node3D:
+	var root=Node3D.new();var a=Node3D.new();a.scale=Vector3.ONE*.58;root.add_child(a)   # stessa scala delle miniature
+	var shaft=MeshInstance3D.new();var c=CylinderMesh.new();c.top_radius=.006;c.bottom_radius=.006;c.height=.66;shaft.mesh=c;shaft.rotation.x=PI/2
+	var wm=StandardMaterial3D.new();wm.albedo_color=Color("8a6a43");shaft.material_override=wm;a.add_child(shaft)
+	var tip=MeshInstance3D.new();var cn=CylinderMesh.new();cn.top_radius=0;cn.bottom_radius=.014;cn.height=.05;tip.mesh=cn;tip.rotation.x=PI/2;tip.position.z=.35
+	var tm=StandardMaterial3D.new();tm.albedo_color=Color("c9ccd0");tm.metallic=.8;tm.roughness=.3;tip.material_override=tm;a.add_child(tip)
+	for k in 3:
+		var f=MeshInstance3D.new();var q=QuadMesh.new();q.size=Vector2(.03,.08);f.mesh=q;f.position.z=-.28;f.rotation=Vector3(0,PI/2,k*TAU/3)
+		var fm=StandardMaterial3D.new();fm.albedo_color=Color("e8e2d0");fm.cull_mode=BaseMaterial3D.CULL_DISABLED;f.material_override=fm;a.add_child(f)
+	return root   # punta verso +Z
+# la freccia conficcata segue l'osso più vicino al punto colpito (si muove col corpo)
+func _stick_parent(victim: Dictionary,at: Vector3) -> Node3D:
+	if victim.get("model")==null:return victim.pivot
+	var found=victim.model.find_children("*","Skeleton3D",true,false)
+	if found.is_empty():return victim.pivot
+	var sk: Skeleton3D=found[0]
+	var best=-1;var bd=1e9
+	for b in sk.get_bone_count():
+		var n=sk.get_bone_name(b).to_lower()
+		if not ("spine" in n or "chest" in n or "hips" in n) or "arm" in n:continue
+		var d=(sk.global_transform*sk.get_bone_global_pose(b).origin).distance_to(at)
+		if d<bd:bd=d;best=b
+	if best<0:return victim.pivot
+	var ba=BoneAttachment3D.new();ba.bone_idx=best;sk.add_child(ba);ba.transform=sk.get_bone_global_pose(best)   # subito sull'osso, prima di agganciare
+	return ba
+func _shoot(t: Dictionary,info: Dictionary,clip_time: float) -> void:
+	var shooter=info.root;var v=int(t.arrow.victim);var hit=bool(t.arrow.hit)
+	var release=clip_time*.55
+	# l'arciere si gira verso il bersaglio per mirare, poi torna al suo orientamento
+	var aim_at=minis.get(v,{})
+	if not aim_at.is_empty() and info.get("model")!=null:   # ruota solo la figura, non il segno del fronte
+		var d: Vector3=aim_at.root.global_position-shooter.global_position
+		if Vector2(d.x,d.z).length()>.01:
+			var fig: Node3D=info.model
+			var yaw=wrapf(atan2(d.x,d.z)-info.pivot.global_rotation.y,-PI,PI)
+			var tw0=create_tween();tw0.tween_property(fig,"rotation:y",yaw,minf(.25,release*.5))
+			tw0.tween_interval(maxf(clip_time-minf(.25,release*.5)-.2,.05));tw0.tween_property(fig,"rotation:y",0.0,.2)
+	await get_tree().create_timer(release).timeout
+	var nock=_gear(info,"FrecciaIncoccata")
+	var from: Vector3=nock.global_position if nock and nock.is_visible_in_tree() else shooter.global_position+Vector3(0,.8,0)
+	if nock:nock.visible=false
+	var target: Vector3
+	var victim=minis.get(v,{})
+	if victim.is_empty():return
+	if hit:target=victim.root.global_position+Vector3(randf_range(-.05,.05),randf_range(.55,.8),randf_range(-.05,.05))
+	else:
+		var off=Vector3(randf_range(-.45,.45),0,randf_range(-.45,.45))
+		target=victim.root.global_position+off+Vector3(0,.02,0)
+	var a=_arrow_mesh();viewport.add_child(a);a.global_position=from;arrows.append(a)
+	var dur=clampf(from.distance_to(target)/14.0,.12,.6)
+	var tw=create_tween()
+	tw.tween_method(func(x: float):
+		var p=from.lerp(target,x)+Vector3(0,sin(x*PI)*.18*from.distance_to(target)/4.0,0)
+		var ahead=from.lerp(target,minf(x+.02,1.0))+Vector3(0,sin(minf(x+.02,1.0)*PI)*.18*from.distance_to(target)/4.0,0)
+		a.global_position=p
+		if ahead.distance_to(p)>.001:a.look_at(ahead,Vector3.UP,true),0.0,1.0,dur)
+	tw.tween_callback(func():
+		a.global_position=target-(-a.global_basis.z)*0.0
+		if hit and victim.has("pivot"):
+			var gt=a.global_transform;a.get_parent().remove_child(a);_stick_parent(victim,target).add_child(a);a.global_transform=gt   # resta conficcata
+			a.translate_object_local(Vector3(0,0,-.12))   # la punta resta dentro, l'asta fuori
+		else:
+			a.rotate_object_local(Vector3.RIGHT,randf_range(.2,.5)))   # piantata a terra, un po' inclinata
 # --- Sangue (opzione) -------------------------------------------------------------
 # Uno sbuffo proporzionato alle ferite; poi le gocce cadono nell'esagono e restano lì.
 var blood=false
@@ -559,7 +663,7 @@ func replay() -> void:
 		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true
 		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
 		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true,0);_set_rim(i,initial[i].current,int(initial[i].facing))
-	clear_blood()
+	clear_blood();clear_arrows()
 	await get_tree().create_timer(.6).timeout
 	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
 	# (ognuno alla sua velocità), poi attacchi e difese; il turno dopo parte subito.

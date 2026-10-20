@@ -362,7 +362,10 @@ func _attack_pending() -> void:
 			state.spin={"actor":i,"remaining":remaining,"penalty":penalty+2,"effect":effect or state.get("spin",{}).get("effect",false)}
 			state.phase="acting";state.pending={};return
 		effect=effect or state.get("spin",{}).get("effect",false)
-	if m.id=="shoot":p.loaded=false
+	if m.id=="shoot":
+		p.loaded=false
+		state.shots=int(state.get("shots",0))+1                 # per la mappa 3D: la freccia vola verso il bersaglio
+		state.last_shot={"actor":i,"victim":int(pending.victim)}
 	_finish_action(i,m,effect,int(pending.facing))
 
 static func combat_table(total: int) -> Dictionary:
