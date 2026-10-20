@@ -136,7 +136,8 @@ func _mini(i: int) -> Dictionary:
 	var notch=MeshInstance3D.new();var pr=PrismMesh.new();pr.size=Vector3(.16,.12,.02);notch.mesh=pr
 	notch.rotation=Vector3(PI/2,0,0);notch.position=Vector3(0,.052,.4)   # punta verso +Z, il fronte dei modelli
 	var nm=StandardMaterial3D.new();nm.albedo_color=team;nm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;notch.material_override=nm;pivot.add_child(notch)
-	var info={"root":root,"pivot":pivot,"sides":sides,"model":null,"ap":null,"token":null}
+	var info={"root":root,"pivot":pivot,"sides":sides,"plate":plate,"model":null,"ap":null,"token":null}
+	plate.visible=not clear_plates
 	var path=MODELS.get(p.character,"")
 	if path!="" and not ResourceLoader.exists(path):path=""   # modello non ancora pronto: pedina in piedi
 	if path!="":
@@ -454,6 +455,10 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 # --- Sangue (opzione) -------------------------------------------------------------
 # Uno sbuffo proporzionato alle ferite; poi le gocce cadono nell'esagono e restano lì.
 var blood=false
+var clear_plates=false        # basette trasparenti: restano solo i lati colorati
+func set_clear_plates(v: bool) -> void:
+	clear_plates=v
+	for i in minis:minis[i].plate.visible=not v
 var blood_marks: Array=[]      # macchie rimaste sull'arena (nodi)
 var _splat_tex: Texture2D
 func clear_blood() -> void:

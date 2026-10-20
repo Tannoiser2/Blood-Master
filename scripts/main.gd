@@ -32,6 +32,7 @@ var busy=false
 var auto_draw=true
 var board_grid=false
 var blood_on=false
+var clear_plates=false
 var _last_hp={}
 var showing_game=false
 var manual_window: Window
@@ -117,10 +118,10 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false))
+	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));clear_plates=bool(d.get("clear_plates",false))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"clear_plates":clear_plates}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -322,8 +323,13 @@ func _bar_button(text: String,cb: Callable,tip:="") -> Button:
 		if sb is StyleBoxFlat:sb.content_margin_left=10;sb.content_margin_right=10;sb.content_margin_top=6;sb.content_margin_bottom=6
 		b.add_theme_stylebox_override(st,sb)
 	return b
-func _bar_check(text: String,on: bool,cb: Callable) -> CheckButton:
-	var c=CheckButton.new();c.text=text;c.button_pressed=on;c.toggled.connect(cb);c.add_theme_font_size_override("font_size",14);return c
+func _bar_check(text: String,on: bool,cb: Callable) -> Button:
+	# pulsante attivo/non attivo (niente interruttore): acceso è dorato
+	var c=_bar_button(text,func():pass);c.toggle_mode=true;c.button_pressed=on;c.toggled.connect(cb)
+	var lit=box(GOLD,8);lit.content_margin_left=10;lit.content_margin_right=10;lit.content_margin_top=6;lit.content_margin_bottom=6
+	c.add_theme_stylebox_override("pressed",lit);c.add_theme_color_override("font_pressed_color",Color("151b19"))
+	c.add_theme_color_override("font_hover_pressed_color",Color("151b19"));c.add_theme_stylebox_override("hover_pressed",lit)
+	return c
 func _overlay_panel(alpha:=.86) -> PanelContainer:
 	var p=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,alpha),12);sb.content_margin_left=14;sb.content_margin_right=14;sb.content_margin_top=10;sb.content_margin_bottom=10
 	p.add_theme_stylebox_override("panel",sb);return p
@@ -341,14 +347,15 @@ func _build_game() -> void:
 	row.add_child(_bar_button("+",func():board.zoom=minf(3.5,board.zoom+.15);board.queue_redraw();board3d.zoom=minf(3.0,board3d.zoom*1.15);board3d.fit_zoom(),"Avvicina"))
 	row.add_child(_bar_check("Miniature 3D",minis_3d,func(v):minis_3d=v;board.visible=not v;board3d.visible=v;_refresh()))
 	row.add_child(_bar_check("Griglia",board_grid,func(v):board_grid=v;board.show_grid=v;board.queue_redraw();_refresh()))
-	row.add_child(_bar_check("Estrazione auto",auto_draw,func(v):auto_draw=v;_drive()))
+	row.add_child(_bar_check("Estrazione automatica",auto_draw,func(v):auto_draw=v;_drive()))
 	row.add_child(_bar_check("Sangue",blood_on,func(v):blood_on=v;board3d.blood=v;_save_settings()))
+	row.add_child(_bar_check("Basette trasparenti",clear_plates,func(v):clear_plates=v;board3d.set_clear_plates(v);_save_settings()))
 	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
 	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
 	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
 	board=ArenaBoard.new();board.game=game;board.show_grid=board_grid;board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board.cell_clicked.connect(_cell_clicked);stage.add_child(board)
 	_last_hp={}
-	board3d=ArenaBoard3D.new();board3d.game=game;board3d.blood=blood_on;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
+	board3d=ArenaBoard3D.new();board3d.game=game;board3d.blood=blood_on;board3d.clear_plates=clear_plates;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
 	board.visible=not minis_3d
 	# sovraimpressioni: colonna sinistra (nido d'ape), centro (azioni), destra (diario).
 	# Contenitori trasparenti al mouse, così la mappa resta trascinabile ovunque.
