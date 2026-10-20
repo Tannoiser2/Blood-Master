@@ -357,7 +357,10 @@ func sync() -> void:
 		var info=_mini(i)
 		if not prev.has(i) or prev[i].cell=="":
 			info.root.position=_spot(i,p.cell);info.pivot.rotation.y=facing_yaw(int(p.facing));_token(i)
-			if not initial.has(i):initial[i]=now
+			if int(p.get("owner",-1))>=0 and int(game.state.get("turn",0))>0:
+				# evocato a partita in corso (golem): nel replay compare qui, non all'inizio
+				step.append({"i":i,"clip":"In guardia","from":_spot(i,p.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":.4,"move":"summon","strike":false})
+			elif not initial.has(i):initial[i]=now
 			prev[i]=now;continue
 		var was=prev[i]
 		if now.done and not was.done and now.alive:actors.append(i)
@@ -487,7 +490,7 @@ func _refresh_tokens() -> void:
 		if not replaying:
 			_set_status(i,int(p.hp),int(p.max_hp),p.alive)
 			if not playing:_set_rim(i,p.current)
-		info.root.visible=p.cell!=""
+		info.root.visible=p.cell!="" and not (p.character=="golem" and not p.alive)   # il golem sbriciolato non torna
 		if not playing:
 			if info.token:_token(i)
 			_set_gear(i,bool(p.get("bow",false)),bool(p.get("loaded",false)))
@@ -572,6 +575,9 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
 	tw.tween_callback(func():
+		if t.get("move","")=="summon":   # l'evocato emerge dalla sabbia
+			root.position=t.from;pivot.rotation.y=t.yaw;pivot.scale=Vector3.ONE;pivot.visible=true
+			_burst(root.global_position+Vector3(0,.15,0),Color(.55,.42,.3),90,.5)
 		root.visible=true
 		_set_rim(t.i,t.move,t.get("facing",-1))
 		if anim:
