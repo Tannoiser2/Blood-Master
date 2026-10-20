@@ -76,6 +76,19 @@ func _ground() -> MeshInstance3D:
 	var mat=StandardMaterial3D.new();mat.albedo_texture=arena_texture;mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;mat.cull_mode=BaseMaterial3D.CULL_DISABLED;m.material_override=mat  # come la mappa 2D
 	return m
 
+func _spot(i: int,k: String) -> Vector3:
+	# due alleati nello stesso esagono d'ingresso (permesso dallo scenario): affiancati
+	var mates=[]
+	for j in game.state.fighters.size():
+		var q=game.state.fighters[j]
+		if q.cell==k and q.alive:mates.append(j)
+	var c=cell_pos(k)
+	if mates.size()<2 or not i in mates:return c
+	var n=mates.size();var a=mates.find(i)
+	return c+Vector3((a-(n-1)*.5)*.62/n*1.6,0,0)
+func _shared(i: int) -> bool:
+	var p=game.state.fighters[i]
+	return p.cell!="" and game.state.fighters.any(func(q):return q!=p and q.cell==p.cell and q.alive)
 func cell_pos(k: String) -> Vector3:
 	var c=game.cells[k];return Vector3((float(c.y)-1368.0)*U,0,(978.0-float(c.x))*U)
 static func facing_yaw(facing: int) -> float:
@@ -151,7 +164,7 @@ func _mini(i: int) -> Dictionary:
 		# personaggio senza modello 3D: pedina in piedi con il disegno della mossa corrente
 		var s=Sprite3D.new();s.pixel_size=.0019;s.position.y=.47;s.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y;s.shaded=false;pivot.add_child(s);info.token=s
 	# barra di stato sopra la testa: nome e ferite (sempre rivolta alla camera)
-	var bar=Node3D.new();bar.position.y=1.32+.16*(i%2);root.add_child(bar);info.bar=bar
+	var bar=Node3D.new();bar.position.y=1.2+.1*(i%2);bar.scale=Vector3.ONE*.6;root.add_child(bar);info.bar=bar   # nome e barre più discreti
 	var label=Label3D.new();label.text=p.name;label.font_size=26;label.outline_size=8;label.modulate=team;label.position.y=.085;label.no_depth_test=true;label.render_priority=3;bar.add_child(label);info.label=label
 	var back=MeshInstance3D.new();var bq=QuadMesh.new();bq.size=Vector2(.64,.075);back.mesh=bq
 	var bk=StandardMaterial3D.new();bk.albedo_color=Color(0,0,0,.75);bk.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;bk.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;bk.no_depth_test=true;bk.render_priority=1;back.material_override=bk;bar.add_child(back)
@@ -299,8 +312,9 @@ func sync() -> void:
 		if p.cell=="" or not game.cells.has(p.cell):prev[i]=now;continue
 		var info=_mini(i)
 		if not prev.has(i) or prev[i].cell=="":
-			info.root.position=cell_pos(p.cell);info.pivot.rotation.y=facing_yaw(int(p.facing));_token(i)
-			initial[i]=now;prev[i]=now;continue
+			info.root.position=_spot(i,p.cell);info.pivot.rotation.y=facing_yaw(int(p.facing));_token(i)
+			if not initial.has(i):initial[i]=now
+			prev[i]=now;continue
 		var was=prev[i]
 		if now.done and not was.done and now.alive:actors.append(i)
 		elif now.cell!=was.cell or now.facing!=was.facing:actors.append(i)
@@ -309,7 +323,7 @@ func sync() -> void:
 	for i in actors:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
-		var track={"i":i,"clip":CLIP.get(id,"In guardia"),"from":cell_pos(was.cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		var track={"i":i,"clip":CLIP.get(id,"In guardia"),"from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
 		step.append(track)
 		# il difensore di fronte mostra la sua pedina difensiva mentre arriva il colpo
 		if track.strike:
@@ -345,6 +359,43 @@ func sync() -> void:
 	_draw_overlay()
 	_refresh_tokens()
 
+# --- Replay salvato insieme alla partita ------------------------------------------
+func _v3(v): return [v.x,v.y,v.z] if v is Vector3 else v
+func export_replay() -> Dictionary:
+	var h=[]
+	for step in history:
+		var st=[]
+		for t in step:
+			var c={}
+			for k in t:c[k]=_v3(t[k])
+			if t.has("labels"):
+				var lb={}
+				for i in t.labels:lb[str(i)]=t.labels[i]
+				c["labels"]=lb
+			st.append(c)
+		h.append(st)
+	var ini={}
+	for i in initial:ini[str(i)]=initial[i]
+	return {"history":h,"initial":ini}
+func import_replay(d: Dictionary) -> void:
+	history=[];initial={}
+	for i in d.get("initial",{}):initial[int(i)]=d.initial[i]
+	for st in d.get("history",[]):
+		var step=[]
+		for t in st:
+			var c={}
+			for k in t:
+				var v=t[k]
+				c[k]=Vector3(v[0],v[1],v[2]) if k in ["from","to"] else v
+			for k in ["i","facing","hit","turn"]:
+				if c.has(k):c[k]=int(c[k])                     # il JSON restituisce numeri decimali
+			if c.has("labels"):
+				var lb={}
+				for i in t.labels:
+					var a=t.labels[i];lb[int(i)]=[int(a[0]),int(a[1]),bool(a[2]),int(a[3]) if a.size()>3 else -1]
+				c.labels=lb
+			step.append(c)
+		history.append(step)
 func busy() -> bool:return playing or not queue.is_empty()
 
 func _token(i: int) -> void:
@@ -359,7 +410,9 @@ func _refresh_tokens() -> void:
 		info.root.visible=p.cell!=""
 		if not playing:
 			if info.token:_token(i)
-			if p.cell!="":info.root.position=cell_pos(p.cell)
+			if p.cell!="":info.root.position=_spot(i,p.cell)
+			var sm=.5 if _shared(i) else 1.0                       # basette ridotte quando l'esagono è condiviso
+			info.plate.scale=Vector3(sm,1,sm);info.sides.scale=Vector3(sm,1,sm)
 			if info.ap and p.down and info.ap.current_animation!="A terra":info.ap.play("A terra",0.0);info.ap.seek(info.ap.get_animation("A terra").length-.05,true)
 			var f=int(p.facing)
 			if i==focus_fighter and preview_facing>=0:f=preview_facing

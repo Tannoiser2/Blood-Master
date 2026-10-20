@@ -512,9 +512,9 @@ func _stumble_panel() -> void:
 	if _human(i):
 		var b=button("Fermati qui",func():_submit({"type":"stumble","target":selected_cell}),true);b.disabled=not selected_cell in board.highlights;sidebar.add_child(b)
 func _draw_panel() -> void:
-	sidebar.add_child(label("IL CONTENITORE DELLE MOSSE",13,GOLD));sidebar.add_child(label("Chi agirà adesso?",25))
-	_wrap("Le pedine vengono estratte casualmente. Una parata o uno sbilanciamento possono consumare la mossa prima che venga estratta.")
-	if room_code=="" or net_host:sidebar.add_child(button("Estrai la prossima pedina",func():_submit({"type":"draw"}),true))
+	# niente pannello: con l'estrazione automatica non serve nulla, altrimenti un piccolo tasto
+	if not auto_draw and (room_code=="" or net_host):
+		var b=_bar_button("Estrai ▸",func():_submit({"type":"draw"}),"Estrai la prossima pedina dal contenitore");sidebar.add_child(b)
 	for i in game.state.fighters.size():
 		var p=game.state.fighters[i]
 		if p.guarding and _human(i):
@@ -641,12 +641,19 @@ func _autosave() -> void:
 	if room_code!="":return
 	var f=FileAccess.open("user://battle.json",FileAccess.WRITE)
 	if f:f.store_string(JSON.stringify(game.snapshot()))
+	if board3d:   # anche il replay, così copre tutto lo scontro dopo un caricamento
+		var r=FileAccess.open("user://battle_replay.json",FileAccess.WRITE)
+		if r:r.store_string(JSON.stringify(board3d.export_replay()))
 func _save_game() -> void:
 	_autosave();status.text="Partita salvata su questo dispositivo."
 func _load_game() -> void:
 	var s=JSON.parse_string(FileAccess.get_file_as_string("user://battle.json"))
 	if not s is Dictionary or int(s.get("version",0))!=BloodRules.VERSION:message="Il salvataggio non è compatibile.";_show_menu();return
-	game.restore(s);room_code="";_build_game();_reset_selection();_refresh();_drive()
+	game.restore(s);room_code="";_build_game()
+	if FileAccess.file_exists("user://battle_replay.json"):
+		var r=JSON.parse_string(FileAccess.get_file_as_string("user://battle_replay.json"))
+		if r is Dictionary:board3d.import_replay(r)
+	_reset_selection();_refresh();_drive()
 func _confirm_menu() -> void:
 	var d=ConfirmationDialog.new();d.title="Tornare al menu?";d.dialog_text="La partita locale è salvata automaticamente. Potrai riprenderla da questo dispositivo.";d.confirmed.connect(_show_menu);d.canceled.connect(d.queue_free);d.confirmed.connect(d.queue_free);add_child(d);d.popup_centered()
 func _inspect(i: int) -> void:
