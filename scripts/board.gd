@@ -19,6 +19,7 @@ var rot=0.0                # rotazione della mappa (radianti), attorno al centro
 var view=Transform2D()     # trasformazione della vista: rotazione attorno al centro
 var _press=Vector2.ZERO
 var _dragging=false
+var blood: Array=[]        # macchie di sangue: [cella, scarto in px della mappa, raggio, tonalità]
 const GOLD=Color("e0ba77")
 const TEAL=Color("69cec1")
 const RED=Color("e68078")
@@ -54,6 +55,8 @@ func _draw() -> void:
 		if k==selected:draw_polyline(poly,Color("fff0bf"),4.0,true)
 		elif k==hovered:draw_polyline(poly,Color(1,1,1,.7),1.5,true)
 	if game.state.is_empty():return
+	for b in blood:   # il sangue resta sull'esagono
+		if game.cells.has(b[0]):draw_circle(screen(world(b[0])+b[1]),b[2]*scale_factor,Color(.38+b[3]*.12,0,.02,.82))
 	for e in game.state.effects:
 		var path="res://assets/tokens/effect_"+("fire" if e.kind=="livingfire" else e.kind)+".webp"
 		var tex=texture(path)
@@ -86,6 +89,8 @@ func _draw() -> void:
 		var sc=view*center
 		var bar=Rect2(sc+Vector2(-radius,radius+9),Vector2(radius*2,5))
 		draw_rect(bar,Color("131d20"));bar.size.x*=clampf(float(p.hp)/maxf(1,p.max_hp),0,1);draw_rect(bar,color)
+		var tired=Rect2(sc+Vector2(-radius,radius+16),Vector2(radius*2,4))   # fatica, piena a 10 punti
+		draw_rect(tired,Color("131d20"));tired.size.x*=clampf(float(int(p.fatigue)+int(p.permanent))/10.0,0,1);draw_rect(tired,Color("b48cff"))
 		draw_set_transform_matrix(view)
 		if p.burning:draw_circle(center+Vector2(radius,-radius),5,Color("f5a34b"))
 		if p.fatigue>0:draw_circle(center+Vector2(-radius,-radius),4,Color("a38bdd"))

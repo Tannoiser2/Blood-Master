@@ -31,6 +31,8 @@ var speed=.65
 var busy=false
 var auto_draw=true
 var board_grid=false
+var blood_on=false
+var _last_hp={}
 var showing_game=false
 var manual_window: Window
 var manual_page=2
@@ -115,10 +117,10 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"))
+	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -339,12 +341,14 @@ func _build_game() -> void:
 	row.add_child(_bar_button("+",func():board.zoom=minf(3.5,board.zoom+.15);board.queue_redraw();board3d.zoom=minf(3.0,board3d.zoom*1.15);board3d.fit_zoom(),"Avvicina"))
 	row.add_child(_bar_check("Miniature 3D",minis_3d,func(v):minis_3d=v;board.visible=not v;board3d.visible=v;_refresh()))
 	row.add_child(_bar_check("Griglia",board_grid,func(v):board_grid=v;board.show_grid=v;board.queue_redraw();_refresh()))
-	row.add_child(_bar_check("Estrazione automatica",auto_draw,func(v):auto_draw=v;_drive()))
+	row.add_child(_bar_check("Estrazione auto",auto_draw,func(v):auto_draw=v;_drive()))
+	row.add_child(_bar_check("Sangue",blood_on,func(v):blood_on=v;board3d.blood=v;_save_settings()))
 	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
 	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
 	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
 	board=ArenaBoard.new();board.game=game;board.show_grid=board_grid;board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board.cell_clicked.connect(_cell_clicked);stage.add_child(board)
-	board3d=ArenaBoard3D.new();board3d.game=game;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
+	_last_hp={}
+	board3d=ArenaBoard3D.new();board3d.game=game;board3d.blood=blood_on;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
 	board.visible=not minis_3d
 	# sovraimpressioni: colonna sinistra (nido d'ape), centro (azioni), destra (diario).
 	# Contenitori trasparenti al mouse, così la mappa resta trascinabile ovunque.
@@ -404,6 +408,12 @@ func _refresh() -> void:
 		"finished":_finish_panel()
 		"net_reveal":sidebar.add_child(label("Tutti hanno scelto. Apertura delle mosse…",19,GOLD))
 	_layout_overlays()
+	# sangue sulla mappa 2D: macchie proporzionate alle ferite appena subite
+	for i in game.state.fighters.size():
+		var q=game.state.fighters[i];var was=int(_last_hp.get(i,q.hp))
+		if blood_on and int(q.hp)<was and q.cell!="":
+			for k in mini(2+was-int(q.hp),14):board.blood.append([q.cell,Vector2(randf_range(-55,55),randf_range(-55,55)),randf_range(9,20)+(was-int(q.hp))*.8,randf()])
+		_last_hp[i]=int(q.hp)
 	board.queue_redraw()
 	if board3d:board3d.copy_from(board)
 func _human(i: int) -> bool:

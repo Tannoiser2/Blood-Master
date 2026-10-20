@@ -156,10 +156,18 @@ func _mini(i: int) -> Dictionary:
 	var bk=StandardMaterial3D.new();bk.albedo_color=Color(0,0,0,.75);bk.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;bk.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;bk.no_depth_test=true;bk.render_priority=1;back.material_override=bk;bar.add_child(back)
 	var fill=MeshInstance3D.new();var fq=QuadMesh.new();fq.size=Vector2(.6,.05);fill.mesh=fq;fill.position.z=.001
 	var fm=StandardMaterial3D.new();fm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;fm.no_depth_test=true;fm.render_priority=2;fill.material_override=fm;bar.add_child(fill);info.fill=fill;info.fill_mat=fm
+	# barra della fatica subito sotto quella della vita (piena a 10 punti di fatica)
+	var back2=MeshInstance3D.new();var bq2=QuadMesh.new();bq2.size=Vector2(.64,.05);back2.mesh=bq2;back2.position.y=-.068;back2.material_override=bk;bar.add_child(back2)
+	var tired=MeshInstance3D.new();var tq=QuadMesh.new();tq.size=Vector2(.6,.03);tired.mesh=tq;tired.position=Vector3(0,-.068,.001)
+	var tm=StandardMaterial3D.new();tm.albedo_color=Color("b48cff");tm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;tm.no_depth_test=true;tm.render_priority=2;tired.material_override=tm;bar.add_child(tired);info.tired=tired
 	minis[i]=info;return info
 
-func _set_status(i: int,hp: int,max_hp: int,alive: bool) -> void:
+const FATIGUE_FULL=10.0
+func _set_status(i: int,hp: int,max_hp: int,alive: bool,fatigue:=-1) -> void:
 	var info=minis[i];var p=game.state.fighters[i]
+	if fatigue<0:fatigue=int(p.fatigue)+int(p.permanent)
+	var t=clampf(fatigue/FATIGUE_FULL,0,1)
+	info.tired.scale.x=maxf(t,.001);info.tired.position.x=-.3*(1.0-t);info.tired.visible=alive and t>0
 	info.label.text=p.name+("  †" if not alive else "")
 	var f=clampf(float(hp)/maxf(1.0,max_hp),0,1)
 	info.fill.scale.x=maxf(f,.001);info.fill.position.x=-.3*(1.0-f);info.fill.visible=alive and f>0
@@ -385,8 +393,9 @@ func _play_step(step: Array,fluid: bool) -> void:
 		var info=minis.get(t.i)
 		if info and info.ap and not t.get("stay",false) and t.clip!="A terra":info.ap.play("In guardia",.25)
 
-func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
-	var ap=info.ap;var root=info.root;var pivot=info.pivot
+func _plan(t: Dictionary,info: Dictionary) -> Dictionary:
+	# come verrà animata la traccia: modalità, durata naturale, ripetizioni
+	var ap=info.ap;var pivot=info.pivot
 	var anim: Animation=ap.get_animation(t.clip) if ap and ap.has_animation(t.clip) else null
 	var length=anim.length if anim else 1.2
 	if t.clip in ["In guardia","Avanzare","Correre","Carica"]:length=minf(length,1.6)
@@ -405,6 +414,14 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 	var loops=1
 	if mode=="profilo":
 		loops=maxi(1,roundi(dist/m.net.length()));length=anim.length*loops
+	return {"anim":anim,"length":length,"turn":turn,"dist":dist,"m":m,"mode":mode,"loops":loops}
+func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> float:
+	# forced: durata imposta al movimento (replay fluido: tutti arrivano insieme)
+	var ap=info.ap;var root=info.root;var pivot=info.pivot
+	var pl=_plan(t,info);var anim: Animation=pl.anim;var length: float=pl.length;var turn: float=pl.turn
+	var dist: float=pl.dist;var m: Dictionary=pl.m;var mode: String=pl.mode;var loops: int=pl.loops
+	var natural=length;var rate=1.0
+	if forced>0 and mode!="fermo":rate=clampf(natural/forced,.35,2.5);length=forced
 	if OS.get_environment("BM_DEBUG")=="1":print("TRACK ",game.state.fighters[t.i].character," ",t.clip," ",mode," dist %.2f len %.2f loops %d"%[dist,length,loops])
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
@@ -413,8 +430,10 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 		_set_rim(t.i,t.move,t.get("facing",-1))
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
-			ap.play(t.clip,.12 if fluid else .18)
-		if t.get("hit",0)>0:_float(root.position,"-%d" % t.hit))
+			ap.play(t.clip,.12 if fluid else .18);ap.speed_scale=rate
+		if t.get("hit",0)>0:
+			_float(root.position,"-%d" % t.hit)
+			if blood:_bleed(root.position,int(t.hit)))
 	if mode=="fermo":
 		tw.tween_interval(length)
 	else:
@@ -424,13 +443,46 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool) -> float:
 			var clip_len=anim.length
 			tw.tween_method(func(x: float):
 				var k=floorf(x/clip_len);var p=(k+_progress(m,x-k*clip_len))/loops
-				root.position=from.lerp(to,minf(p,1.0)),0.0,length,length)
+				root.position=from.lerp(to,minf(p,1.0)),0.0,natural,length)
 		else:
 			tw.tween_property(root,"position",to,length)
 		if mode=="profilo" and anim and not t.clip in ["Carica"]:
 			tw.tween_callback(func():anim.loop_mode=Animation.LOOP_NONE)
+		if rate!=1.0 and ap:tw.tween_callback(func():ap.speed_scale=1.0)
 	return turn+length
 
+# --- Sangue (opzione) -------------------------------------------------------------
+# Uno sbuffo proporzionato alle ferite; poi le gocce cadono nell'esagono e restano lì.
+var blood=false
+var blood_marks: Array=[]      # macchie rimaste sull'arena (nodi)
+var _splat_tex: Texture2D
+func clear_blood() -> void:
+	for m in blood_marks:
+		if is_instance_valid(m):m.queue_free()
+	blood_marks=[]
+func _splat() -> Texture2D:
+	if _splat_tex==null:
+		var g=Gradient.new();g.set_color(0,Color(.42,0,.02,.95));g.set_color(1,Color(.3,0,.0,0));g.add_point(.55,Color(.38,0,.02,.8))
+		var t=GradientTexture2D.new();t.gradient=g;t.fill=GradientTexture2D.FILL_RADIAL;t.fill_from=Vector2(.5,.5);t.fill_to=Vector2(.5,0);t.width=64;t.height=64
+		_splat_tex=t
+	return _splat_tex
+func _bleed(at: Vector3,wounds: int) -> void:
+	var n=clampi(wounds,1,12)
+	var puff=CPUParticles3D.new();puff.one_shot=true;puff.amount=clampi(n*10,10,120);puff.lifetime=.9;puff.explosiveness=.92
+	puff.position=at+Vector3(0,.75,0);puff.direction=Vector3(0,1,0);puff.spread=70;puff.initial_velocity_min=.6;puff.initial_velocity_max=1.4+n*.12
+	puff.gravity=Vector3(0,-6.5,0);puff.scale_amount_min=.6;puff.scale_amount_max=1.4
+	var drop=SphereMesh.new();drop.radius=.018;drop.height=.036;drop.radial_segments=6;drop.rings=3;puff.mesh=drop
+	var dm=StandardMaterial3D.new();dm.albedo_color=Color(.55,0,.03);dm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;puff.material_override=dm
+	viewport.add_child(puff);puff.emitting=true
+	get_tree().create_timer(1.6).timeout.connect(puff.queue_free)
+	# le macchie compaiono quando le gocce toccano terra
+	get_tree().create_timer(.45).timeout.connect(func():
+		for k in mini(2+n,14):
+			var q=MeshInstance3D.new();var pm=PlaneMesh.new();var sz=randf_range(.08,.16)+n*.012;pm.size=Vector2(sz,sz*randf_range(.6,1.0));q.mesh=pm
+			var mm=StandardMaterial3D.new();mm.albedo_texture=_splat();mm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;q.material_override=mm
+			var r=randf_range(0,.44);var a=randf_range(0,TAU)
+			q.position=Vector3(at.x+cos(a)*r,.046+k*.0004,at.z+sin(a)*r);q.rotation.y=randf_range(0,TAU)
+			viewport.add_child(q);blood_marks.append(q))
 func _float(at: Vector3,text: String) -> void:
 	var l=Label3D.new();l.text=text;l.font_size=72;l.outline_size=14;l.modulate=Color("ff7b6b");l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
 	viewport.add_child(l);l.position=at+Vector3(0,1.35,0)
@@ -448,11 +500,46 @@ func replay() -> void:
 		if not minis.has(i):continue
 		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true
 		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
-		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true);_set_rim(i,initial[i].current,int(initial[i].facing))
+		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true,0);_set_rim(i,initial[i].current,int(initial[i].facing))
+	clear_blood()
 	await get_tree().create_timer(.6).timeout
+	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
+	# (ognuno alla sua velocità), poi attacchi e difese; il turno dopo parte subito.
+	var turns=[];var cur=[];var cur_turn=-1
 	for step in history:
-		await _play_step(step,true)
+		var tn=-1
+		for t in step:
+			if t.has("labels"):tn=int(t.get("turn",-1))
+		if tn!=cur_turn and not cur.is_empty():turns.append(cur);cur=[]
+		cur_turn=tn;cur.append(step)
+	if not cur.is_empty():turns.append(cur)
+	for group in turns:
+		await _play_turn(group)
 	replaying=false;playing=false;_refresh_tokens()
+
+func _play_turn(group: Array) -> void:
+	var moves={};var acts=[];var labels={}
+	for step in group:
+		for t in step:
+			if t.has("labels"):labels=t.labels;continue
+			if not minis.has(t.i):continue
+			if t.from.distance_to(t.to)>.05 and not t.get("after",false):
+				if moves.has(t.i):moves[t.i].to=t.to;moves[t.i].yaw=t.yaw;moves[t.i].facing=t.get("facing",-1)   # più spostamenti nello stesso turno: un solo tragitto
+				else:moves[t.i]=t.duplicate();moves[t.i].delay=0.0
+			else:acts.append(t)
+	var span=0.0
+	for i in moves:span=maxf(span,_plan(moves[i],minis[i]).length)
+	var longest=0.0
+	for i in moves:longest=maxf(longest,_run_track(moves[i],minis[i],true,span))
+	if longest>0:await get_tree().create_timer(longest).timeout
+	longest=0.0
+	for t in acts:longest=maxf(longest,t.delay+_run_track(t,minis[t.i],true))
+	if longest>0:await get_tree().create_timer(longest).timeout
+	for i in labels:
+		if minis.has(i):_set_status(i,labels[i][0],labels[i][1],labels[i][2],labels[i][3] if labels[i].size()>3 else -1)
+	for t in moves.values()+acts:
+		var info=minis.get(t.i)
+		if info and info.ap and not t.get("stay",false) and t.clip!="A terra":info.ap.play("In guardia",.25)
 
 # ---------------------------------------------------------------- celle evidenziate
 func _draw_overlay() -> void:
