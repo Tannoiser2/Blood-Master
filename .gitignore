@@ -10,3 +10,7 @@ build/
 
 # Editable high-resolution artwork (local masters)
 source_art/
+
+# file generati da Godot importando il glb di prova nella radice
+/gascor-animated.glb.import
+/gascor-animated_Image_*
