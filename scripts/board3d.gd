@@ -18,14 +18,15 @@ const MODELS={"gascor":"res://assets/models/gascor/gascor.glb","anteos":"res://a
 	"zenyo":"res://assets/models/zenyo/zenyo.glb","shaara":"res://assets/models/shaara/shaara.glb",
 	"zak":"res://assets/models/zak/zak.glb","kylvia":"res://assets/models/kylvia/kylvia.glb",
 	"gandy":"res://assets/models/gandy/gandy.glb","thorn":"res://assets/models/thorn/thorn.glb",
-	"sanguinaria":"res://assets/models/sanguinaria/sanguinaria.glb","ziggy":"res://assets/models/ziggy/ziggy.glb"}
+	"sanguinaria":"res://assets/models/sanguinaria/sanguinaria.glb","ziggy":"res://assets/models/ziggy/ziggy.glb",
+	"golem":"res://assets/models/golem/golem.glb","skelos":"res://assets/models/skelos/skelos.glb","sketos":"res://assets/models/sketos/sketos.glb"}
 const CLIP={"guard":"In guardia","advance":"Avanzare","run":"Correre","charge":"Carica","cleave":"Fendente",
 	"left":"Taglio Sx","right":"Taglio Dx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
 	"dodge":"Schivata","roll":"Rotolare","unbalanced":"Sbilanciato","down":"A terra","rise":"Rialzarsi","again":"In guardia",
 	"spin":"Taglio Dx","sweep":"Taglio Sx","meditate":"Riposo",
 	"load":"Incoccare","shoot":"Tirare","weapon":"Riposo",
 	# maghi: ogni incantesimo ha la sua clip, generata sul rig del mago
-	"concentrate":"Concentrarsi","punch":"Pugno","float":"Fluttuare",
+	"concentrate":"Concentrarsi","punch":"Pugno","float":"Fluttuare","pieces":"A terra",
 	"firestaff":"Bastone di fuoco","shield":"Scudo","vortex":"Vortice","sleep":"Sonno","fireball":"Palla di fuoco",
 	"pustules":"Pustole","fear":"Paura","age":"Vecchiaia","summon":"Evocare","plague":"Peste",
 	"wall":"Muro","teleport":"Teletrasporto","transform":"Trasformazione","livingfire":"Fuoco vivo","abyss":"Abisso",
@@ -194,7 +195,8 @@ func _mini(i: int) -> Dictionary:
 		# personaggio senza modello 3D: pedina in piedi con il disegno della mossa corrente
 		var s=Sprite3D.new();s.pixel_size=.0019;s.position.y=.47;s.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y;s.shaded=false;pivot.add_child(s);info.token=s
 	# barra di stato sopra la testa: nome e ferite (sempre rivolta alla camera)
-	var bar=Node3D.new();bar.position.y=1.2+.1*(i%2);bar.scale=Vector3.ONE*.6;root.add_child(bar);info.bar=bar   # nome e barre più discreti
+	var bar=Node3D.new();bar.position.y=1.2+.1*(i%2);bar.scale=Vector3.ONE*.6;root.add_child(bar);info.bar=bar;bar.visible=labels_on   # nome e barre più discreti
+	if p.character=="golem":bar.position.y+=.35
 	var label=Label3D.new();label.text=p.name;label.font_size=26;label.outline_size=8;label.modulate=team;label.position.y=.085;label.no_depth_test=true;label.render_priority=3;bar.add_child(label);info.label=label
 	var back=MeshInstance3D.new();var bq=QuadMesh.new();bq.size=Vector2(.64,.075);back.mesh=bq
 	var bk=StandardMaterial3D.new();bk.albedo_color=Color(0,0,0,.75);bk.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;bk.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;bk.no_depth_test=true;bk.render_priority=1;back.material_override=bk;bar.add_child(back)
@@ -213,6 +215,7 @@ func _set_status(i: int,hp: int,max_hp: int,alive: bool,fatigue:=-1) -> void:
 	var t=clampf(fatigue/FATIGUE_FULL,0,1)
 	info.tired.scale.x=maxf(t,.001);info.tired.position.x=-.3*(1.0-t);info.tired.visible=alive and t>0
 	info.label.text=p.name+("  †" if not alive else "")
+	info.bar.visible=labels_on and alive   # i caduti non coprono più gli altri nomi
 	var f=clampf(float(hp)/maxf(1.0,max_hp),0,1)
 	info.fill.scale.x=maxf(f,.001);info.fill.position.x=-.3*(1.0-f);info.fill.visible=alive and f>0
 	info.fill_mat.albedo_color=Color("d9534f").lerp(Color("f0c040"),clampf(f*2,0,1)) if f<.5 else Color("f0c040").lerp(Color("5fd068"),(f-.5)*2)
@@ -223,6 +226,7 @@ func token_color(m: Dictionary) -> Color:
 	return Color("8f9a9e")
 const SIDE_COLORS=[["red",Color("ff4a3d")],["green",Color("3ddc6a")],["blue",Color("3d8bff")]]
 var _shots_seen=0
+var _spells_seen=0
 var _dir3=[]               # direzione 3D verso la cella vicina in ciascuna delle 6 direzioni delle regole
 func _directions() -> Array:
 	if _dir3.is_empty():
@@ -330,6 +334,8 @@ func _clip_for(i: int,id: String,bow: bool) -> String:
 	# arcieri: in modalità arco le clip "… arco" (guardia, avanzata, corsa, sbilanciato)
 	var base=CLIP.get(id,"In guardia")
 	var info=minis.get(i,{})
+	if id=="guard" and str(game.state.fighters[i].character)=="golem" and game.move(game.state.fighters[i]).get("attack")!=null and info.get("ap")!=null and info.ap.has_animation("Schianto"):
+		return "Schianto"   # la guardia del golem è un colpo: pugni giù sul nemico
 	if bow and info.get("ap")!=null and info.ap.has_animation(base+" arco"):return base+" arco"
 	return base
 func _view(p: Dictionary) -> Dictionary:
@@ -361,7 +367,14 @@ func sync() -> void:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
 		var track={"i":i,"clip":_clip_for(i,id,bool(p.get("bow",false))),"bow":bool(p.get("bow",false)),"loaded":bool(p.get("loaded",false)) or id=="shoot","from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
-		if SPELL_FX.has(id):track["targets"]=victims.filter(func(v):return v!=i)
+		if SPELL_FX.has(id):
+			track["targets"]=victims.filter(func(v):return v!=i)
+			var ls=game.state.get("last_spell",{})
+			if int(game.state.get("spells",0))>_spells_seen and int(ls.get("actor",-1))==i:
+				_spells_seen=int(game.state.spells)
+				if game.cells.has(str(ls.get("target",""))):track["spell_at"]=cell_pos(str(ls.target))
+				for v in game.state.fighters.size():   # bersaglio non ferito ma colpito (sonno, controllo, peste...)
+					if game.state.fighters[v].cell==str(ls.get("target","")) and v!=i and not v in track.targets:track.targets.append(v)
 		if id=="shoot" and int(game.state.get("shots",0))>_shots_seen:
 			_shots_seen=int(game.state.get("shots",0))
 			var v=int(game.state.get("last_shot",{}).get("victim",-1))
@@ -393,7 +406,12 @@ func sync() -> void:
 		var labels={}   # etichette dopo questo passo, per il replay
 		for i in minis:
 			var q=game.state.fighters[i];labels[i]=[int(q.hp),int(q.max_hp),q.alive]
-		step.append({"labels":labels,"turn":int(game.state.get("turn",0)),"effects":game.state.effects.duplicate(true)})
+		var states={}
+		for i in minis:
+			var q=game.state.fighters[i]
+			states[i]={"burning":bool(q.get("burning",false)) and q.alive,"shield":bool(q.get("shield",false)) and q.alive,"plague":int(q.get("plague",-1))>=0 and q.alive,
+				"control":int(q.get("controller_by",-1))>=0 and q.alive,"frog":bool(q.get("frog",false))}
+		step.append({"labels":labels,"turn":int(game.state.get("turn",0)),"effects":game.state.effects.duplicate(true),"states":states})
 		if is_visible_in_tree():
 			queue.append(step)
 			if not playing:_play_queue()
@@ -414,6 +432,10 @@ func export_replay() -> Dictionary:
 				var lb={}
 				for i in t.labels:lb[str(i)]=t.labels[i]
 				c["labels"]=lb
+			if t.has("states"):
+				var sd={}
+				for i in t.states:sd[str(i)]=t.states[i]
+				c["states"]=sd
 			st.append(c)
 		h.append(st)
 	var ini={}
@@ -428,10 +450,15 @@ func import_replay(d: Dictionary) -> void:
 			var c={}
 			for k in t:
 				var v=t[k]
-				c[k]=Vector3(v[0],v[1],v[2]) if k in ["from","to"] else v
+				c[k]=Vector3(v[0],v[1],v[2]) if k in ["from","to","spell_at"] else v
 			for k in ["i","facing","hit","turn"]:
 				if c.has(k):c[k]=int(c[k])                     # il JSON restituisce numeri decimali
 			if c.has("arrow"):c.arrow={"victim":int(c.arrow.victim),"hit":bool(c.arrow.hit)}
+			if c.has("targets"):c.targets=c.targets.map(func(x):return int(x))
+			if c.has("states"):
+				var sd={}
+				for i in t.states:sd[int(i)]=t.states[i]
+				c.states=sd
 			if c.has("labels"):
 				var lb={}
 				for i in t.labels:
@@ -485,6 +512,7 @@ func _play_step(step: Array,fluid: bool) -> void:
 	for t in step:
 		if t.has("labels"):
 			if t.has("effects"):_show_effects(t.effects)
+			if t.has("states"):_apply_states(t.states)
 			if fluid:
 				for i in t.labels:
 					if minis.has(i):_set_status(i,t.labels[i][0],t.labels[i][1],t.labels[i][2])
@@ -675,6 +703,9 @@ func _glow(color: Color,amount: int,radius: float) -> CPUParticles3D:
 func _spirit_move(t: Dictionary,info: Dictionary) -> void:
 	var fig: Node3D=info.pivot
 	var mv=str(t.get("move",""))
+	if t.get("dead",false):   # lo spirito si dissolve
+		var tw0=create_tween();tw0.tween_property(fig,"rotation:y",fig.rotation.y+TAU*2,1.2);tw0.parallel().tween_property(fig,"scale",Vector3(.01,1.6,.01),1.2).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+		tw0.tween_callback(func():fig.visible=false);return
 	if not (SPELL_FX.has(mv) or t.get("hit",0)>0 or mv in ["unbalanced","float","advance"]):return
 	var tw=create_tween()
 	if SPELL_FX.has(t.get("move","")):          # incantesimo: vortice veloce e gonfiarsi
@@ -688,21 +719,155 @@ func _spirit_move(t: Dictionary,info: Dictionary) -> void:
 	elif t.get("move","") in ["float","advance"]:     # si allunga nella direzione del volo
 		tw.tween_property(fig,"scale",Vector3(.92,1.12,.92),.3);tw.tween_interval(.4);tw.tween_property(fig,"scale",Vector3.ONE,.3)
 func _cast_fx(t: Dictionary,info: Dictionary,clip_time: float) -> void:
-	var color: Color=SPELL_FX[t.move];var caster: Node3D=info.root
+	# ogni incantesimo ha il suo effetto: proiettile, fulmine, flusso, onda, nube...
+	var mv: String=t.move;var color: Color=SPELL_FX[mv];var caster: Node3D=info.root
 	await get_tree().create_timer(clip_time*.45).timeout
 	if not is_instance_valid(caster):return
-	var burst=_glow(color,40,.25);viewport.add_child(burst);burst.global_position=caster.global_position+Vector3(0,.75,0);burst.emitting=true
-	get_tree().create_timer(1.5).timeout.connect(burst.queue_free)
+	var hand=caster.global_position+Vector3(0,.8,0)
+	var targets=[]
 	for v in t.get("targets",[]):
-		var victim=minis.get(int(v),{})
-		if victim.is_empty():continue
-		var orb=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.07;sm.height=.14;orb.mesh=sm
-		var om=StandardMaterial3D.new();om.albedo_color=color;om.emission_enabled=true;om.emission=color;om.emission_energy_multiplier=4.0;om.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;orb.material_override=om
-		viewport.add_child(orb);var from=caster.global_position+Vector3(0,.8,0);var to=victim.root.global_position+Vector3(0,.65,0);orb.global_position=from
-		var tw=create_tween();tw.tween_property(orb,"global_position",to,clampf(from.distance_to(to)/9.0,.12,.5))
-		tw.tween_callback(func():
-			var hit=_glow(color,30,.18);viewport.add_child(hit);hit.global_position=to;hit.emitting=true
-			get_tree().create_timer(1.5).timeout.connect(hit.queue_free);orb.queue_free())
+		if minis.has(int(v)):targets.append(minis[int(v)].root.global_position+Vector3(0,.6,0))
+	var at: Vector3=t.get("spell_at",Vector3.INF)
+	if at==Vector3.INF and not targets.is_empty():at=targets[0]-Vector3(0,.6,0)
+	_burst(hand,color,40,.25)   # lampo sulle mani del mago
+	match mv:
+		"fireball":
+			var dest=at+Vector3(0,.5,0) if at!=Vector3.INF else hand
+			await _projectile(hand,dest,color,.16,true)
+			_explosion(dest,color,1.2)
+		"firestaff":
+			for p in targets:_stream(hand,p,color,.5,false)
+		"lightning","shock":
+			var chain=[hand]+targets
+			for k in chain.size()-1:_bolt(chain[k],chain[k+1],color)
+			if mv=="shock":_ring(caster.global_position,color,1.6,.45)
+		"drain":
+			for p in targets:_stream(p,hand,color,.9,true)   # l'energia va dal bersaglio al mago
+		"heal":
+			_rise(caster.global_position,Color(.4,1,.6),60,1.4);_ring(caster.global_position,Color(.4,1,.6),.7,.6)
+		"shield":_ring(caster.global_position,color,.8,.5)
+		"sleep":
+			for p in targets:_zzz(p)
+		"fear":_ring(caster.global_position,color,5.5,1.1)
+		"pustules":_ring(caster.global_position,color,2.6,.6);_burst(hand,color,80,.5)
+		"age":
+			for p in targets:_fall_dust(p,color)
+		"plague","control":
+			for p in targets:_stream(hand,p,color,.7,false)
+		"summon":
+			if at!=Vector3.INF:_burst(at+Vector3(0,.15,0),Color(.55,.42,.3),90,.5);_ring(at,Color(.55,.42,.3),.9,.5)
+		"transform":
+			for p in targets:_burst(p,color,70,.35)
+		"vortex","wall","livingfire","abyss":
+			if at!=Vector3.INF:
+				await _projectile(hand,at+Vector3(0,.3,0),color,.1,false)
+				_burst(at+Vector3(0,.2,0),color,70,.45)
+		"concentrate":_rise(caster.global_position,color,24,.8)
+		_:
+			for p in targets:
+				await _projectile(hand,p,color,.07,false);_burst(p,color,30,.18)
+func _fx_mat(color: Color,energy:=3.0) -> StandardMaterial3D:
+	var m=StandardMaterial3D.new();m.albedo_color=color;m.emission_enabled=true;m.emission=color;m.emission_energy_multiplier=energy
+	m.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;return m
+func _burst(at: Vector3,color: Color,amount: int,radius: float) -> void:
+	var g=_glow(color,amount,radius);viewport.add_child(g);g.global_position=at;g.emitting=true
+	get_tree().create_timer(1.6).timeout.connect(g.queue_free)
+func _projectile(from: Vector3,to: Vector3,color: Color,size: float,trail: bool) -> void:
+	var orb=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=size;sm.height=size*2;orb.mesh=sm;orb.material_override=_fx_mat(color,4.0)
+	viewport.add_child(orb);orb.global_position=from
+	if trail:   # scia di fiamme
+		var tr=_glow(color,60,size*.6);tr.one_shot=false;tr.explosiveness=0;tr.lifetime=.45;tr.local_coords=false;orb.add_child(tr);tr.emitting=true
+	var tw=create_tween();tw.tween_property(orb,"global_position",to,clampf(from.distance_to(to)/8.0,.15,.6))
+	await tw.finished
+	orb.queue_free()
+func _explosion(at: Vector3,color: Color,radius: float) -> void:
+	var g=_glow(color,160,.2);g.initial_velocity_min=1.5;g.initial_velocity_max=3.5;g.gravity=Vector3(0,-1.5,0);g.lifetime=1.0
+	viewport.add_child(g);g.global_position=at;g.emitting=true;get_tree().create_timer(1.8).timeout.connect(g.queue_free)
+	var ball=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.2;sm.height=.4;ball.mesh=sm;var m=_fx_mat(Color(1,.8,.3),5.0);ball.material_override=m
+	viewport.add_child(ball);ball.global_position=at
+	var tw=create_tween();tw.tween_property(ball,"scale",Vector3.ONE*radius*5,.35).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(m,"albedo_color:a",0.0,.4);tw.tween_callback(ball.queue_free)
+	var light=OmniLight3D.new();light.light_color=color;light.light_energy=6.0;light.omni_range=4.0;viewport.add_child(light);light.global_position=at
+	var lt=create_tween();lt.tween_property(light,"light_energy",0.0,.6);lt.tween_callback(light.queue_free)
+func _bolt(from: Vector3,to: Vector3,color: Color) -> void:
+	# saetta a zig-zag che sfarfalla per un attimo
+	var node=MeshInstance3D.new();var im=ImmediateMesh.new();node.mesh=im;node.material_override=_fx_mat(Color(.85,.95,1),6.0);viewport.add_child(node)
+	var light=OmniLight3D.new();light.light_color=color;light.light_energy=4.0;light.omni_range=3.5;viewport.add_child(light);light.global_position=(from+to)/2
+	for flick in 5:
+		im.clear_surfaces();im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+		var pts=[from];var n=9
+		for k in range(1,n):pts.append(from.lerp(to,float(k)/n)+Vector3(randf_range(-.15,.15),randf_range(-.15,.15),randf_range(-.15,.15)))
+		pts.append(to)
+		for k in pts.size()-1:
+			var a: Vector3=pts[k];var b: Vector3=pts[k+1];var side=(b-a).cross(Vector3.UP).normalized()*.025
+			if side.length()<.001:side=Vector3(.025,0,0)
+			for v in [a-side,a+side,b+side,a-side,b+side,b-side]:im.surface_add_vertex(v)
+		im.surface_end()
+		await get_tree().create_timer(.06).timeout
+	_burst(to,color,30,.15);node.queue_free();light.queue_free()
+func _stream(from: Vector3,to: Vector3,color: Color,dur: float,reverse_glow: bool) -> void:
+	# flusso di particelle che scorre da un punto all'altro
+	var g=_glow(color,90,.08);g.one_shot=false;g.explosiveness=0;g.local_coords=false;g.lifetime=.35;g.gravity=Vector3.ZERO;g.initial_velocity_min=0;g.initial_velocity_max=.1
+	viewport.add_child(g);g.global_position=from;g.emitting=true
+	var tw=create_tween();tw.tween_property(g,"global_position",to,dur);tw.tween_property(g,"global_position",from,0.0)
+	tw.tween_property(g,"global_position",to,dur);tw.tween_callback(func():g.emitting=false)
+	get_tree().create_timer(dur*2+.8).timeout.connect(g.queue_free)
+	if reverse_glow:get_tree().create_timer(dur*2).timeout.connect(func():_burst(to,color,40,.2))
+func _ring(center: Vector3,color: Color,radius: float,dur: float) -> void:
+	# onda circolare che si allarga sul terreno
+	var ring=MeshInstance3D.new();var tm=TorusMesh.new();tm.inner_radius=.42;tm.outer_radius=.5;ring.mesh=tm;var m=_fx_mat(color,3.0);ring.material_override=m
+	viewport.add_child(ring);ring.global_position=center+Vector3(0,.1,0);ring.scale=Vector3(.2,.2,.2)
+	var tw=create_tween();tw.tween_property(ring,"scale",Vector3(radius*2,.3,radius*2),dur).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(m,"albedo_color:a",0.0,dur);tw.tween_callback(ring.queue_free)
+func _rise(center: Vector3,color: Color,amount: int,dur: float) -> void:
+	var g=_glow(color,amount,.35);g.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;g.emission_ring_axis=Vector3.UP;g.emission_ring_radius=.35;g.emission_ring_inner_radius=.25;g.emission_ring_height=.05
+	g.direction=Vector3.UP;g.spread=8;g.initial_velocity_min=.6;g.initial_velocity_max=1.0;g.gravity=Vector3.ZERO;g.lifetime=dur;g.explosiveness=.3
+	viewport.add_child(g);g.global_position=center+Vector3(0,.1,0);g.emitting=true;get_tree().create_timer(dur+1.0).timeout.connect(g.queue_free)
+func _zzz(at: Vector3) -> void:
+	for k in 3:
+		var l=Label3D.new();l.text="Z";l.font_size=96;l.pixel_size=.0025;l.modulate=Color(.8,.7,1);l.outline_size=10;l.billboard=BaseMaterial3D.BILLBOARD_ENABLED
+		viewport.add_child(l);l.global_position=at+Vector3(.1*k,.2,0)
+		var tw=create_tween();tw.tween_interval(k*.3);tw.tween_property(l,"global_position",at+Vector3(.25+.1*k,.9,0),1.2);tw.parallel().tween_property(l,"modulate:a",0.0,1.2);tw.tween_callback(l.queue_free)
+func _fall_dust(at: Vector3,color: Color) -> void:
+	var g=_glow(color,70,.3);g.direction=Vector3.DOWN;g.gravity=Vector3(0,-1.5,0);g.initial_velocity_min=.1;g.initial_velocity_max=.3;g.lifetime=1.3
+	viewport.add_child(g);g.global_position=at+Vector3(0,.5,0);g.emitting=true;get_tree().create_timer(2.0).timeout.connect(g.queue_free)
+# Stati che durano: fiamme addosso, scudo magico, peste, controllo mentale, rana
+func _apply_states(states) -> void:
+	if states==null:return
+	for i in minis:
+		var st: Dictionary=states.get(i,states.get(str(i),{}))
+		var info=minis[i]
+		_state_node(info,"burning",st.get("burning",false),func():
+			var g=_glow(Color(1,.5,.1),40,.2);g.one_shot=false;g.explosiveness=0;g.lifetime=.7;g.direction=Vector3.UP;g.spread=15;g.gravity=Vector3(0,1.2,0)
+			g.emission_shape=CPUParticles3D.EMISSION_SHAPE_BOX;g.emission_box_extents=Vector3(.15,.3,.15);g.position.y=.5;g.emitting=true;return g)
+		_state_node(info,"shield",st.get("shield",false),func():
+			var b=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.55;sm.height=1.3;b.mesh=sm;var m=_fx_mat(Color(.45,.7,1,.18),1.5);m.cull_mode=BaseMaterial3D.CULL_DISABLED;b.material_override=m;b.position.y=.6;return b)
+		_state_node(info,"plague",st.get("plague",false),func():
+			var g=_glow(Color(.5,.8,.15,.6),30,.35);g.one_shot=false;g.explosiveness=0;g.lifetime=1.6;g.gravity=Vector3(0,.15,0);g.initial_velocity_max=.2;g.position.y=.4;g.emitting=true;return g)
+		_state_node(info,"control",st.get("control",false),func():
+			var r=MeshInstance3D.new();var tm=TorusMesh.new();tm.inner_radius=.18;tm.outer_radius=.22;r.mesh=tm;r.material_override=_fx_mat(Color(.85,.4,1),3.0);r.position.y=1.25;return r)
+		_frog(info,st.get("frog",false))
+func _state_node(info: Dictionary,key: String,on: bool,make: Callable) -> void:
+	var k="state_"+key
+	if on and not (info.has(k) and is_instance_valid(info[k])):
+		var n: Node3D=make.call();info.root.add_child(n);info[k]=n
+		if key=="control":var tw=n.create_tween().set_loops();tw.tween_property(n,"rotation:y",TAU,2.0).from(0.0)   # alone che gira sopra la testa
+	elif not on and info.has(k):
+		if is_instance_valid(info[k]):info[k].queue_free()
+		info.erase(k)
+func _frog(info: Dictionary,on: bool) -> void:
+	# trasformato in rana: la miniatura sparisce e al suo posto c'è una rana
+	if info.get("model")==null:return
+	if on and not info.has("frog_node"):
+		var f: Node3D
+		if ResourceLoader.exists("res://assets/models/frog/frog.glb"):f=load("res://assets/models/frog/frog.glb").instantiate();f.scale=Vector3.ONE*.5
+		else:
+			f=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.18;sm.height=.25;f.mesh=sm;f.material_override=_fx_mat(Color(.3,.75,.3),.3);f.position.y=.15
+		info.pivot.add_child(f);info.frog_node=f;info.model.visible=false
+		var hop=f.create_tween().set_loops();hop.tween_interval(1.2);hop.tween_property(f,"position:y",f.position.y+.15,.15);hop.tween_property(f,"position:y",f.position.y,.15)
+	elif not on and info.has("frog_node"):
+		if is_instance_valid(info.frog_node):info.frog_node.queue_free()
+		info.erase("frog_node");info.model.visible=true
 var effect_nodes: Array=[]
 func _show_effects(list) -> void:
 	for n in effect_nodes:
@@ -728,6 +893,10 @@ func _show_effects(list) -> void:
 # --- Suoni (opzione): armi, passi, urla, magie -----------------------------------
 # I file sono in assets/audio (sintetizzati da tools/audio/synth.py): nome_1, nome_2, ...
 var sound=true
+var labels_on=true          # nomi e barre sopra le miniature (spenti: ritratti nell'interfaccia)
+func set_labels(v: bool) -> void:
+	labels_on=v
+	for i in minis:minis[i].bar.visible=v and game.state.fighters[i].alive
 var _sfx_cache={}
 const FEMALE=["kylvia","sanguinaria","shaara","shannon"]
 func _variants(name: String) -> Array:
@@ -751,6 +920,7 @@ func _voice(i: int) -> String:
 	var c=str(game.state.fighters[i].character)
 	if c=="thorn" or c=="golem":return "monster"
 	if c=="ziggy":return "spirit"
+	if c in ["skelos","sketos"]:return "bones"
 	return "f" if c in FEMALE else "m"
 func _sound_track(t: Dictionary,info: Dictionary,length: float,mode: String) -> void:
 	if not sound or not minis.has(t.i):return
@@ -827,10 +997,10 @@ func replay() -> void:
 	for i in minis:final[i]={"pos":minis[i].root.position,"yaw":minis[i].pivot.rotation.y}
 	for i in initial:
 		if not minis.has(i):continue
-		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true
+		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true;minis[i].pivot.visible=true;minis[i].pivot.scale=Vector3.ONE
 		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
 		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true,0);_set_rim(i,initial[i].current,int(initial[i].facing))
-	clear_blood();clear_arrows();_show_effects([])
+	clear_blood();clear_arrows();_show_effects([]);_apply_states({})
 	await get_tree().create_timer(.6).timeout
 	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
 	# (ognuno alla sua velocità), poi attacchi e difese; il turno dopo parte subito.
@@ -867,6 +1037,7 @@ func _play_turn(group: Array) -> void:
 	for step in group:
 		for t in step:
 			if t.has("effects"):_show_effects(t.effects)
+			if t.has("states"):_apply_states(t.states)
 	for i in labels:
 		if minis.has(i):_set_status(i,labels[i][0],labels[i][1],labels[i][2],labels[i][3] if labels[i].size()>3 else -1)
 	for t in moves.values()+acts:

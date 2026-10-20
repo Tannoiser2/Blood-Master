@@ -33,6 +33,7 @@ var auto_draw=true
 var board_grid=false
 var blood_on=false
 var sound_on=true
+var labels_on=true
 var clear_plates=false
 var _last_hp={}
 var showing_game=false
@@ -119,10 +120,10 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));clear_plates=bool(d.get("clear_plates",false))
+	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));clear_plates=bool(d.get("clear_plates",false))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"clear_plates":clear_plates}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"clear_plates":clear_plates}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -324,9 +325,9 @@ func _bar_button(text: String,cb: Callable,tip:="") -> Button:
 		if sb is StyleBoxFlat:sb.content_margin_left=10;sb.content_margin_right=10;sb.content_margin_top=6;sb.content_margin_bottom=6
 		b.add_theme_stylebox_override(st,sb)
 	return b
-func _bar_check(text: String,on: bool,cb: Callable) -> Button:
+func _bar_check(text: String,on: bool,cb: Callable,tip:="") -> Button:
 	# pulsante attivo/non attivo (niente interruttore): acceso è dorato
-	var c=_bar_button(text,func():pass);c.toggle_mode=true;c.button_pressed=on;c.toggled.connect(cb)
+	var c=_bar_button(text,func():pass,tip);c.toggle_mode=true;c.button_pressed=on;c.toggled.connect(cb)
 	var lit=box(GOLD,8);lit.content_margin_left=10;lit.content_margin_right=10;lit.content_margin_top=6;lit.content_margin_bottom=6
 	c.add_theme_stylebox_override("pressed",lit);c.add_theme_color_override("font_pressed_color",Color("151b19"))
 	c.add_theme_color_override("font_hover_pressed_color",Color("151b19"));c.add_theme_stylebox_override("hover_pressed",lit)
@@ -337,27 +338,22 @@ func _overlay_panel(alpha:=.86) -> PanelContainer:
 func _build_game() -> void:
 	showing_game=true;clear(page)
 	var bar=_overlay_panel(1.0);page.add_child(bar)
-	var row=HBoxContainer.new();row.add_theme_constant_override("separation",6);bar.add_child(row)
-	row.add_child(label("BLOOD MASTER",20,GOLD))
+	var row=HFlowContainer.new();row.add_theme_constant_override("h_separation",6);row.add_theme_constant_override("v_separation",6);bar.add_child(row)
 	turn_label=label("",15,GOLD);row.add_child(turn_label)
-	status=label("",13,MUTED);status.size_flags_horizontal=Control.SIZE_EXPAND_FILL;status.clip_text=true;status.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;row.add_child(status)
-	row.add_child(_bar_button("Inquadra",func():board.fit();board3d.fit(),"Riporta la vista al centro dello scontro"))
-	row.add_child(_bar_button("⟲",func():board.rotate_view(-PI/3);board3d.rotate_view(PI/3),"Ruota la mappa"))
-	row.add_child(_bar_button("⟳",func():board.rotate_view(PI/3);board3d.rotate_view(-PI/3),"Ruota la mappa"))
-	row.add_child(_bar_button("−",func():board.zoom=maxf(.8,board.zoom-.15);board.queue_redraw();board3d.zoom=maxf(.6,board3d.zoom/1.15);board3d.fit_zoom(),"Allontana"))
-	row.add_child(_bar_button("+",func():board.zoom=minf(3.5,board.zoom+.15);board.queue_redraw();board3d.zoom=minf(3.0,board3d.zoom*1.15);board3d.fit_zoom(),"Avvicina"))
+	status=label("",13,MUTED);status.custom_minimum_size.x=160;status.size_flags_horizontal=Control.SIZE_EXPAND_FILL;status.clip_text=true;status.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS;row.add_child(status)
 	row.add_child(_bar_check("Miniature 3D",minis_3d,func(v):minis_3d=v;board.visible=not v;board3d.visible=v;_refresh()))
 	row.add_child(_bar_check("Griglia",board_grid,func(v):board_grid=v;board.show_grid=v;board.queue_redraw();_refresh()))
 	row.add_child(_bar_check("Estrazione automatica",auto_draw,func(v):auto_draw=v;_drive()))
 	row.add_child(_bar_check("Sangue",blood_on,func(v):blood_on=v;board3d.blood=v;_save_settings()))
 	row.add_child(_bar_check("Suoni",sound_on,func(v):sound_on=v;board3d.sound=v;_save_settings()))
 	row.add_child(_bar_check("Basette trasparenti",clear_plates,func(v):clear_plates=v;board3d.set_clear_plates(v);_save_settings()))
+	row.add_child(_bar_check("Nomi e barre",labels_on,func(v):labels_on=v;board3d.set_labels(v);_save_settings();_refresh_portraits(),"Nomi, ferite e fatica sopra le miniature; se spenti compaiono i ritratti"))
 	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
 	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
 	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
 	board=ArenaBoard.new();board.game=game;board.show_grid=board_grid;board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board.cell_clicked.connect(_cell_clicked);stage.add_child(board)
 	_last_hp={}
-	board3d=ArenaBoard3D.new();board3d.game=game;board3d.blood=blood_on;board3d.sound=sound_on;board3d.clear_plates=clear_plates;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
+	board3d=ArenaBoard3D.new();board3d.game=game;board3d.blood=blood_on;board3d.sound=sound_on;board3d.labels_on=labels_on;board3d.clear_plates=clear_plates;board3d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);board3d.cell_clicked.connect(_cell_clicked);board3d.visible=minis_3d;stage.add_child(board3d)
 	board.visible=not minis_3d
 	# sovraimpressioni: colonna sinistra (nido d'ape), centro (azioni), destra (diario).
 	# Contenitori trasparenti al mouse, così la mappa resta trascinabile ovunque.
@@ -371,16 +367,47 @@ func _build_game() -> void:
 	var midrow=HBoxContainer.new();midrow.mouse_filter=Control.MOUSE_FILTER_IGNORE;midrow.alignment=BoxContainer.ALIGNMENT_CENTER;mid.add_child(midrow)
 	action_panel=_overlay_panel(.9);midrow.add_child(action_panel)
 	sidebar=VBoxContainer.new();sidebar.add_theme_constant_override("separation",8);action_panel.add_child(sidebar)
-	hint_label=label("Trascina: sposta · tasto destro o ⟲ ⟳: ruota · rotellina: zoom · clic su un personaggio: scheda",12,MUTED)
+	hint_label=label("Trascina: sposta · tasto destro: ruota · rotellina: zoom · clic su un personaggio: scheda",12,MUTED)
 	hint_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;hint_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	var right=VBoxContainer.new();right.mouse_filter=Control.MOUSE_FILTER_IGNORE;right.custom_minimum_size.x=320;cols.add_child(right)
+	var right=VBoxContainer.new();right.mouse_filter=Control.MOUSE_FILTER_IGNORE;right.custom_minimum_size.x=300;cols.add_child(right)
 	journal_panel=_overlay_panel(.72);right.add_child(journal_panel)
 	var jv=VBoxContainer.new();journal_panel.add_child(jv)
 	var jh=HBoxContainer.new();jv.add_child(jh);jh.add_child(label("DIARIO",13,GOLD));jh.add_child(spacer())
-	log_box=RichTextLabel.new();log_box.bbcode_enabled=true;log_box.scroll_following=true;log_box.custom_minimum_size=Vector2(290,240);log_box.add_theme_font_size_override("normal_font_size",14);jv.add_child(log_box)
+	log_box=RichTextLabel.new();log_box.bbcode_enabled=true;log_box.scroll_following=true;log_box.custom_minimum_size=Vector2(270,240);log_box.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;log_box.add_theme_font_size_override("normal_font_size",14);jv.add_child(log_box)
 	jh.add_child(_bar_button("−",func():log_box.visible=not log_box.visible,"Riduci o apri il diario"))
 	var fill=Control.new();fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
 	right.add_child(hint_label)
+	portraits=HBoxContainer.new();portraits.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.alignment=BoxContainer.ALIGNMENT_CENTER;portraits.add_theme_constant_override("separation",8)
+	portraits.anchor_left=0;portraits.anchor_right=1;portraits.offset_left=12;portraits.offset_right=-336;portraits.offset_top=10;stage.add_child(portraits)   # lascia libero il diario a destra
+	_refresh_portraits()
+var portraits: HBoxContainer
+func _refresh_portraits() -> void:
+	# riquadri con ritratto, ferite e fatica: al posto di nomi e barre sopra le miniature
+	if portraits==null:return
+	clear(portraits);portraits.visible=not labels_on and not game.state.is_empty()
+	if not portraits.visible:return
+	for i in game.state.fighters.size():
+		var p=game.state.fighters[i]
+		if p.cell=="" and p.alive:continue
+		var team_col=Color("69cec1") if int(p.team)==0 else Color("e68078")
+		var card=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,.88),8);sb.border_color=team_col;sb.set_border_width_all(2)
+		sb.content_margin_left=4;sb.content_margin_right=4;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
+		card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);portraits.add_child(card)
+		var v=VBoxContainer.new();v.add_theme_constant_override("separation",3);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
+		var path="res://assets/reborn/minis/%s.webp"%p.character
+		if not ResourceLoader.exists(path):path=card_path(p.character) if game.catalog.has(p.character) else ""
+		var img=TextureRect.new();img.custom_minimum_size=Vector2(64,64);img.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;img.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		img.mouse_filter=Control.MOUSE_FILTER_IGNORE;img.clip_contents=true
+		if path!="":img.texture=load(path)
+		v.add_child(img)
+		var nm=label(p.name.split(" ")[0]+("" if p.alive else " †"),11,team_col);nm.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;nm.custom_minimum_size.x=64;nm.clip_text=true;v.add_child(nm)
+		v.add_child(_meter(float(p.hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%int(p.hp)))
+		v.add_child(_meter(clampf((float(p.fatigue)+float(p.permanent))/10.0,0,1),Color("b48cff"),"%d fatica"%(int(p.fatigue)+int(p.permanent))))
+		var nums=label("%d fer · %d fat"%[int(p.hp),int(p.fatigue)+int(p.permanent)],10,MUTED);nums.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;nums.custom_minimum_size.x=64;v.add_child(nums)
+func _meter(f: float,col: Color,tip: String) -> Control:
+	var back=ColorRect.new();back.color=Color("131d20");back.custom_minimum_size=Vector2(64,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
+	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(64*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
+	return back
 func _layout_overlays() -> void:
 	# i pulsanti consecutivi stanno sulla stessa riga; il pannello sparisce se è vuoto
 	var kids=sidebar.get_children();var row: HBoxContainer=null
@@ -399,6 +426,7 @@ func _refresh() -> void:
 	if not showing_game:return
 	clear(sidebar);clear(picker)
 	turn_label.text=("STANZA "+room_code+" · " if room_code!="" else "")+"TURNO %d" % game.state.turn
+	_refresh_portraits()
 	log_box.text="\n".join(game.state.log.slice(maxi(0,game.state.log.size()-40)))
 	board.highlights=[];board.preview_facing=-1;board.focus_fighter=-1;board.selected=selected_cell
 	status.text=""
@@ -674,7 +702,7 @@ func _manual_content() -> void:
 	var v=VBoxContainer.new();v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);manual_window.add_child(v)
 	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;v.add_child(scroll)
 	var image=TextureRect.new();image.texture=load("res://assets/rules/page-%02d.webp"%(manual_page+1));image.custom_minimum_size=Vector2(810,1145);image.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;image.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT;scroll.add_child(image)
-	var row=HBoxContainer.new();v.add_child(row);row.add_child(button("←",func():manual_page=posmod(manual_page-1,12);_manual_content()));row.add_child(label("Pagina %d / 12"%(manual_page+1)));row.add_child(button("→",func():manual_page=posmod(manual_page+1,12);_manual_content()));row.add_child(button("Chiudi",manual_window.queue_free))
+	var row=HBoxContainer.new();v.add_child(row);row.add_child(button("‹ Indietro",func():manual_page=posmod(manual_page-1,12);_manual_content()));row.add_child(label("Pagina %d / 12"%(manual_page+1)));row.add_child(button("Avanti ›",func():manual_page=posmod(manual_page+1,12);_manual_content()));row.add_child(button("Chiudi",manual_window.queue_free))
 	var l=label("Chiarimento dell’autore: Disperdi magia consuma la mossa solo se riesce.",14,GOLD);v.add_child(l)
 func _credits() -> void:
 	var w=AcceptDialog.new();w.title="Blood Master Deluxe";w.dialog_text="Ideazione e sviluppo: Stefano Ancillai e Marco Ramadori\nDisegni: Luigi Filipponi\nEdizione originale: Devil’s Den\n\nVersione digitale realizzata dalle scansioni dell’autore.\nMotore Godot 4.7 · Partite online con Firebase\n\nLe illustrazioni e il regolamento appartengono ai rispettivi autori.";add_child(w);w.confirmed.connect(w.queue_free);w.popup_centered()

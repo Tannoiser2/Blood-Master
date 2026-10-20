@@ -400,7 +400,7 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 			var lost=removable[rng.randi_range(0,removable.size()-1)];b.lost.append(lost);note(b.name+" perde la mossa "+definition(b).moves[lost].name+" per un critico.")
 		if extra==6:_kill(j);note("Doppio sei! "+b.name+" viene ucciso.");return true
 	var result=combat_table(total)
-	note("%s → %s: %d + %d + %d + dado %d = %d; %d ferite." % [a.name,b.name,attack,dv,positional,d,total,result.wounds])
+	note("%s attacca %s: %d + %d + %d + dado %d = %d; %d ferite." % [a.name,b.name,attack,dv,positional,d,total,result.wounds])
 	_hurt(j,int(result.wounds),not magic)
 	if result.unbalance and b.alive:_knock(j,false)
 	if m.get("imbalance")!=null and result.wounds>0 and b.alive:
@@ -468,6 +468,7 @@ func _cast_pending() -> void:
 	var s=state.pending.duplicate(true);var i=int(s.actor);var p=state.fighters[i];var m=move(p)
 	var k=str(s.target);var j=at(k);var extra=int(s.get("extra",0))
 	note(p.name+" lancia "+m.name+".")
+	state.spells=int(state.get("spells",0))+1;state.last_spell={"actor":i,"target":k,"move":m.id}   # per gli effetti 3D
 	match m.id:
 		"firestaff":
 			if j!=-1 and _combat(i,j,m,true):state.fighters[j].burning=true

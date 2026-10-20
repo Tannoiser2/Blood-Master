@@ -32,6 +32,11 @@ CFG = {
     'ziggy': dict(name='Ziggynowskij', prop=None, clips=[
         ('Scossa', 'scossa'), ('Cura', 'cura'), ('Drenare', 'drenare'), ('Controllo', 'controllo'), ('Fulmine', 'fulmine'),
         ('Smaterializzare', 'smaterializzare'), ('Fluttuare', 'fluttuare')]),
+    'golem': dict(name='Golem', prop=None, clips=[('Schianto', 'schianto')]),
+    'skelos': dict(name='Skelos', prop='../../skelos/meshy/spear.glb', length=2.0, grip=.40, shield=True, clips=[
+        ('Fendente', 'fendente'), ('Taglio Dx', 'taglio_dx'), ('Taglio Sx', 'taglio_sx'), ('Parata Dx', 'parata_dx'), ('Parata Sx', 'parata_sx')]),
+    'sketos': dict(name='Sketos', prop='../../skelos/meshy/spear.glb', length=2.0, grip=.40, shield=True, clips=[
+        ('Fendente', 'fendente'), ('Taglio Dx', 'taglio_dx'), ('Taglio Sx', 'taglio_sx'), ('Parata Dx', 'parata_dx'), ('Parata Sx', 'parata_sx')]),
 }[CID]
 SRC = root / f'source_art/{CID}/meshy'
 OUT = root / f'assets/models/{CID}'
@@ -180,6 +185,49 @@ if CFG['prop']:
     rest(arm); w.matrix_world = bone_world(arm, 'RightHand') @ REL2
     print('RADDRIZZATO', round(math.degrees(d.angle(target)), 1), flush=True)
     w.name = 'Arma'; export.append(w)
+
+if CFG.get('shield'):
+    # scudo tondo sull'avambraccio sinistro, nella stessa posizione dello scudo di Gascor
+    with bpy.data.libraries.load(str(root / 'source_art/gascor/gascor-meshy.blend'), link=False) as (sd, dd):
+        dd.objects = [n for n in sd.objects if n in ('Gascor_Rig', 'Scudo')]
+    for o in dd.objects:
+        bpy.context.scene.collection.objects.link(o)
+    g_rig = bpy.data.objects['Gascor_Rig']; g_sh = bpy.data.objects['Scudo']; rest(g_rig)
+    W = np.array([(g_sh.matrix_world @ v.co)[:] for v in g_sh.data.vertices]); cg = W.mean(0)
+    axg = np.linalg.svd(W - cg, full_matrices=False)[2]; ng = axg[2]; tg = (W - cg) @ ng
+    if tg.max() + tg.min() < 0:
+        ng = -ng                                  # la normale verso il lato bombato (fuori)
+    upg = np.array([0, 0, 1.0]); upg = upg - ng * upg.dot(ng); upg /= np.linalg.norm(upg)
+    sizeg = np.ptp((W - cg) @ axg[0])
+    G_bone = bone_world(g_rig, 'LeftForeArm').copy()
+    for o in (g_rig, g_sh):
+        bpy.data.objects.remove(o)
+    parts = [x for x in imported(root / 'source_art/skelos/meshy/shield.glb') if x.type == 'MESH']
+    bpy.ops.object.select_all(action='DESELECT')
+    for q in parts:
+        q.select_set(True)
+    bpy.context.view_layer.objects.active = parts[0]
+    if len(parts) > 1:
+        bpy.ops.object.join()
+    sh = parts[0]; sh.data.transform(sh.matrix_world); sh.matrix_world = Matrix()
+    mod = sh.modifiers.new('r', 'DECIMATE'); mod.ratio = min(1, 6000 / len(sh.data.polygons)); bpy.ops.object.modifier_apply(modifier=mod.name)
+    co = np.array([v.co[:] for v in sh.data.vertices]); cn = co.mean(0)
+    axn = np.linalg.svd(co - cn, full_matrices=False)[2]; nn = axn[2]; tn = (co - cn) @ nn
+    if tn.max() + tn.min() < 0:
+        nn = -nn
+    upn = np.array([0, 0, 1.0]); upn = upn - nn * upn.dot(nn)
+    if np.linalg.norm(upn) < .1:
+        upn = axn[0]
+    upn /= np.linalg.norm(upn)
+    Bn = np.array([upn, nn, np.cross(upn, nn)]); Bg = np.array([upg, ng, np.cross(upg, ng)])
+    scale = .62 / np.ptp((co - cn) @ axn[0])          # 62 cm di diametro
+    Wn = ((co - cn) @ Bn.T) @ Bg * scale + cg         # nella posa di Gascor
+    Mrel = bone_world(arm, 'LeftForeArm') @ G_bone.inverted()
+    for v, p in zip(sh.data.vertices, Wn):
+        v.co = Mrel @ Vector(p)
+    sh.parent = arm; sh.parent_type = 'BONE'; sh.parent_bone = 'LeftForeArm'; bpy.context.view_layer.update()
+    sh.matrix_world = Matrix()
+    sh.name = 'Scudo'; export.append(sh)
 
 for img in bpy.data.images:
     used_by_body = any(img in [nd.image for nd in m.node_tree.nodes if nd.type == 'TEX_IMAGE']

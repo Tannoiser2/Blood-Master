@@ -234,6 +234,16 @@ def build():
     save('pain_monster_1', growl(.9, 60)); save('pain_monster_2', growl(.7, 70)); save('death_monster_1', growl(1.6, 50))
     save('grunt_monster_1', growl(.4, 75), .6)
     save('pain_spirit_1', mix(swirl(.7) * .6, shimmer(.7, 1500) * .3)); save('death_spirit_1', swirl(1.6))
+    for k in range(2):   # scheletri: ossa che sbattono
+        y = np.zeros(int(SR * .6))
+        for _ in range(14):
+            p = rng.integers(0, len(y) - 900); c = bp(rng.standard_normal(900), 900, 3200) * env(900, .0005, .012, 3)
+            y[p:p + 900] += c * rng.uniform(.3, 1)
+        save(f'pain_bones_{k + 1}', y, .7)
+    y = np.zeros(int(SR * 1.2))
+    for _ in range(40):
+        p = rng.integers(0, len(y) - 900); y[p:p + 900] += bp(rng.standard_normal(900), 700, 3000) * env(900, .0005, .015, 3) * rng.uniform(.2, 1)
+    save('death_bones_1', y, .8)
     save('cast_1', shimmer()); save('cast_2', shimmer(1.0, 660))
     save('spell_fire_1', fire()); save('spell_lightning_1', thunder()); save('spell_dark_1', dark())
     save('spell_heal_1', heal()); save('spell_wind_1', swirl())
