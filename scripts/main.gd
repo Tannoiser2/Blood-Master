@@ -34,6 +34,7 @@ var board_grid=false
 var blood_on=false
 var sound_on=true
 var labels_on=true
+var house_rules=true
 var clear_plates=false
 var _last_hp={}
 var showing_game=false
@@ -120,10 +121,10 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));clear_plates=bool(d.get("clear_plates",false))
+	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));house_rules=bool(d.get("house",true));clear_plates=bool(d.get("clear_plates",false))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"clear_plates":clear_plates}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house":house_rules,"clear_plates":clear_plates}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -186,6 +187,12 @@ func _show_menu() -> void:
 	top.add_child(label("SCENARIO",13,GOLD))
 	var scene_choice=OptionButton.new();scene_choice.add_item("Scontro frontale · squadre e pace/guerra");scene_choice.add_item("Scontro libero · squadre a scelta");scene_choice.add_item("Blood Master · asta e 3 round")
 	scene_choice.select(["frontale","libero","bloodmaster"].find(scenario));scene_choice.item_selected.connect(_set_scenario);top.add_child(scene_choice)
+	top.add_child(spacer());top.add_child(label("Regole",14,MUTED))
+	for option in [[false,"Originali"],[true,"Modificate"]]:
+		var rb=button(option[1],func():house_rules=option[0];_save_settings();_show_menu())
+		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) e chi viene sbilanciato arretra sempre di almeno un esagono." if option[0] else "Il regolamento originale di Blood Master."
+		if house_rules==option[0]:rb.add_theme_color_override("font_color",GOLD)
+		top.add_child(rb)
 	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))
 	for option in [["classica","Classica"],["reborn","Reborn"]]:
 		var b=button(option[1],func():art=option[0];_save_settings();_show_menu())
@@ -304,6 +311,7 @@ func _start_local() -> void:
 		if not r.team in teams:teams.append(r.team)
 	if teams.size()<2:message="Assegna almeno un personaggio a ciascun Ordine.";_show_menu();return
 	room_code="";net_host=false
+	game.house_rules=house_rules
 	if scenario=="bloodmaster":
 		if roster.size()<3:message="Lo scenario Blood Master richiede almeno tre giocatori.";_show_menu();return
 		game.start_campaign(roster,int(Time.get_unix_time_from_system()))

@@ -400,6 +400,11 @@ func sync() -> void:
 			# si è spostato ma la mossa corrente è già cambiata (es. sbilanciato durante lo sprint):
 			# prima il movimento con la mossa che aveva, poi la reazione sul posto
 			var was_move: String=prev[i].current if CLIP.has(prev[i].current) and prev[i].current in MOVING else "run"
+			if (p.unbalanced or p.down) and not prev[i].current in MOVING:
+				# spinto indietro dal colpo: barcolla all'indietro senza girarsi, dopo che il colpo è arrivato
+				step.append({"i":i,"clip":_clip_for(i,"unbalanced",bool(p.get("bow",false))),"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"move":"unbalanced","strike":false,"pushed":true,"hit":prev[i].hp-int(p.hp)})
+				step.append({"i":i,"clip":clip,"from":cell_pos(p.cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"after":true,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive})
+				continue
 			step.append({"i":i,"clip":CLIP[was_move],"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":was_move,"strike":false})
 			moved=true
 		# chi ha anche un suo movimento in questo passo prima lo completa, poi reagisce sul posto
@@ -550,7 +555,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 	# forced: durata imposta al movimento (replay fluido: tutti arrivano insieme)
 	var ap=info.ap;var root=info.root;var pivot=info.pivot
 	var pl=_plan(t,info)
-	if pl.mode=="lineare" and info.ap and info.ap.has_animation("Camminata") and not info.get("spirit",false) and not t.get("split",false) and not t.get("move","") in ["teleport","dematerialize"]:
+	if pl.mode=="lineare" and info.ap and info.ap.has_animation("Camminata") and not info.get("spirit",false) and not t.get("split",false) and not t.get("pushed",false) and not t.get("move","") in ["teleport","dematerialize"]:
 		# si sposta con una clip che non cammina (es. Concentrarsi): prima cammina fino alla cella, poi la esegue lì
 		var walk=t.duplicate();walk.clip="Camminata";walk.split=true;walk.move="advance";walk.strike=false
 		for k in ["hit","arrow","targets","bow"]:walk.erase(k)
@@ -1196,7 +1201,7 @@ func _play_turn(group: Array) -> void:
 		for t in step:
 			if t.has("labels"):labels=t.labels;continue
 			if not minis.has(t.i):continue
-			if t.from.distance_to(t.to)>.05 and not t.get("after",false):
+			if t.from.distance_to(t.to)>.05 and not t.get("after",false) and not t.get("pushed",false):
 				if moves.has(t.i):moves[t.i].to=t.to;moves[t.i].yaw=t.yaw;moves[t.i].facing=t.get("facing",-1)   # più spostamenti nello stesso turno: un solo tragitto
 				else:moves[t.i]=t.duplicate();moves[t.i].delay=0.0
 			else:acts.append(t)

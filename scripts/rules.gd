@@ -76,9 +76,10 @@ static func _restore_numbers(value):
 	if value is float and value==floor(value):return int(value)
 	return value
 
+var house_rules:=true   # regole modificate: cadute col dado e più arretramenti (vedi draw_next e _combat)
 func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int=-1) -> void:
 	rng.seed=seed_n
-	state={"version":VERSION,"turn":0,"phase":"deploy","fighters":[],"plans":{},"bag":[],"active":-1,"effects":[],"log":[],"pending":{},"scenario":scenario,"war":scenario!="frontale","peace_left":4,"winner":-2,"seed":seed_n,"revision":0,"magic_start":magic,"round":1,"campaign":{},"interrupt_stack":[],"spin":{}}
+	state={"version":VERSION,"turn":0,"phase":"deploy","fighters":[],"plans":{},"bag":[],"active":-1,"effects":[],"log":[],"pending":{},"scenario":scenario,"war":scenario!="frontale","peace_left":4,"winner":-2,"seed":seed_n,"revision":0,"magic_start":magic,"round":1,"campaign":{},"interrupt_stack":[],"spin":{},"house":house_rules}
 	for i in roster.size():
 		var cfg=roster[i];var d=catalog[cfg.character]
 		var p={"character":cfg.character,"name":cfg.get("name",d.name),"team":int(cfg.get("team",i%2)),"controller":cfg.get("controller","ai"),"seat":int(cfg.get("seat",i)),"cell":"","facing":0,"hp":int(d.hp),"max_hp":int(d.hp),"fatigue":0,"permanent":0,"magic":(5+die() if magic<0 else magic) if d.mage else 0,"current":"float" if d.kind=="ziggy" else "guard","previous":"","done":false,"alive":true,"lost":[],"unbalanced":false,"down":false,"frog":false,"pieces":false,"guarding":false,"loaded":false,"bow":false,"meditated":false,"burning":false,"plague":-1,"controller_by":-1,"sprint_mod":0,"owner":-1}
@@ -182,7 +183,14 @@ func draw_next() -> void:
 	while not state.bag.is_empty():
 		var b=state.bag.pop_front();var p=state.fighters[b.fighter]
 		if not living(p) or p.done or p.pieces:continue
-		if b.move=="fall":_knock(int(b.fighter),true);p.done=true;note(p.name+" cade a terra prima di agire.");continue
+		if b.move=="fall":
+			if not state.get("house",false):_knock(int(b.fighter),true);p.done=true;note(p.name+" cade a terra prima di agire.");continue
+			# regola modificata: esce "a terra" ma si tira un dado: 1-2 si cade, 6 ci si rimette in guardia
+			var fd=die()
+			if fd<=2:_knock(int(b.fighter),true);p.done=true;note("%s, pedina a terra: dado %d, cade a terra prima di agire." % [p.name,fd])
+			elif fd==6:p.unbalanced=false;p.current="guard";note("%s, pedina a terra: dado %d, ritrova l'equilibrio e si rimette in guardia." % [p.name,fd])
+			else:note("%s, pedina a terra: dado %d, barcolla ma resta in piedi." % [p.name,fd])
+			continue
 		var id=b.move
 		if id=="again":id=p.current
 		if not definition(p).moves.has(id) or id in p.lost:p.done=true;continue
@@ -434,6 +442,7 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 	if m.get("imbalance")!=null and result.wounds>0 and b.alive and not b.pieces:
 		var bd=die();var value=bd+int(definition(a).size)+int(m.imbalance)+charge_imbalance
 		var push=balance_table(value,int(definition(b).size))
+		if push>=0 and state.get("house",false):push+=1   # regola modificata: chi viene sbilanciato arretra sempre almeno di un esagono
 		note("Sbilanciamento: dado %d + stazza %d + modificatore %d%s = %d contro stazza %d: %s." % [bd,int(definition(a).size),int(m.imbalance)," + carica %d"%charge_imbalance if charge_imbalance else "",value,int(definition(b).size),"nessun effetto" if push<0 else ("sbilanciato" if push==0 else "sbilanciato, arretra di %d" % push)])
 		if push>=0:
 			if not knocked:_knock(j,false)
