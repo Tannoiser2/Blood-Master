@@ -18,6 +18,7 @@ static var TROUBLE_RETREAT=.65
 static var MAGES_KEEP_DISTANCE=false
 static var WEAPON_RANGE=2
 static var CHARGE_W=.6
+static var BACK_W=.8
 
 # ------------------------------------------------------------------ valutazioni di base
 static func _enemies(game: BloodRules,i: int) -> Array:
@@ -82,6 +83,24 @@ static func _threat_at(game: BloodRules,i: int,k: String) -> float:
 		if d==1:t+=3.0*_health(b)+1.0
 		elif d==2:t+=1.0*_health(b)
 	return t
+static func _back_risk(game: BloodRules,i: int,k: String,facing: int) -> float:
+	# quanto rischio di essere colpito sul fianco o alle spalle stando in k girato verso "facing"
+	var r=0.0
+	for j in _enemies(game,i):
+		var e=game.state.fighters[j]
+		if BloodRules.distance(k,e.cell)!=1:continue
+		var side=posmod(BloodRules.direction(k,e.cell)-facing,6)
+		r+=float(POSITIONAL[side])*(.5+_health(e))
+	return r
+static func _best_facing(game: BloodRules,i: int,k: String,fallback: int) -> int:
+	# verso dove guardare in k: il nemico adiacente più pericoloso, altrimenti il bersaglio
+	var best=-1.0;var f=fallback
+	for j in _enemies(game,i):
+		var e=game.state.fighters[j]
+		if BloodRules.distance(k,e.cell)==1:
+			var w=_health(e)+(float(game.move(e).get("attack",0) if game.move(e).get("attack")!=null else 0)/10.0)
+			if w>best:best=w;f=BloodRules.direction(k,e.cell)
+	return f
 static func _cover_at(game: BloodRules,i: int,k: String) -> float:
 	# riparo: alleati in forma vicini, meglio se stanno tra me e i nemici
 	var c=0.0
@@ -122,6 +141,9 @@ static func _move_score(game: BloodRules,i: int,k: String,m: Dictionary) -> floa
 			var side=posmod(BloodRules.direction(b.cell,k)-int(b.facing),6)
 			s+=float(POSITIONAL[side])*1.2
 		s-=maxf(0.0,_threat_at(game,i,k)-4.0)*.6           # non infilarsi in mezzo a troppi nemici
+	if focus!=-1 and k!=p.cell:
+		var face=BloodRules.direction(k,game.state.fighters[focus].cell)
+		s-=_back_risk(game,i,k,face)*BACK_W
 	if not game.hazard(k).is_empty():s-=25.0
 	if m.id=="charge":
 		var front=game.at(BloodRules.neighbor(k,int(p.facing)))
@@ -210,11 +232,14 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 		elif m.get("attack")!=null and m.id!="charge":
 			if targets.is_empty():score=-20.0
 			else:
-				var top=-INF
+				var top=-INF;var vals=[]
 				for k in targets:
 					var j=game.at(k,i)
 					if j==-1:continue
-					top=maxf(top,_target_value(game,i,j,_expected_wounds(game,i,j,m,p.cell)))
+					var tv=_target_value(game,i,j,_expected_wounds(game,i,j,m,p.cell));vals.append(tv);top=maxf(top,tv)
+				if m.id=="spin" and vals.size()>1:   # la rotazione colpisce tutti gli adiacenti (con -2 per ogni colpo successivo)
+					vals.sort();vals.reverse();top=0.0
+					for n in vals.size():top+=maxf(0.0,vals[n]-float(n)*4.0)
 				score=top-float(m.fatigue)*2.5+(float(m.imbalance)*.8 if m.get("imbalance")!=null else 0.0)
 				score-=float(adjacent-1)*1.5*(1.0-float(m.get("defense",0))/6.0)   # attaccare in mezzo a tanti nemici espone
 		elif id in ["advance","run","float","charge","dodge","roll","rise","concentrate","load","teleport"] and not targets.is_empty():
@@ -240,6 +265,9 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 			for j in _enemies(game,i):
 				if BloodRules.distance(p.cell,game.state.fighters[j].cell)<=2:gbest=maxf(gbest,_target_value(game,i,j,_expected_wounds(game,i,j,m,p.cell)))
 			score=maxf(score,gbest*.7+3.0)
+		if id=="guard" and adjacent>0:
+			var now_risk=_back_risk(game,i,p.cell,int(p.facing));var turned=_back_risk(game,i,p.cell,_best_facing(game,i,p.cell,int(p.facing)))
+			score+=(now_risk-turned)*BACK_W*.8
 		if difficulty==0:score+=sin(float(i*61+game.state.turn*13+id.hash()%97))*6
 		if score>best:best=score;selected=id
 	return selected
@@ -264,6 +292,7 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 	if focus!=-1:
 		var look=game.state.fighters[focus].cell
 		var desired=BloodRules.direction(p.cell if m.get("attack")!=null else selected,look)
+		if m.id=="guard" and targets.is_empty():desired=_best_facing(game,i,p.cell,desired)
 		if m.id in ["rise","meditate","teleport","float"] or (m.id=="guard" and targets.is_empty()):facing=desired
 		elif desired!=facing:facing=posmod(facing+(1 if posmod(desired-facing,6)<=3 else -1),6)
 	if m.id.begins_with("parry") or m.id in ["dematerialize","weapon","roll"]:facing=int(p.facing)
