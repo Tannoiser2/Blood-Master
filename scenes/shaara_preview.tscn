@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gascor_preview.gd" id="1"]
+
+[node name="ShaaraPreview" type="Node3D"]
+script = ExtResource("1")
+model_path = "res://assets/models/shaara/shaara.glb"
+title_text = "SHAARA  /  LA TEMPESTOSA"
+subtitle_text = "Prova 3D Meshy · a mani nude · mosse di Anteos adattate · trascina per ruotare"
+card_path = "res://assets/modern/shaara/shaara-concept-meshy.webp"
+card_label = "Concept generato (posa a T)"
+looping = PackedStringArray("Riposo", "Camminata", "In guardia", "Avanzare", "Correre", "Carica")
+other_scene = "res://scenes/gascor_preview.tscn"
+other_label = "Vai a Gascor"

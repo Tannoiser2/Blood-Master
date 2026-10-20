@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gascor_preview.gd" id="1"]
+
+[node name="ZenyoPreview" type="Node3D"]
+script = ExtResource("1")
+model_path = "res://assets/models/zenyo/zenyo.glb"
+title_text = "ZENYO  /  L’ILLUMINATO"
+subtitle_text = "Prova 3D Meshy · bastone · mosse di Anteos adattate · trascina per ruotare"
+card_path = "res://assets/modern/zenyo/zenyo-concept-meshy.webp"
+card_label = "Concept generato (posa a T)"
+looping = PackedStringArray("Riposo", "Camminata", "In guardia", "Avanzare", "Correre", "Carica")
+other_scene = "res://scenes/shaara_preview.tscn"
+other_label = "Vai a Shaara"

@@ -10,5 +10,5 @@ subtitle_text = "Prova 3D Meshy · alabarda · mosse di Anteos adattate · trasc
 card_path = "res://assets/modern/ramok/ramok-concept-meshy.webp"
 card_label = "Concept generato (posa A)"
 looping = PackedStringArray("Riposo", "Camminata", "In guardia", "Avanzare", "Correre", "Carica")
-other_scene = "res://scenes/gascor_preview.tscn"
-other_label = "Vai a Gascor"
+other_scene = "res://scenes/zenyo_preview.tscn"
+other_label = "Vai a Zenyo"
