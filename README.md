@@ -24,7 +24,7 @@ sposta · rotellina: zoom · "Inquadra" riattiva la camera che segue lo scontro.
 
 Aprire project.godot in Godot 4.7. La scena principale è scenes/main.tscn.
 Le prove 3D sono in scenes/<personaggio>_preview.tscn (gascor, anteos, ut,
-shannon, nuchra, ramok) e scenes/duel_3d.tscn; la mappa 3D è scripts/board3d.gd. I modelli si rigenerano con
+shannon, nuchra, ramok), da aprire dall’editor; la mappa 3D è scripts/board3d.gd. I modelli si rigenerano con
 tools/anteos/assemble.py, tools/gascor/assemble_meshy.py e tools/heroes/assemble.py
 (pipeline Meshy; armi a due mani per Ut, Shannon, Nuchra e Ramok).
 Le fonti ad alta risoluzione e i file Blender rimangono locali in source_art.

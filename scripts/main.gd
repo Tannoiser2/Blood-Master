@@ -101,56 +101,160 @@ func _header(subtitle: String) -> void:
 	row.add_child(button("Regolamento",_open_manual))
 	row.add_child(button("Crediti",_credits))
 	if showing_game:row.add_child(button("Menu",_confirm_menu))
+# --- Menu: preparazione dello scontro -------------------------------------------
+# A sinistra la scheda del personaggio scelto con tutte le sue tessere a nido d'ape;
+# al centro le schede disponibili; ai lati le due squadre. Un clic su una scheda la
+# manda nella sua squadra: i Blu (Ordine della Lama) solo a sinistra, i Rossi (Ordine
+# dell'Ombra) solo a destra. Maghi e scheletri sono fuori dagli Ordini: la metà della
+# scheda su cui clicchi decide la squadra.
+const TEAM_COLOR=[Color("69cec1"),Color("e68078")]
+const TEAM_NAME=["BLU · ORDINE DELLA LAMA","ROSSI · ORDINE DELL’OMBRA"]
+var art="classica"          # grafica delle schede: "classica" o "reborn"
+var detail_id=""            # personaggio mostrato nel pannello di sinistra
+func _load_settings() -> void:
+	if not FileAccess.file_exists("user://settings.json"):return
+	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
+	if d is Dictionary:art=str(d.get("art","classica"))
+func _save_settings() -> void:
+	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
+	if f:f.store_string(JSON.stringify({"art":art}))
+func card_path(id: String) -> String:
+	var r="res://assets/reborn/cards/%s.webp"%id
+	if art=="reborn" and ResourceLoader.exists(r):return r
+	return game.catalog[id].card
+func mini_path(id: String) -> String:
+	var r="res://assets/reborn/minis/%s.webp"%id
+	return r if art=="reborn" and ResourceLoader.exists(r) else ""
+func _free_agent(id: String) -> bool:
+	return int(game.catalog[id].team)<0                       # maghi e scheletri
+func _selectable() -> Array:
+	return game.catalog.keys().filter(func(k):return game.catalog[k].kind!="golem")   # il Golem si evoca in partita
+func _card_widget(id: String,width: float,on_click: Callable) -> TextureRect:
+	var t=TextureRect.new();t.texture=load(card_path(id));t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var tex: Texture2D=t.texture;t.custom_minimum_size=Vector2(width,width*tex.get_height()/tex.get_width())
+	t.mouse_filter=Control.MOUSE_FILTER_STOP;t.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	t.tooltip_text=game.catalog[id].name+" · "+game.catalog[id].title
+	t.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index==MOUSE_BUTTON_LEFT:on_click.call(ev.position.x/maxf(t.size.x,1.0)))
+	return t
+func _add_to_team(id: String,team: int) -> void:
+	detail_id=id
+	if roster.size()>=10:message="Al massimo dieci personaggi nello scontro.";_show_menu();return
+	if not _free_agent(id) and int(game.catalog[id].team)!=team:return    # lucchetto: un Rosso non va coi Blu
+	var human=roster.any(func(r):return r.controller=="human")
+	roster.append({"character":id,"team":team,"controller":"ai" if mode=="solo" and human else "human","seat":roster.size()})
+	message="";_show_menu()
+func _remove_from_team(i: int) -> void:
+	detail_id=roster[i].character;roster.remove_at(i)
+	for k in roster.size():roster[k].seat=k
+	_show_menu()
 func _show_menu() -> void:
 	showing_game=false;clear(page);menu_options=[]
+	if not has_meta("settings_loaded"):_load_settings();set_meta("settings_loaded",true)
 	_header("EDIZIONE DELUXE · VERSIONE IN SVILUPPO")
-	var content=HBoxContainer.new();content.size_flags_vertical=Control.SIZE_EXPAND_FILL;content.add_theme_constant_override("separation",24);page.add_child(content)
-	var hero=VBoxContainer.new();hero.size_flags_horizontal=Control.SIZE_EXPAND_FILL;hero.size_flags_stretch_ratio=1.15;content.add_child(hero)
-	hero.add_child(label("Entra nell’arena.",42))
-	var trials=HBoxContainer.new();trials.add_theme_constant_override("separation",10);hero.add_child(trials)
-	trials.add_child(button("Gascor 3D",func():get_tree().change_scene_to_file("res://scenes/gascor_preview.tscn")))
-	trials.add_child(button("Anteos 3D",func():get_tree().change_scene_to_file("res://scenes/anteos_preview.tscn")))
-	trials.add_child(button("Altri 3D",func():get_tree().change_scene_to_file("res://scenes/ut_preview.tscn")))
-	trials.add_child(button("Duello 3D",func():get_tree().change_scene_to_file("res://scenes/duel_3d.tscn")))
-	var intro=label("Scegli la tua mossa. Attendi l’estrazione.\nColpisci quando l’avversario abbassa la guardia.",19,MUTED);hero.add_child(intro)
-	var arena_view=TextureRect.new();arena_view.texture=load("res://assets/arena/arena.webp");arena_view.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;arena_view.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;arena_view.size_flags_vertical=Control.SIZE_EXPAND_FILL;arena_view.custom_minimum_size=Vector2(350,350);hero.add_child(arena_view)
-	hero.add_child(label("Stefano Ancillai & Marco Ramadori\nIllustrazioni originali di Luigi Filipponi",14,MUTED))
-	var right=VBoxContainer.new();right.custom_minimum_size.x=560;right.size_flags_horizontal=Control.SIZE_EXPAND_FILL;content.add_child(right)
-	var modes=HBoxContainer.new();right.add_child(modes)
+	if roster.is_empty() and not has_meta("roster_default"):
+		set_meta("roster_default",true)
+		roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
+	if detail_id=="":detail_id=roster[0].character if not roster.is_empty() else "gascor"
+	var content=HBoxContainer.new();content.size_flags_vertical=Control.SIZE_EXPAND_FILL;content.add_theme_constant_override("separation",16);page.add_child(content)
+	# pannello del personaggio
+	var detail=panel_content(content,14);detail.get_parent().get_parent().custom_minimum_size.x=430;_detail_panel(detail)
+	# preparazione
+	var right=VBoxContainer.new();right.size_flags_horizontal=Control.SIZE_EXPAND_FILL;content.add_child(right)
+	var top=HBoxContainer.new();right.add_child(top)
 	for option in [["solo","Contro IA"],["local","Stesso schermo"],["online","Online"]]:
-		var b=button(option[1],func():mode=option[0];_show_menu());b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+		var b=button(option[1],func():mode=option[0];_show_menu())
 		if mode==option[0]:b.add_theme_color_override("font_color",GOLD)
-		modes.add_child(b)
-	var config=panel_content(right)
-	config.add_child(label("PREPARA LO SCONTRO",13,GOLD))
+		top.add_child(b)
+	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))
+	for option in [["classica","Classica"],["reborn","Reborn"]]:
+		var b=button(option[1],func():art=option[0];_save_settings();_show_menu())
+		if art==option[0]:b.add_theme_color_override("font_color",GOLD)
+		top.add_child(b)
+	var scene_row=HBoxContainer.new();right.add_child(scene_row)
+	scene_row.add_child(label("PREPARA LO SCONTRO",13,GOLD))
 	var scene_choice=OptionButton.new();scene_choice.add_item("Scontro frontale · squadre e pace/guerra");scene_choice.add_item("Scontro libero · squadre a scelta");scene_choice.add_item("Blood Master · asta e 3 round")
-	scene_choice.select(["frontale","libero","bloodmaster"].find(scenario));scene_choice.item_selected.connect(func(n):scenario=["frontale","libero","bloodmaster"][n]);config.add_child(scene_choice)
-	config.add_child(label("Giocatori e personaggi",18))
-	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.custom_minimum_size.y=300;config.add_child(scroll)
-	roster_box=VBoxContainer.new();roster_box.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(roster_box)
-	if roster.is_empty():roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
-	for i in roster.size():_roster_row(i)
-	var controls=HBoxContainer.new();config.add_child(controls)
-	controls.add_child(button("+ Giocatore",func():
-		if roster.size()<10:
-			var candidates=game.catalog.keys().filter(func(k):return k!="golem" and not roster.any(func(r):return r.character==k))
-			roster.append({"character":candidates[0],"team":roster.size()%2,"controller":"ai" if mode=="solo" else "human","seat":roster.size()});_show_menu()))
-	controls.add_child(button("− Giocatore",func():
-		if roster.size()>2:roster.pop_back();_show_menu()))
-	var tip=label("Le mosse restano segrete fino all’estrazione.\nMaghi e scheletri possono combattere in entrambi gli Ordini.",14,MUTED);config.add_child(tip)
-	if mode=="online":_online_menu(config)
-	else:config.add_child(button("Entra nell’arena",_start_local,true))
-	if FileAccess.file_exists("user://battle.json"):right.add_child(button("Riprendi la partita salvata",_load_game))
-	status=label(message,14,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;right.add_child(status)
-func _roster_row(i: int) -> void:
-	var row=HBoxContainer.new();roster_box.add_child(row)
-	row.add_child(label(str(i+1),16,GOLD))
-	var select=OptionButton.new();select.size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	var keys=game.catalog.keys().filter(func(k):return k!="golem")
-	for k in keys:select.add_item(game.catalog[k].name+" · "+game.catalog[k].title)
-	select.select(keys.find(roster[i].character));select.item_selected.connect(func(n):roster[i].character=keys[n]);row.add_child(select)
-	var team=OptionButton.new();team.add_item("Lama");team.add_item("Ombra");team.select(int(roster[i].team));team.item_selected.connect(func(n):roster[i].team=n);row.add_child(team)
-	var ctrl=OptionButton.new();ctrl.add_item("Persona");ctrl.add_item("IA");ctrl.select(1 if roster[i].controller=="ai" else 0);ctrl.item_selected.connect(func(n):roster[i].controller="ai" if n else "human");row.add_child(ctrl)
+	scene_choice.select(["frontale","libero","bloodmaster"].find(scenario));scene_choice.item_selected.connect(func(n):scenario=["frontale","libero","bloodmaster"][n]);scene_row.add_child(scene_choice)
+	var cols=HBoxContainer.new();cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;cols.add_theme_constant_override("separation",12);right.add_child(cols)
+	_team_column(cols,0)
+	var pool=panel_content(cols,12);pool.get_parent().get_parent().size_flags_horizontal=Control.SIZE_EXPAND_FILL
+	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;pool.add_child(scroll)
+	var inner=VBoxContainer.new();inner.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(inner)
+	var taken=roster.map(func(r):return r.character)
+	inner.add_child(label("COMBATTENTI · clic per mandarli nella loro squadra",13,GOLD))
+	var grid=GridContainer.new();grid.columns=2;grid.add_theme_constant_override("h_separation",10);grid.add_theme_constant_override("v_separation",8);inner.add_child(grid)
+	for id in _selectable():
+		if _free_agent(id) or id in taken:continue
+		var team=int(game.catalog[id].team);var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);grid.add_child(v)
+		v.add_child(_card_widget(id,215,func(_x):_add_to_team(id,team)))
+		v.add_child(label(("◀ solo Blu" if team==0 else "solo Rossi ▶"),12,TEAM_COLOR[team]))
+	inner.add_child(label("MAGHI E SCHELETRI · metà sinistra: Blu · metà destra: Rossi",13,GOLD))
+	var grid2=GridContainer.new();grid2.columns=2;grid2.add_theme_constant_override("h_separation",10);grid2.add_theme_constant_override("v_separation",8);inner.add_child(grid2)
+	for id in _selectable():
+		if not _free_agent(id) or id in taken:continue
+		var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);grid2.add_child(v)
+		v.add_child(_card_widget(id,215,func(x):_add_to_team(id,0 if x<.5 else 1)))
+		var hb=HBoxContainer.new();v.add_child(hb)
+		hb.add_child(label("◀ Blu",12,TEAM_COLOR[0]));hb.add_child(spacer());hb.add_child(label("Rossi ▶",12,TEAM_COLOR[1]))
+	_team_column(cols,1)
+	var bottom=HBoxContainer.new();right.add_child(bottom)
+	if mode=="online":
+		var online=VBoxContainer.new();online.size_flags_horizontal=Control.SIZE_EXPAND_FILL;bottom.add_child(online);_online_menu(online)
+	else:
+		bottom.add_child(button("Entra nell’arena",_start_local,true))
+	if FileAccess.file_exists("user://battle.json"):bottom.add_child(button("Riprendi la partita salvata",_load_game))
+	status=label(message,14,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;status.size_flags_horizontal=Control.SIZE_EXPAND_FILL;bottom.add_child(status)
+func _team_column(parent: Node,team: int) -> void:
+	var v=panel_content(parent,12);v.get_parent().get_parent().custom_minimum_size.x=236
+	var members=[]
+	for i in roster.size():
+		if int(roster[i].team)==team:members.append(i)
+	v.add_child(label(TEAM_NAME[team],13,TEAM_COLOR[team]))
+	v.add_child(label("%d personaggi"%members.size() if members.size()!=1 else "1 personaggio",12,MUTED))
+	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;v.add_child(scroll)
+	var list=VBoxContainer.new();list.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(list)
+	if members.is_empty():
+		var l=label("Clicca una scheda al centro per aggiungere un personaggio.",13,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=200;list.add_child(l)
+	for i in members:
+		var id: String=roster[i].character
+		list.add_child(_card_widget(id,205,func(_x):detail_id=id;_show_menu()))
+		var row=HBoxContainer.new();row.add_theme_constant_override("separation",6);list.add_child(row)
+		var who=Button.new();who.text="Persona" if roster[i].controller=="human" else "IA";who.tooltip_text="Chi muove questo personaggio"
+		who.pressed.connect(func():roster[i].controller="ai" if roster[i].controller=="human" else "human";_show_menu());row.add_child(who)
+		row.add_child(spacer())
+		var out=Button.new();out.text="✕";out.tooltip_text="Rimetti al centro";out.pressed.connect(func():_remove_from_team(i));row.add_child(out)
+func _detail_panel(v: VBoxContainer) -> void:
+	var d=game.catalog[detail_id]
+	var head=HBoxContainer.new();v.add_child(head)
+	var names=VBoxContainer.new();names.size_flags_horizontal=Control.SIZE_EXPAND_FILL;head.add_child(names)
+	names.add_child(label(d.name,28,GOLD));names.add_child(label(d.title,15,MUTED))
+	var team=int(d.team)
+	names.add_child(label(["Ordine della Lama · Blu","Ordine dell’Ombra · Rossi"][team] if team>=0 else ("Mago · gioca con chiunque" if d.mage else "Scheletro · gioca con chiunque"),13,TEAM_COLOR[team] if team>=0 else INK))
+	var mp=mini_path(detail_id)
+	if mp!="":
+		var m=TextureRect.new();m.texture=load(mp);m.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;m.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;m.custom_minimum_size=Vector2(110,110);head.add_child(m)
+	var card=TextureRect.new();card.texture=load(card_path(detail_id));card.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;card.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	card.custom_minimum_size=Vector2(400,400.0*card.texture.get_height()/card.texture.get_width());v.add_child(card)
+	v.add_child(label("LE SUE TESSERE · %d"%d.moves.size(),13,GOLD))
+	var info=label("Passa sopra una tessera (o toccala) per leggerne i valori.",13,MUTED);info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;info.custom_minimum_size=Vector2(400,52)
+	v.add_child(_honeycomb(d,info));v.add_child(info)
+func _honeycomb(d: Dictionary,info: Label) -> Control:
+	# tessere esagonali coi lati piatti in alto e in basso: colonne sfalsate di mezza altezza
+	var w=92.0;var h=w*.8625;var cols=5;var n=d.moves.size();var gap=3.0
+	var rows=ceili(float(n)/cols)
+	var c=Control.new();c.custom_minimum_size=Vector2(w+(cols-1)*(w*.75+gap),rows*(h+gap)+h*.5)
+	var k=0
+	for id in d.moves:
+		var m=d.moves[id];var col=k%cols;var row=k/cols
+		var t=TextureRect.new();t.texture=load(m.texture);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		t.custom_minimum_size=Vector2(w,h);t.size=Vector2(w,h);t.position=Vector2(col*(w*.75+gap),row*(h+gap)+((h+gap)*.5 if col%2==1 else 0.0))
+		t.tooltip_text=_move_tip(m);t.mouse_filter=Control.MOUSE_FILTER_STOP
+		var tip=_move_tip(m).replace("\n"," · ")
+		t.mouse_entered.connect(func():info.text=tip)
+		t.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and ev.pressed:info.text=tip)
+		c.add_child(t);k+=1
+	return c
 func _start_local() -> void:
 	var seen=[];var teams=[]
 	for r in roster:
@@ -434,7 +538,7 @@ func _inspect(i: int) -> void:
 	var p=game.state.fighters[i];var d=game.definition(p)
 	var win=Window.new();win.title=d.name+" · "+d.title;win.size=Vector2i(1050,650);win.transient=true;win.exclusive=true;add_child(win);win.close_requested.connect(win.queue_free)
 	var v=VBoxContainer.new();v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);win.add_child(v)
-	var card=TextureRect.new();card.texture=load(d.card);card.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;card.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;card.size_flags_vertical=Control.SIZE_EXPAND_FILL;v.add_child(card)
+	var card=TextureRect.new();card.texture=load(card_path(d.id));card.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;card.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;card.size_flags_vertical=Control.SIZE_EXPAND_FILL;v.add_child(card)
 	v.add_child(label("%s · Stazza %d · Sprint %d · %d vita · %d fatica · %d magia"%[d.name,d.size,d.sprint,p.hp,p.fatigue+p.permanent,p.magic],18,GOLD))
 	if not p.lost.is_empty():v.add_child(label("Mosse perdute: "+", ".join(p.lost),16))
 	v.add_child(button("Chiudi",win.queue_free));win.popup_centered()
@@ -508,7 +612,7 @@ func _handicap_panel() -> void:
 		var picks=handicap_picks.duplicate();var b=button("Conferma gli handicap",func():_submit({"type":"handicap","picks":picks}),true);b.disabled=picks.size()!=3;sidebar.add_child(b)
 func _auction_panel() -> void:
 	var c=game.state.campaign;var i=int(game.state.active);var id=c.pool[c.card];var d=game.catalog[id]
-	sidebar.add_child(label("ASTA · ROUND %d / 3"%c.round,13,GOLD));sidebar.add_child(label(d.name,28,GOLD));_tile(d.card,220)
+	sidebar.add_child(label("ASTA · ROUND %d / 3"%c.round,13,GOLD));sidebar.add_child(label(d.name,28,GOLD));_tile(card_path(id),220)
 	_wrap("Handicap: %d\nOfferta attuale: %d\nTocca a %s · %d punti disponibili"%[c.totals[id],c.bid,c.players[i].name,c.players[i].points])
 	if _human(i):
 		var spin=SpinBox.new();spin.min_value=int(c.bid)+1;spin.max_value=maxi(int(c.bid)+1,int(c.players[i].points));spin.value=int(c.bid)+1;spin.prefix="Offri ";sidebar.add_child(spin)
