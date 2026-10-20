@@ -365,7 +365,7 @@ func sync() -> void:
 		elif was.down and not now.down and not i in actors:actors.append(i)
 	for i in game.state.fighters.size():
 		if prev.has(i) and prev[i].get("pieces",false) and not game.state.fighters[i].get("pieces",false) and minis.has(i) and game.state.fighters[i].cell!="":
-			step.append({"i":i,"clip":"Rialzarsi","from":cell_pos(game.state.fighters[i].cell),"to":cell_pos(game.state.fighters[i].cell),"yaw":facing_yaw(int(game.state.fighters[i].facing)),"facing":int(game.state.fighters[i].facing),"delay":.6,"move":"rise","strike":false})
+			step.append({"i":i,"clip":"Rialzarsi","from":cell_pos(game.state.fighters[i].cell),"to":cell_pos(game.state.fighters[i].cell),"yaw":facing_yaw(int(game.state.fighters[i].facing)),"facing":int(game.state.fighters[i].facing),"delay":.6,"move":"rise","strike":false,"rebuild":true})
 			actors.erase(i)
 	for i in actors:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
@@ -403,12 +403,12 @@ func sync() -> void:
 			if (p.unbalanced or p.down) and not prev[i].current in MOVING:
 				# spinto indietro dal colpo: barcolla all'indietro senza girarsi, dopo che il colpo è arrivato
 				step.append({"i":i,"clip":_clip_for(i,"unbalanced",bool(p.get("bow",false))),"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"move":"unbalanced","strike":false,"pushed":true,"hit":prev[i].hp-int(p.hp)})
-				step.append({"i":i,"clip":clip,"from":cell_pos(p.cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"after":true,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive})
+				step.append({"i":i,"clip":clip,"from":cell_pos(p.cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"after":true,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive,"pieces":bool(p.get("pieces",false))})
 				continue
 			step.append({"i":i,"clip":CLIP[was_move],"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":was_move,"strike":false})
 			moved=true
 		# chi ha anche un suo movimento in questo passo prima lo completa, poi reagisce sul posto
-		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive})
+		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip=="A terra" else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive,"pieces":bool(p.get("pieces",false))})
 	for i in game.state.fighters.size():
 		if game.state.fighters[i].cell!="":prev[i]=_view(game.state.fighters[i])
 	if not step.is_empty():
@@ -581,6 +581,9 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
 		if info.get("spirit",false):_spirit_move(t,info)
 		if t.get("dead",false) and str(game.state.fighters[t.i].character)=="golem":_shatter(info)
+		if str(game.state.fighters[t.i].character) in ["skelos","sketos"]:
+			if t.get("pieces",false) or t.get("dead",false):_bones(info,t.get("dead",false))
+			elif t.get("rebuild",false):_rebuild(info)
 		_sound_track(t,info,length,mode)
 		if t.get("hit",0)>0:
 			_float(root.position,"-%d" % t.hit)
@@ -900,6 +903,54 @@ func _shatter(info: Dictionary) -> void:
 		if not is_instance_valid(r):continue
 		var tw=create_tween();tw.tween_property(r,"global_position:y",r.global_position.y-.25,1.2);tw.parallel().tween_property(r.material_override,"albedo_color:a",0.0,1.2)
 		tw.tween_callback(r.queue_free)
+# Scheletro in pezzi: le ossa si sparpagliano e restano a terra finché un mago non lo rigenera;
+# alla rigenerazione volano di nuovo insieme e lo scheletro si rialza. Se muore davvero, svaniscono.
+func _bones(info: Dictionary,gone: bool) -> void:
+	if info.has("bones"):return
+	var root: Node3D=info.root;var base=root.global_position
+	await get_tree().create_timer(.2).timeout
+	if not is_instance_valid(root):return
+	if info.get("model")!=null:info.model.visible=false
+	var bone=StandardMaterial3D.new();bone.albedo_color=Color(.74,.6,.34);bone.metallic=.5;bone.roughness=.5;bone.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+	var cloth=StandardMaterial3D.new();cloth.albedo_color=Color(.55,.06,.05);cloth.roughness=.9;cloth.cull_mode=BaseMaterial3D.CULL_DISABLED;cloth.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+	var pieces=[]
+	for k in 30:
+		var m=MeshInstance3D.new()
+		if k==0:   # il teschio
+			var sm=SphereMesh.new();sm.radius=.075;sm.height=.13;m.mesh=sm;m.material_override=bone
+		elif k<24:   # ossa lunghe e corte
+			var cm=CapsuleMesh.new();cm.radius=randf_range(.012,.026);cm.height=randf_range(.08,.3);cm.radial_segments=6;cm.rings=2;m.mesh=cm;m.material_override=bone
+		else:   # brandelli del mantello rosso
+			var q=QuadMesh.new();q.size=Vector2(randf_range(.12,.25),randf_range(.1,.2));m.mesh=q;m.material_override=cloth
+		viewport.add_child(m);pieces.append(m)
+		var start=base+Vector3(randf_range(-.15,.15),randf_range(.2,1.1),randf_range(-.15,.15))
+		var land=base+Vector3(randf_range(-.42,.42),.04,randf_range(-.42,.42))
+		var rot_end=Vector3(PI/2+randf_range(-.3,.3),randf_range(0,TAU),randf_range(-.3,.3))
+		m.global_position=start;m.set_meta("land",land);m.set_meta("start",start)
+		var tw=create_tween()
+		tw.tween_method(func(x: float):
+			var hgt=sin(x*PI)*.35*(1.0-x)+(1.0-x)*(start.y-.04)
+			m.global_position=Vector3(lerpf(start.x,land.x,x),.04+maxf(0,hgt),lerpf(start.z,land.z,x));m.rotation=rot_end*x,0.0,1.0,randf_range(.45,.8)).set_ease(Tween.EASE_IN)
+	info.bones=pieces
+	_one_shot(_smoke(20,Vector3(.25,.2,.25),.4),base+Vector3(0,.3,0),2.5)
+	_sfx("death_bones",base+Vector3(0,.5,0),0.0,0.0)
+	if gone:
+		await get_tree().create_timer(3.0).timeout
+		for m in pieces:
+			if is_instance_valid(m):var tw=create_tween();tw.tween_property(m,"global_position:y",-.15,1.2);tw.tween_callback(m.queue_free)
+		info.erase("bones")
+func _rebuild(info: Dictionary) -> void:
+	# le ossa si rialzano in volo e lo scheletro torna intero
+	var pieces: Array=info.get("bones",[])
+	info.erase("bones")
+	var base=info.root.global_position
+	for m in pieces:
+		if not is_instance_valid(m):continue
+		var tw=create_tween();tw.tween_property(m,"global_position",base+Vector3(randf_range(-.1,.1),randf_range(.4,1.0),randf_range(-.1,.1)),.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_callback(m.queue_free)
+	_burst(base+Vector3(0,.7,0),Color(.75,.5,1),60,.35)
+	await get_tree().create_timer(.5).timeout
+	if info.get("model")!=null:info.model.visible=true
 func _fireball(from: Vector3,to: Vector3) -> void:
 	# sfera incandescente con una scia di fiamme e fumo
 	var orb=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.09;sm.height=.18;orb.mesh=sm;var om=_fx_mat(Color(1,.8,.45),3.0);om.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;orb.material_override=om
@@ -1179,6 +1230,10 @@ func replay() -> void:
 		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true,0);_set_rim(i,initial[i].current,int(initial[i].facing))
 	for i in minis:
 		if not initial.has(i):minis[i].root.visible=false   # evocati (golem): compaiono quando entrano in scena
+		for m in minis[i].get("bones",[]):
+			if is_instance_valid(m):m.queue_free()
+		minis[i].erase("bones")
+		if minis[i].get("model")!=null and not minis[i].has("frog_node"):minis[i].model.visible=true
 	clear_blood();clear_arrows();_show_effects([]);_apply_states({})
 	await get_tree().create_timer(.6).timeout
 	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
