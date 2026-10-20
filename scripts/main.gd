@@ -408,6 +408,16 @@ func _meter(f: float,col: Color,tip: String) -> Control:
 	var back=ColorRect.new();back.color=Color("131d20");back.custom_minimum_size=Vector2(64,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
 	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(64*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
 	return back
+var _dice_re: RegEx
+func _log_bbcode(lines: Array) -> String:
+	# "dado 5" nel diario diventa l'immagine del dado con quella faccia
+	if _dice_re==null:_dice_re=RegEx.new();_dice_re.compile("dado ([1-6])")
+	var out=[]
+	for line in lines:
+		var t=str(line).replace("[","[lb]")
+		t=_dice_re.sub(t,"[img width=18 height=18]res://assets/ui/dice_$1.png[/img]",true)
+		out.append(t)
+	return "\n".join(out)
 func _layout_overlays() -> void:
 	# i pulsanti consecutivi stanno sulla stessa riga; il pannello sparisce se è vuoto
 	var kids=sidebar.get_children();var row: HBoxContainer=null
@@ -427,7 +437,7 @@ func _refresh() -> void:
 	clear(sidebar);clear(picker)
 	turn_label.text=("STANZA "+room_code+" · " if room_code!="" else "")+"TURNO %d" % game.state.turn
 	_refresh_portraits()
-	log_box.text="\n".join(game.state.log.slice(maxi(0,game.state.log.size()-40)))
+	log_box.text=_log_bbcode(game.state.log.slice(maxi(0,game.state.log.size()-40)))
 	board.highlights=[];board.preview_facing=-1;board.focus_fighter=-1;board.selected=selected_cell
 	status.text=""
 	match game.state.phase:

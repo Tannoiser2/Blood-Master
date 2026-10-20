@@ -289,7 +289,9 @@ func act(command: Dictionary) -> bool:
 		if steps>0 and m.id in ["run","charge"]:
 			var sp=definition(p).sprints
 			if steps>sp.size():return false
-			var sprint=sp[steps-1];p.sprint_mod=int(sprint[0]);p.pending_sprint_fatigue=int(sprint[1]);stumble=die()<=int(sprint[2])
+			var sprint=sp[steps-1];p.sprint_mod=int(sprint[0]);p.pending_sprint_fatigue=int(sprint[1])
+			var sd=die();stumble=sd<=int(sprint[2])
+			if int(sprint[2])>0:note("%s, equilibrio nello sprint: dado %d, cade con %d o meno." % [p.name,sd,int(sprint[2])])
 			state.pending["charge_imbalance"]=int(sprint[3])
 		if m.id=="float":_hurt(i,maxi(0,steps-die()),false)
 		if stumble:
@@ -390,9 +392,9 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 	if m.id=="shoot":attack=15-distance(a.cell,b.cell)
 	if not magic:attack+=int(a.sprint_mod)-int(a.fatigue)-int(a.permanent)
 	dv+=int(b.sprint_mod)+int(b.fatigue)+int(b.permanent)
-	var d=die();var total=attack+dv+positional+d
+	var d=die();var total=attack+dv+positional+d;var extra=0
 	if d==6:
-		var extra=die();total+=extra
+		extra=die();total+=extra
 		var removable=[]
 		for id in definition(b).moves:
 			if not definition(b).moves[id].red.is_empty() and not id in b.lost:removable.append(id)
@@ -400,14 +402,19 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 			var lost=removable[rng.randi_range(0,removable.size()-1)];b.lost.append(lost);note(b.name+" perde la mossa "+definition(b).moves[lost].name+" per un critico.")
 		if extra==6:_kill(j);note("Doppio sei! "+b.name+" viene ucciso.");return true
 	var result=combat_table(total)
-	note("%s attacca %s: %d + %d + %d + dado %d = %d; %d ferite." % [a.name,b.name,attack,dv,positional,d,total,result.wounds])
+	note("%s attacca %s: %d + %d + %d + dado %d%s = %d; %d ferite%s." % [a.name,b.name,attack,dv,positional,d," + dado %d" % extra if extra>0 else "",total,result.wounds," · sbilanciato (S)" if result.unbalance and result.wounds>0 else ""])
 	_hurt(j,int(result.wounds),not magic)
-	if result.unbalance and b.alive:_knock(j,false)
-	if m.get("imbalance")!=null and result.wounds>0 and b.alive:
-		var value=die()+int(definition(a).size)+int(m.imbalance)+charge_imbalance
+	# Nello stesso attacco lo sbilanciamento conta una volta sola: la "S" della tabella e il tiro
+	# sulla tabella di sbilanciamento non si sommano per mandare a terra (si cade solo se si era
+	# già sbilanciati prima del colpo, o se arretrando si urta un ostacolo).
+	var knocked=false
+	if result.unbalance and b.alive and not b.pieces:_knock(j,false);knocked=true
+	if m.get("imbalance")!=null and result.wounds>0 and b.alive and not b.pieces:
+		var bd=die();var value=bd+int(definition(a).size)+int(m.imbalance)+charge_imbalance
 		var push=balance_table(value,int(definition(b).size))
+		note("Sbilanciamento: dado %d + stazza %d + modificatore %d%s = %d contro stazza %d: %s." % [bd,int(definition(a).size),int(m.imbalance)," + carica %d"%charge_imbalance if charge_imbalance else "",value,int(definition(b).size),"nessun effetto" if push<0 else ("sbilanciato" if push==0 else "sbilanciato, arretra di %d" % push)])
 		if push>=0:
-			_knock(j,false)
+			if not knocked:_knock(j,false)
 			var dir=direction(a.cell,b.cell)
 			for step in push:
 				var dest=neighbor(b.cell,dir);var other=at(dest,j)
@@ -423,7 +430,7 @@ func _hurt(i: int,n: int,armor: bool=true) -> void:
 	if definition(p).kind=="skeleton":return
 	if armor and not definition(p).armor.is_empty():
 		var d=die();var arm=definition(p).armor
-		if d>=arm[0] and d<=arm[1]:n=maxi(0,n-d);note(p.name+": l’armatura assorbe %d ferite." % d)
+		if d>=arm[0] and d<=arm[1]:n=maxi(0,n-d);note(p.name+": armatura, dado %d: assorbe %d ferite." % [d,d])
 	if n>0:p.hp-=n;p.meditated=false
 	if p.hp<=0:_kill(i)
 func _kill(i: int) -> void:
@@ -476,7 +483,8 @@ func _cast_pending() -> void:
 		"vortex":_effect(i,k,"vortex",2)
 		"sleep":
 			if j!=-1:
-				var n=maxi(0,die()+die()+die()-int(definition(state.fighters[j]).size));state.fighters[j].fatigue+=n
+				var s1=die();var s2=die();var s3=die();var n=maxi(0,s1+s2+s3-int(definition(state.fighters[j]).size));state.fighters[j].fatigue+=n
+				note("Sonno su %s: dado %d + dado %d + dado %d - stazza %d = %d fatica." % [state.fighters[j].name,s1,s2,s3,int(definition(state.fighters[j]).size),n])
 				if n>=9:_knock(j,true)
 		"fireball":
 			for t in state.fighters.size():
@@ -502,10 +510,11 @@ func _cast_pending() -> void:
 					if not t in hit and living(state.fighters[t]) and distance(state.fighters[u].cell,state.fighters[t].cell)==1:hit.append(t);queue.append(t)
 			for t in hit:
 				if t!=i:_hurt(t,die(),false)
-		"heal":p.hp+=die();p.max_hp=maxi(p.hp,p.max_hp)
+		"heal":
+			var hd=die();p.hp+=hd;p.max_hp=maxi(p.hp,p.max_hp);note("%s si rigenera: dado %d, +%d ferite." % [p.name,hd,hd])
 		"drain":
 			if j!=-1:
-				var n=die();_hurt(j,n,false);p.hp+=n;p.max_hp=maxi(p.hp,p.max_hp)
+				var n=die();note("%s drena %s: dado %d." % [p.name,state.fighters[j].name,n]);_hurt(j,n,false);p.hp+=n;p.max_hp=maxi(p.hp,p.max_hp)
 		"control":
 			if j!=-1 and die()<=mini(4,1+extra):state.fighters[j].controller_by=i
 		"lightning":
@@ -558,7 +567,8 @@ func _cross_effects(i: int) -> void:
 		if other.alive and other.team==p.team and other.plague>=0 and distance(other.cell,p.cell)==1:p.plague=other.plague
 func _abyss(i: int,e: Dictionary) -> void:
 	var p=state.fighters[i]
-	if die() in e.get("numbers",[1,2]):_kill(i)
+	var ad=die();note("%s sull'abisso: dado %d." % [p.name,ad])
+	if ad in e.get("numbers",[1,2]):_kill(i)
 	else:
 		_knock(i,false)
 		for d in 6:
@@ -587,7 +597,8 @@ func finish_turn() -> void:
 		if not p.alive:continue
 		var m=move(p)
 		if m.get("rest",false):
-			var amount=int(definition(p).recovery[die()-1]);p.fatigue=maxi(0,int(p.fatigue)-amount)
+			var rd=die();var amount=int(definition(p).recovery[rd-1]);p.fatigue=maxi(0,int(p.fatigue)-amount)
+			if amount>0 and int(p.fatigue)+amount>0:note("%s riposa: dado %d, recupera %d fatica." % [p.name,rd,mini(amount,99)])
 		if p.current=="concentrate":
 			var d=die();p.magic+=1 if d==1 else (3 if d==6 else 2)
 		if p.burning:
