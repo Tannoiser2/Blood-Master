@@ -152,7 +152,7 @@ func legal_moves(i: int) -> Array:
 		if id=="again":
 			if p.current in ["again","unbalanced","down","pieces"] or p.current in p.lost:continue
 			m=prev
-		if m.get("spell",false) and (p.down or p.magic<m.cost):continue
+		if m.get("spell",false) and (p.down or p.magic<m.cost) and not (m.id=="summon" and not p.down and own_golem(i)>=0):continue
 		if m.fatigue>0 and m.attack!=null and (p.unbalanced or (prev.get("attack")!=null and prev.get("fatigue",0)>0)):continue
 		if id=="shoot" and not p.loaded:continue
 		if p.bow and m.attack!=null and id!="shoot":continue
@@ -243,6 +243,7 @@ func targets(i: int,id: String="") -> Array:
 	if m.is_empty():return out
 	if not state.get("spin",{}).is_empty() and int(state.spin.actor)==i:return state.spin.remaining
 	if m.get("spell",false):
+		if m.id=="summon" and own_golem(i)>=0:return [p.cell]   # mantiene il Golem già evocato
 		if p.magic<int(m.cost):return []
 		for k in cells:
 			var dist=distance(p.cell,k)
@@ -271,6 +272,12 @@ func targets(i: int,id: String="") -> Array:
 		return out
 	return [p.cell]
 const FACING_FRONT=[5,0,1]
+# il Golem evocato da questo mago, se è ancora in campo (rigiocare Evocazione lo mantiene, senza spesa)
+func own_golem(i: int) -> int:
+	for j in state.fighters.size():
+		var g=state.fighters[j]
+		if g.character=="golem" and g.alive and int(g.get("owner",-1))==i:return j
+	return -1
 func reaction_options(i: int,spell_value: int=0) -> Array:
 	var p=state.fighters[i];var out=["pass"]
 	if not living(p) or p.done or p.down or p.unbalanced:return out
@@ -303,6 +310,8 @@ func act(command: Dictionary) -> bool:
 		if m.id=="teleport":cost=distance(p.cell,k)
 		elif m.id in ["fireball","lightning","control"]:cost+=extra
 		elif m.id=="abyss" and extra>0:cost=10
+		if m.id=="summon" and own_golem(i)>=0:
+			note("%s mantiene il Golem in campo (nessuna spesa di magia)."%p.name);_finish_action(i,m,false,facing);return true
 		if p.magic<cost:return false
 		p.magic-=cost
 		state.pending={"kind":"spell","actor":i,"target":k,"facing":facing,"extra":extra,"move":m.id,"reactors":[]}

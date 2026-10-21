@@ -178,7 +178,10 @@ static func _spell_cell(game: BloodRules,i: int,m: Dictionary,k: String) -> floa
 			if friend:return -20.0
 			s=(6.0 if enemy else 0.0)+_blocks_enemy(game,i,k)*4.0
 		"livingfire":s=6.0 if enemy else 2.0
-		"summon":s=_blocks_enemy(game,i,k)*3.0+4.0
+		"summon":   # il Golem compare vicino ai nemici, meglio se a contatto
+			var nd=99
+			for j in _enemies(game,i):nd=mini(nd,BloodRules.distance(k,game.state.fighters[j].cell))
+			s=14.0-float(nd)*2.5+_blocks_enemy(game,i,k)*2.0
 		"teleport":
 			s=-_threat_at(game,i,k)*2.0+_cover_at(game,i,k) if _trouble(game,i)>.4 else -float(BloodRules.distance(k,game.state.fighters[_focus(game,i)].cell)) if _focus(game,i)!=-1 else 0.0
 		_:
@@ -213,6 +216,12 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 	for j in _enemies(game,i):
 		if BloodRules.distance(p.cell,game.state.fighters[j].cell)<=2:within2+=1
 	var exposure=float(adjacent)*EXPOSE_ADJ+float(within2-adjacent)*EXPOSE_NEAR
+	if p.character=="golem" and legal.has("guard") and legal.has("advance"):   # il Golem può solo avanzare o colpire
+		if not game.targets(i,"guard").is_empty() or adjacent>0:return "guard"
+		for k in game.targets(i,"advance"):
+			for j in _enemies(game,i):
+				if BloodRules.distance(k,game.state.fighters[j].cell)<nearest:return "advance"
+		return "guard"
 	var here=_move_score(game,i,p.cell,{"id":"stay"})
 	var best=-INF;var selected=str(legal[0])
 	for id in legal:
@@ -226,6 +235,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 				for k in targets:top=maxf(top,_spell_cell(game,i,m,k))
 				score=top+2.0
 				if m.id=="heal":score=16.0*(1.0-_health(p))-2.0
+				if m.id=="summon" and game.own_golem(i)>=0:score=22.0-trouble*10.0   # senza Evocazione il Golem si sbriciola
 				if m.id=="shield":score=4.0+float(adjacent)*5.0+trouble*6.0
 				if m.id in ["pustules","shock","fear"]:
 					var hit=0.0
