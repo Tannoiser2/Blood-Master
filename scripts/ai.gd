@@ -264,7 +264,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 				if m.id=="summon" and game.own_golem(i)>=0:   # senza Evocazione il Golem si sbriciola: conviene se sta combattendo
 					var g=game.state.fighters[game.own_golem(i)];var gd=99
 					for j in _enemies(game,i):gd=mini(gd,BloodRules.distance(g.cell,game.state.fighters[j].cell))
-					score=6.0+(10.0 if gd==1 else (6.0 if gd<=2 else 1.0))+_health(g)*4.0-trouble*8.0
+					score=22.0+(8.0 if gd==1 else (5.0 if gd<=2 else 1.0))+_health(g)*4.0-trouble*6.0   # 40 ferite gratis: tenerlo vale quasi sempre
 				if m.id=="shield":score=1.0+float(adjacent)*3.0+trouble*5.0
 				if m.id in ["pustules","shock"]:
 					var hit=0.0

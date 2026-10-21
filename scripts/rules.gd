@@ -505,7 +505,7 @@ func _knock(i: int,ground: bool) -> void:
 	var p=state.fighters[i]
 	if definition(p).kind=="ziggy":return
 	if definition(p).kind=="skeleton":p.pieces=true;p.current="pieces";p.done=true;note(p.name+" va in pezzi.");return
-	if definition(p).kind=="golem":_kill(i);return
+	if definition(p).kind=="golem":note(p.name+" viene sbilanciato e si riduce in polvere (regola del Golem).");_kill(i);return
 	if ground or p.unbalanced or p.down:p.down=true;p.unbalanced=false;p.current="down"
 	else:p.unbalanced=true;p.current="unbalanced"
 	p.done=true;p.guarding=false
@@ -672,7 +672,8 @@ func finish_turn() -> void:
 		if p.plague>=0:_hurt(i,2,false)
 		if p.character=="golem" and p.get("owner",-1)>=0:
 			var owner=state.fighters[p.owner]
-			if not owner.alive or owner.current!="summon":_kill(i)
+			if not owner.alive or owner.current!="summon":
+				note(p.name+" si sbriciola: "+(owner.name+" è fuori combattimento." if not owner.alive else owner.name+" non ha rigiocato Evocazione."));_kill(i)
 	var remaining=[]
 	for e in state.effects:
 		if not state.fighters[e.owner].alive:continue
