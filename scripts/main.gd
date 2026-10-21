@@ -30,6 +30,11 @@ var handicap_picks: Array=[]
 var auction_amount=1
 var speed=.65
 var busy=false
+var step_pause=false   # "Pausa a ogni mossa": si va avanti cliccando la faccetta di chi ha agito
+var waiting_click=false
+var last_actor=-1
+const READ_TIME=1.8      # secondi per leggere pedina e risultato prima della prossima estrazione
+const SHOW_TIME=1.1      # secondi in cui si vede chi agisce e con quale pedina, prima che agisca
 var auto_draw=true
 var board_grid=false
 var blood_on=false
@@ -122,10 +127,10 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));house_rules=bool(d.get("house",true));clear_plates=bool(d.get("clear_plates",false))
+	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));step_pause=bool(d.get("pause",false));house_rules=bool(d.get("house",true));clear_plates=bool(d.get("clear_plates",false))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house":house_rules,"clear_plates":clear_plates}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house":house_rules,"clear_plates":clear_plates,"pause":step_pause}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -353,6 +358,10 @@ func _build_game() -> void:
 	row.add_child(_bar_check("Miniature 3D",minis_3d,func(v):minis_3d=v;board.visible=not v;board3d.visible=v;_refresh()))
 	row.add_child(_bar_check("Griglia",board_grid,func(v):board_grid=v;board.show_grid=v;board.queue_redraw();_refresh()))
 	row.add_child(_bar_check("Estrazione automatica",auto_draw,func(v):auto_draw=v;_drive()))
+	row.add_child(_bar_check("Pausa a ogni mossa",step_pause,func(v):
+		step_pause=v;_save_settings()
+		if not v and waiting_click:waiting_click=false
+		,"Dopo ogni mossa il gioco si ferma: clicca la faccetta accesa per continuare"))
 	row.add_child(_bar_check("Sangue",blood_on,func(v):blood_on=v;board3d.blood=v;_save_settings()))
 	row.add_child(_bar_check("Suoni",sound_on,func(v):sound_on=v;board3d.sound=v;_save_settings()))
 	row.add_child(_bar_check("Basette trasparenti",clear_plates,func(v):clear_plates=v;board3d.set_clear_plates(v);_save_settings()))
@@ -427,15 +436,21 @@ func _refresh_portraits() -> void:
 		var compact=budget<112.0;var tiny=budget<76.0
 		for i in shown[side]:
 			var p=game.state.fighters[i];var team_col=Color("69cec1") if int(p.team)==0 else Color("e68078")
-			var on=acting_phase and i==active
+			var on=(acting_phase and i==active) or (game.state.phase=="draw" and i==last_actor)
 			var card=PanelContainer.new();var sb=box(Color(.32,.25,.08,.97) if on else Color(PANEL.r,PANEL.g,PANEL.b,.9),8)
 			sb.border_color=GOLD if on else team_col;sb.set_border_width_all(4 if on else 2)
 			if on:sb.shadow_color=Color(GOLD.r,GOLD.g,GOLD.b,.6);sb.shadow_size=10
 			sb.content_margin_left=5;sb.content_margin_right=5;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
 			card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);card.custom_minimum_size.x=CARD_W
+			if on and waiting_click:   # pausa: si prosegue cliccando questa faccetta
+				card.mouse_filter=Control.MOUSE_FILTER_STOP;card.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND;card.tooltip_text="Clicca per continuare"
+				card.gui_input.connect(func(ev):if ev is InputEventMouseButton and ev.pressed:waiting_click=false;_refresh_portraits())
 			team_cols[side].add_child(card);cards[i]=card
 			var v=VBoxContainer.new();v.add_theme_constant_override("separation",3);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
 			var head=HBoxContainer.new();head.add_theme_constant_override("separation",6);head.mouse_filter=Control.MOUSE_FILTER_IGNORE;v.add_child(head)
+			if on and waiting_click:
+				var go=label("Clicca qui per continuare",11,Color("151b19"));go.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+				var gp=PanelContainer.new();gp.add_theme_stylebox_override("panel",box(GOLD,6));gp.mouse_filter=Control.MOUSE_FILTER_IGNORE;go.mouse_filter=Control.MOUSE_FILTER_IGNORE;gp.add_child(go);v.add_child(gp)
 			var fs=28.0 if tiny else 44.0
 			var face=TextureRect.new();face.custom_minimum_size=Vector2(fs,fs);face.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;face.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;face.mouse_filter=Control.MOUSE_FILTER_IGNORE
 			var fp="res://assets/ui/faces/%s.webp"%p.character
@@ -733,8 +748,12 @@ func _reset_selection() -> void:
 func _submit(command: Dictionary) -> void:
 	if room_code!="" and network!=null:
 		await network.submit(command);return
+	var before=int(game.state.get("active",-1));var ph=str(game.state.get("phase",""))
 	if _apply(command):
-		last_error="";_reset_selection();_refresh();_autosave();_drive()
+		last_error=""
+		if ph=="acting" and str(command.get("type",""))=="act":last_actor=before
+		if str(command.get("type",""))=="draw":last_actor=-1
+		await _show_result();_drive()
 	else:
 		status.text="Questa azione non è valida: controlla bersaglio e orientamento."
 		last_error="Azione non valida: controlla bersaglio e orientamento.";_refresh()
@@ -761,9 +780,15 @@ func _apply(c: Dictionary) -> bool:
 func _drive() -> void:
 	if busy or not showing_game or (room_code!="" and not net_host):return
 	busy=true
-	await get_tree().create_timer(speed).timeout
-	while board3d!=null and is_instance_valid(board3d) and board3d.is_visible_in_tree() and board3d.busy():
-		await get_tree().create_timer(.1).timeout   # le miniature finiscono la mossa prima della prossima estrazione
+	await _wait_animation()   # le miniature finiscono la mossa prima di tutto il resto
+	var ph=str(game.state.get("phase",""))
+	var pause=speed
+	if ph=="acting" and not _human(int(game.state.active)):pause=maxf(speed,SHOW_TIME)   # si vede chi agisce e con che pedina
+	if ph=="draw" and last_actor>=0:pause=maxf(speed,READ_TIME)   # il tempo di leggere il risultato
+	await get_tree().create_timer(pause).timeout
+	if ph=="draw" and last_actor>=0 and step_pause and room_code=="":   # resta così finché non si clicca la faccetta
+		waiting_click=true;_refresh_portraits()
+		while waiting_click and showing_game:await get_tree().create_timer(.1).timeout
 	busy=false
 	if not showing_game:return
 	if room_code!="":
@@ -790,7 +815,9 @@ func _drive() -> void:
 			if game.needs_plan().is_empty():acted=game.reveal()
 		"acting":
 			var i=int(s.active);var p=s.fighters[i]
-			if p.controller=="ai" or p.get("owner",-1)>=0:acted=game.act(BloodAI.command(game,i))
+			if p.controller=="ai" or p.get("owner",-1)>=0:
+				acted=game.act(BloodAI.command(game,i))
+				if acted:last_actor=i
 		"opportunity":
 			var i=int(s.pending.reactors[0])
 			if s.fighters[i].controller=="ai":acted=game.opportunity(BloodAI.opportunity(game,i))
@@ -804,9 +831,17 @@ func _drive() -> void:
 			if s.fighters[s.active].controller=="ai":acted=game.advance_effect(BloodAI.effect_facing(game))
 		"draw":
 			var guarding=s.fighters.any(func(p):return p.guarding and p.controller=="human")
-			if auto_draw and not guarding:game.draw_next();acted=true
-	if acted:
-		_reset_selection();_refresh();_autosave();_drive()
+			if auto_draw and not guarding:game.draw_next();acted=true;last_actor=-1
+	if acted:await _show_result();_drive()
+func _wait_animation() -> void:
+	while board3d!=null and is_instance_valid(board3d) and board3d.is_visible_in_tree() and board3d.busy():
+		await get_tree().create_timer(.1).timeout
+func _show_result() -> void:
+	# prima le miniature eseguono l'azione, poi faccette e diario mostrano il risultato (niente spoiler)
+	_reset_selection()
+	if board3d!=null and is_instance_valid(board3d) and board3d.is_visible_in_tree():
+		board3d.copy_from(board);await _wait_animation()
+	_refresh();_autosave()
 func _autosave() -> void:
 	if room_code!="":return
 	var f=FileAccess.open("user://battle.json",FileAccess.WRITE)

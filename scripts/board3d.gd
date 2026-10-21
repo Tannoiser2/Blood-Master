@@ -342,6 +342,8 @@ func _clip_for(i: int,id: String,bow: bool) -> String:
 	if id=="guard" and str(game.state.fighters[i].character)=="golem" and game.move(game.state.fighters[i]).get("attack")!=null and info.get("ap")!=null and info.ap.has_animation("Schianto"):
 		return "Schianto"   # la guardia del golem è un colpo: pugni giù sul nemico
 	if bow and info.get("ap")!=null and info.ap.has_animation(base+" arco"):return base+" arco"
+	# Shaara: la pedina "Calcio volante" occupa il posto dell'affondo, ma è un calcio
+	if id=="thrust" and str(game.state.fighters[i].character)=="shaara" and info.get("ap")!=null and info.ap.has_animation("Calcio"):return "Calcio"
 	return base
 func _view(p: Dictionary) -> Dictionary:
 	return {"cell":p.cell,"facing":int(p.facing),"current":p.current,"done":p.done,"hp":int(p.hp),"unbalanced":p.unbalanced,"down":p.down,"alive":p.alive,"team":int(p.team),"character":p.character,"pieces":bool(p.get("pieces",false))}

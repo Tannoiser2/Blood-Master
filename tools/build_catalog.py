@@ -174,6 +174,14 @@ for ch,st in characters.items():
 # Persistent effect pieces, counts are the physical stock.
 for name,src,c,r in [('vortex','backfire-7',3,1),('fire','backfire-4',3,0),('wall','backfire-7',4,1),('abyss','backfire-6',4,0),('frog','backfire-6',3,2)]:tile(src,c,r,'effect_'+name)
 for ch,st in characters.items():st['moves']=moves[ch]
+# Nomi stampati sulle pedine quando differiscono da quelli generici della mossa.
+for (c,k),n in {('shaara','right'):'Pugno destro',('shaara','left'):'Pugno sinistro',('shaara','thrust'):'Calcio volante',
+                ('zenyo','right'):'Colpo destro',('zenyo','left'):'Colpo sinistro',('gandy','parry_r'):'Parata'}.items():moves[c][k]['name']=n
+# Ut: la scheda fotografata ha solo 12 pedine; le 4 mancanti prendono i valori del gemello Nuchra
+# (immagini ricostruite da tools/ut_missing_tokens.py, da lanciare dopo questo script).
+for k in ['parry_r','dodge','charge','right']:
+ m=json.loads(json.dumps(moves['nuchra'][k]));m['texture']='res://assets/tokens/ut_%s.webp'%k;moves['ut'][k]=m
+moves['ut']={k:moves['ut'][k] for k in moves['nuchra'] if k in moves['ut']};characters['ut']['moves']=moves['ut']
 Path('data/characters.json').write_text(json.dumps(characters,ensure_ascii=False,indent=2))
 Path('data/token_sources.json').write_text(json.dumps(sources,ensure_ascii=False,indent=2))
 # Original cover for the catalog, no generated illustration.

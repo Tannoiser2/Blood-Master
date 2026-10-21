@@ -248,7 +248,7 @@
       },
       "right": {
         "id": "right",
-        "name": "Taglio destro",
+        "name": "Colpo destro",
         "attack": 7,
         "defense": -2,
         "red": [
@@ -265,7 +265,7 @@
       },
       "left": {
         "id": "left",
-        "name": "Taglio sinistro",
+        "name": "Colpo sinistro",
         "attack": 7,
         "defense": -2,
         "red": [
@@ -740,38 +740,6 @@
       1
     ],
     "moves": {
-      "run": {
-        "id": "run",
-        "name": "Correre",
-        "attack": null,
-        "defense": 5,
-        "red": [],
-        "green": [
-          5,
-          0,
-          1
-        ],
-        "blue": [],
-        "fatigue": 1,
-        "rest": false,
-        "imbalance": null,
-        "secondary": 5,
-        "texture": "res://assets/tokens/ut_run.webp"
-      },
-      "down": {
-        "id": "down",
-        "name": "A terra",
-        "attack": null,
-        "defense": 9,
-        "red": [],
-        "green": [],
-        "blue": [],
-        "fatigue": 0,
-        "rest": true,
-        "imbalance": null,
-        "secondary": 9,
-        "texture": "res://assets/tokens/ut_down.webp"
-      },
       "guard": {
         "id": "guard",
         "name": "In guardia",
@@ -789,50 +757,6 @@
         "imbalance": null,
         "secondary": 3,
         "texture": "res://assets/tokens/ut_guard.webp"
-      },
-      "again": {
-        "id": "again",
-        "name": "Ancora",
-        "attack": null,
-        "defense": 0,
-        "red": [],
-        "green": [],
-        "blue": [],
-        "fatigue": 0,
-        "rest": false,
-        "imbalance": null,
-        "secondary": 0,
-        "texture": "res://assets/tokens/ut_again.webp"
-      },
-      "unbalanced": {
-        "id": "unbalanced",
-        "name": "Sbilanciato",
-        "attack": null,
-        "defense": 8,
-        "red": [],
-        "green": [],
-        "blue": [],
-        "fatigue": 0,
-        "rest": false,
-        "imbalance": null,
-        "secondary": 8,
-        "texture": "res://assets/tokens/ut_unbalanced.webp"
-      },
-      "cleave": {
-        "id": "cleave",
-        "name": "Fendente",
-        "attack": 14,
-        "defense": 5,
-        "red": [
-          0
-        ],
-        "green": [],
-        "blue": [],
-        "fatigue": 1,
-        "rest": false,
-        "imbalance": 1,
-        "secondary": 5,
-        "texture": "res://assets/tokens/ut_cleave.webp"
       },
       "advance": {
         "id": "advance",
@@ -852,21 +776,37 @@
         "secondary": 4,
         "texture": "res://assets/tokens/ut_advance.webp"
       },
-      "kick": {
-        "id": "kick",
-        "name": "Calcio",
-        "attack": 8,
-        "defense": 6,
-        "red": [
-          0
+      "run": {
+        "id": "run",
+        "name": "Correre",
+        "attack": null,
+        "defense": 5,
+        "red": [],
+        "green": [
+          5,
+          0,
+          1
         ],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 5,
+        "texture": "res://assets/tokens/ut_run.webp"
+      },
+      "rise": {
+        "id": "rise",
+        "name": "Rialzarsi",
+        "attack": null,
+        "defense": 7,
+        "red": [],
         "green": [],
         "blue": [],
         "fatigue": 0,
         "rest": false,
-        "imbalance": 2,
-        "secondary": 6,
-        "texture": "res://assets/tokens/ut_kick.webp"
+        "imbalance": null,
+        "secondary": 7,
+        "texture": "res://assets/tokens/ut_rise.webp"
       },
       "spin": {
         "id": "spin",
@@ -889,6 +829,51 @@
         "secondary": 3,
         "texture": "res://assets/tokens/ut_spin.webp"
       },
+      "unbalanced": {
+        "id": "unbalanced",
+        "name": "Sbilanciato",
+        "attack": null,
+        "defense": 8,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 8,
+        "texture": "res://assets/tokens/ut_unbalanced.webp"
+      },
+      "down": {
+        "id": "down",
+        "name": "A terra",
+        "attack": null,
+        "defense": 9,
+        "red": [],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 9,
+        "texture": "res://assets/tokens/ut_down.webp"
+      },
+      "parry_r": {
+        "id": "parry_r",
+        "name": "Parata destra",
+        "attack": null,
+        "defense": 0,
+        "red": [],
+        "green": [],
+        "blue": [
+          0,
+          1
+        ],
+        "fatigue": 0,
+        "rest": true,
+        "imbalance": null,
+        "secondary": 3,
+        "texture": "res://assets/tokens/ut_parry_r.webp"
+      },
       "parry_l": {
         "id": "parry_l",
         "name": "Parata sinistra",
@@ -905,6 +890,61 @@
         "imbalance": null,
         "secondary": 3,
         "texture": "res://assets/tokens/ut_parry_l.webp"
+      },
+      "dodge": {
+        "id": "dodge",
+        "name": "Schivata",
+        "attack": null,
+        "defense": 2,
+        "red": [],
+        "green": [
+          2,
+          3,
+          4
+        ],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": null,
+        "secondary": 2,
+        "texture": "res://assets/tokens/ut_dodge.webp"
+      },
+      "charge": {
+        "id": "charge",
+        "name": "Carica",
+        "attack": 10,
+        "defense": 5,
+        "red": [
+          0
+        ],
+        "green": [
+          5,
+          0,
+          1
+        ],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 5,
+        "texture": "res://assets/tokens/ut_charge.webp"
+      },
+      "right": {
+        "id": "right",
+        "name": "Taglio destro",
+        "attack": 9,
+        "defense": 4,
+        "red": [
+          0,
+          1
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 0,
+        "secondary": 4,
+        "texture": "res://assets/tokens/ut_right.webp"
       },
       "left": {
         "id": "left",
@@ -923,19 +963,51 @@
         "secondary": 4,
         "texture": "res://assets/tokens/ut_left.webp"
       },
-      "rise": {
-        "id": "rise",
-        "name": "Rialzarsi",
+      "kick": {
+        "id": "kick",
+        "name": "Calcio",
+        "attack": 8,
+        "defense": 6,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 0,
+        "rest": false,
+        "imbalance": 2,
+        "secondary": 6,
+        "texture": "res://assets/tokens/ut_kick.webp"
+      },
+      "again": {
+        "id": "again",
+        "name": "Ancora",
         "attack": null,
-        "defense": 7,
+        "defense": 0,
         "red": [],
         "green": [],
         "blue": [],
         "fatigue": 0,
         "rest": false,
         "imbalance": null,
-        "secondary": 7,
-        "texture": "res://assets/tokens/ut_rise.webp"
+        "secondary": 0,
+        "texture": "res://assets/tokens/ut_again.webp"
+      },
+      "cleave": {
+        "id": "cleave",
+        "name": "Fendente",
+        "attack": 14,
+        "defense": 5,
+        "red": [
+          0
+        ],
+        "green": [],
+        "blue": [],
+        "fatigue": 1,
+        "rest": false,
+        "imbalance": 1,
+        "secondary": 5,
+        "texture": "res://assets/tokens/ut_cleave.webp"
       }
     }
   },
@@ -2190,7 +2262,7 @@
       },
       "right": {
         "id": "right",
-        "name": "Taglio destro",
+        "name": "Pugno destro",
         "attack": 7,
         "defense": -2,
         "red": [
@@ -2207,7 +2279,7 @@
       },
       "left": {
         "id": "left",
-        "name": "Taglio sinistro",
+        "name": "Pugno sinistro",
         "attack": 7,
         "defense": -2,
         "red": [
@@ -2224,7 +2296,7 @@
       },
       "thrust": {
         "id": "thrust",
-        "name": "Affondo",
+        "name": "Calcio volante",
         "attack": 9,
         "defense": -3,
         "red": [
@@ -3483,7 +3555,7 @@
       },
       "parry_r": {
         "id": "parry_r",
-        "name": "Parata destra",
+        "name": "Parata",
         "attack": null,
         "defense": -1,
         "red": [],
