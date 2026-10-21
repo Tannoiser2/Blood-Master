@@ -2,6 +2,9 @@ extends SceneTree
 # Registra ogni animazione di ogni personaggio in fotogrammi PNG (poi tools/gif/make_gifs.py fa le GIF).
 # xvfb-run godot --rendering-method gl_compatibility --path . -s tools/gif/record.gd   (OUT=cartella, ONLY=gascor,ut)
 const FPS=12.0
+var TWIST={}
+# le clip "Taglio" di Meshy colpiscono dal lato opposto al nome: nel gioco "Taglio Dx" fa il taglio sinistro
+const RENAME={"Taglio Dx":"Taglio Sx","Taglio Sx":"Taglio Dx"}
 const BOW_CLIPS=["Incoccare","Tirare","In guardia arco","Avanzare arco","Correre arco","Sbilanciato arco"]
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi","Morte"]
 func _init():call_deferred("run")
@@ -21,6 +24,7 @@ func run():
 	var cam=Camera3D.new();cam.fov=32;world.add_child(cam);cam.current=true
 	var board=load("res://scripts/board3d.gd")
 	var models: Dictionary=board.MODELS
+	TWIST=board.TWIST
 	for cid in models:
 		if not only.is_empty() and not cid in only:continue
 		if not ResourceLoader.exists(models[cid]):continue
@@ -44,6 +48,7 @@ func run():
 				if g:g.visible=not bow
 			var r1=m.find_child("Arma",true,false);var r2=m.find_child("ArmaAzione",true,false)
 			if r1 and r2:r1.visible=clip in REST_GRIP;r2.visible=not r1.visible
+			m.rotation.y=deg_to_rad(float(TWIST.get(clip,0.0)))   # stessa torsione del gioco per colpi e parate laterali
 			ap.play(clip);ap.pause()
 			var frames=int(ceil(length*FPS))+1
 			for f in frames:
@@ -52,7 +57,7 @@ func run():
 				if hips>=0:c=sk.global_transform*sk.get_bone_global_pose(hips).origin;c.y=0
 				cam.position=c+Vector3(-2.6,1.6,4.2)*(tall/1.9);cam.look_at(c+Vector3(0,tall*.45,0))
 				await process_frame;await process_frame
-				root.get_texture().get_image().save_png("%s/%s/%s__%03d.png"%[out,cid,clip,f])
+				root.get_texture().get_image().save_png("%s/%s/%s__%03d.png"%[out,cid,RENAME.get(clip,clip),f])
 		m.queue_free();await process_frame
 		print("FATTO ",cid)
 	quit()
