@@ -296,15 +296,18 @@ func reaction_options(i: int,spell_value: int=0) -> Array:
 		if id.begins_with("parry") or id=="dematerialize":out.append(id)
 	return out
 
+# di quanti lati può ruotare chi agisce con la pedina attuale (0 = orientamento fisso)
+func max_rotation(i: int,wait:=false) -> int:
+	var m=move(state.fighters[i])
+	if m.id.begins_with("parry") or m.id in ["dematerialize","weapon","roll"]:return 0
+	if m.id in ["rise","meditate","teleport","float"] or (m.id=="guard" and wait):return 3
+	return 1
 func act(command: Dictionary) -> bool:
 	if state.phase!="acting":return false
 	var i=int(state.active);var p=state.fighters[i];var m=move(p)
 	var k=str(command.get("target",p.cell));var facing=posmod(int(command.get("facing",p.facing)),6)
 	var rotation=mini(posmod(facing-int(p.facing),6),posmod(int(p.facing)-facing,6))
-	var max_rotation=1
-	if m.id in ["rise","meditate","teleport","float"] or (m.id=="guard" and command.get("wait",false)):max_rotation=3
-	if m.id.begins_with("parry") or m.id in ["dematerialize","weapon","roll"]:max_rotation=0
-	if rotation>max_rotation:return false
+	if rotation>max_rotation(i,bool(command.get("wait",false))):return false
 	if command.get("wait",false) and m.id=="guard":
 		p.facing=facing;p.guarding=true;state.phase="draw";state.active=-1;note(p.name+" resta in guardia, pronto a intervenire.");return true
 	if command.get("type","")=="regenerate":return regenerate(int(command.get("fighter",-1)))

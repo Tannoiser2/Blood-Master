@@ -22,6 +22,7 @@ var scenario="frontale"
 var selected_move=""
 var selected_cell=""
 var selected_facing=0
+var last_error=""
 var selected_path: Array=[]
 var focus_index=-1
 var selected_extra=0
@@ -636,9 +637,17 @@ func _action_panel() -> void:
 	col.add_child(label(_move_tip(m).split("\n",true,1)[1] if "\n" in _move_tip(m) else "",12,MUTED))
 	board.highlights=game.targets(i);board.preview_facing=selected_facing;board.focus_fighter=i
 	if not _human(i):col.add_child(label("Il personaggio sta decidendo la sua azione…",13,MUTED));return
-	var hint=label("Tocca una casella evidenziata, scegli l’orientamento e conferma.",12,MUTED);hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;col.add_child(hint)
-	if selected_cell!="":sidebar.add_child(label("Destinazione / bersaglio: "+selected_cell,15,GOLD))
-	_facing_controls()
+	var tg=game.targets(i)
+	var self_only=tg.size()==1 and str(tg[0])==str(p.cell)
+	if tg.size()==1 and selected_cell=="":selected_cell=str(tg[0])   # un solo bersaglio possibile: già scelto
+	var msg="Tocca una casella evidenziata, scegli l’orientamento e conferma."
+	if self_only:msg="Questa pedina non ha bersaglio: premi Esegui la mossa."
+	elif tg.is_empty():msg="Nessun bersaglio raggiungibile: puoi solo rinunciare all’azione."
+	elif tg.size()==1:msg="Un solo bersaglio possibile, già selezionato: premi Esegui la mossa."
+	var hint=label(msg,12,GOLD if self_only or tg.size()==1 else MUTED);hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;col.add_child(hint)
+	if last_error!="":var er=label(last_error,12,Color("ff8a80"));er.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;col.add_child(er)
+	if selected_cell!="" and not self_only:sidebar.add_child(label("Destinazione / bersaglio: "+selected_cell,15,GOLD))
+	_facing_controls(game.max_rotation(i),int(p.facing))
 	if m.get("spell",false) and m.id in ["fireball","lightning","control","abyss"]:
 		var sp=SpinBox.new();sp.min_value=0;sp.max_value=maxi(0,p.magic-int(m.cost));sp.value=selected_extra;sp.prefix="Magia extra: ";sp.value_changed.connect(func(v):selected_extra=int(v));sidebar.add_child(sp)
 	if m.id=="concentrate":
@@ -687,11 +696,17 @@ func _finish_panel() -> void:
 	sidebar.add_child(button("Replay 3D dello scontro",func():
 		minis_3d=true;board.visible=false;board3d.visible=true;board3d.replay()))
 	sidebar.add_child(button("Nuovo scontro",_show_menu,true))
-func _facing_controls() -> void:
-	var row=HBoxContainer.new();sidebar.add_child(row)
-	row.add_child(button("↶",func():selected_facing=posmod(selected_facing-1,6);_refresh()))
+func _facing_controls(limit:=6,from:=-1) -> void:
+	# limit: di quanti lati si può ruotare rispetto all'orientamento attuale (from); 0 = fisso
+	if limit<=0:return
+	var row=HBoxContainer.new();row.alignment=BoxContainer.ALIGNMENT_CENTER;sidebar.add_child(row)
+	var turn=func(d):
+		var nf=posmod(selected_facing+d,6)
+		if from>=0 and limit<3 and mini(posmod(nf-from,6),posmod(from-nf,6))>limit:return   # oltre la rotazione consentita
+		selected_facing=nf;_refresh()
+	row.add_child(button("‹",func():turn.call(-1),false))
 	row.add_child(label(("Fronte %d/6" if panel_narrow else "Orientamento %d / 6")%(selected_facing+1),15))
-	row.add_child(button("↷",func():selected_facing=posmod(selected_facing+1,6);_refresh()))
+	row.add_child(button("›",func():turn.call(1),false))
 func _wrap(text: String) -> void:
 	var l=label(text,15,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=320;sidebar.add_child(l)
 func _tile(path: String,width: int) -> void:
@@ -719,8 +734,10 @@ func _submit(command: Dictionary) -> void:
 	if room_code!="" and network!=null:
 		await network.submit(command);return
 	if _apply(command):
-		_reset_selection();_refresh();_autosave();_drive()
-	else:status.text="Questa azione non è valida: controlla bersaglio e orientamento."
+		last_error="";_reset_selection();_refresh();_autosave();_drive()
+	else:
+		status.text="Questa azione non è valida: controlla bersaglio e orientamento."
+		last_error="Azione non valida: controlla bersaglio e orientamento.";_refresh()
 func _apply(c: Dictionary) -> bool:
 	match c.type:
 		"handicap":return game.handicap_choices(int(game.state.active),c.picks)
