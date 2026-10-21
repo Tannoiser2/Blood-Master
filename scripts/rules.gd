@@ -468,20 +468,20 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 	# sulla tabella di sbilanciamento non si sommano per mandare a terra (si cade solo se si era
 	# già sbilanciati prima del colpo, o se arretrando si urta un ostacolo).
 	var knocked=false
-	if result.unbalance and b.alive and not b.pieces:_knock(j,false);knocked=true
+	if result.unbalance and b.alive and not b.pieces:_knock(j,false,true);knocked=true
 	if m.get("imbalance")!=null and result.wounds>0 and b.alive and not b.pieces:
 		var bd=die();var value=bd+int(definition(a).size)+int(m.imbalance)+charge_imbalance
 		var push=balance_table(value,int(definition(b).size))
 		if push>=0 and state.get("house",false):push+=1   # regola modificata: chi viene sbilanciato arretra sempre almeno di un esagono
 		note("Sbilanciamento: dado %d + stazza %d + modificatore %d%s = %d contro stazza %d: %s." % [bd,int(definition(a).size),int(m.imbalance)," + carica %d"%charge_imbalance if charge_imbalance else "",value,int(definition(b).size),"nessun effetto" if push<0 else ("sbilanciato" if push==0 else "sbilanciato, arretra di %d" % push)])
 		if push>=0:
-			if not knocked:_knock(j,false)
+			if not knocked:_knock(j,false,true)
 			var dir=direction(a.cell,b.cell)
 			for step in push:
 				var dest=neighbor(b.cell,dir);var other=at(dest,j)
 				if blocked(dest,j):
-					_knock(j,true)
-					if other!=-1 and definition(state.fighters[other]).size<=definition(b).size:_knock(other,false)
+					_knock(j,true,true)
+					if other!=-1 and definition(state.fighters[other]).size<=definition(b).size:_knock(other,false,true)
 					break
 				b.cell=dest;_cross_effects(j)
 	return result.wounds>0
@@ -501,9 +501,12 @@ func _kill(i: int) -> void:
 		if other.plague==i:other.plague=-1
 	state.effects=state.effects.filter(func(e):return int(e.owner)!=i)
 	if state.scenario=="bloodmaster" and rng.randi_range(0,maxi(1,state.campaign.get("players",[]).size()-2))==0:state.winner=-1;state.phase="finished";note("PACE · il round termina.");_score_campaign()
-func _knock(i: int,ground: bool) -> void:
+# sized: lo sbilanciamento è passato dalla stazza (tabella di sbilanciamento o colpo da 21+);
+# il Golem (stazza 8) va in polvere solo così, non per gorghi, paura, sonno, abissi o ranocchi
+func _knock(i: int,ground: bool,sized:=false) -> void:
 	var p=state.fighters[i]
 	if definition(p).kind=="ziggy":return
+	if definition(p).kind=="golem" and not sized:note(p.name+" è troppo massiccio: resta in piedi.");return
 	if definition(p).kind=="skeleton":p.pieces=true;p.current="pieces";p.done=true;note(p.name+" va in pezzi.");return
 	if definition(p).kind=="golem":note(p.name+" viene sbilanciato e si riduce in polvere (regola del Golem).");_kill(i);return
 	if ground or p.unbalanced or p.down:p.down=true;p.unbalanced=false;p.current="down"
@@ -599,7 +602,7 @@ func _cast_pending() -> void:
 				var dist=distance(p.cell,state.fighters[t].cell)
 				if dist<=2:
 					var wounded=_magic_hit(i,t,15 if dist==1 else 10)
-					if wounded and balance_table(die()+2,int(definition(state.fighters[t]).size))>=0:_knock(t,false)
+					if wounded and balance_table(die()+2,int(definition(state.fighters[t]).size))>=0:_knock(t,false,true)
 		"fear":
 			for t in state.fighters.size():
 				var b=state.fighters[t]

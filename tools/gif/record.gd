@@ -55,7 +55,7 @@ func run():
 				ap.seek(minf(float(f)/FPS,length),true)
 				var c=Vector3.ZERO
 				if hips>=0:c=sk.global_transform*sk.get_bone_global_pose(hips).origin;c.y=0
-				cam.position=c+Vector3(-2.6,1.6,4.2)*(tall/1.9);cam.look_at(c+Vector3(0,tall*.45,0))
+				cam.position=c+(Vector3(4.6,1.2,.4) if OS.get_environment("CAM")=="side" else Vector3(-2.6,1.6,4.2))*(tall/1.9);cam.look_at(c+Vector3(0,tall*.45,0))
 				await process_frame;await process_frame
 				root.get_texture().get_image().save_png("%s/%s/%s__%03d.png"%[out,cid,RENAME.get(clip,clip),f])
 		m.queue_free();await process_frame
