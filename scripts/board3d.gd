@@ -40,7 +40,7 @@ const REPLAY_PACE=.8
 const OWN_CLIP={"thrust":"Calcio volante","right":"Pugno Dx","left":"Pugno Sx","sweep":"Spazzata","meditate":"Meditazione"}
 # gradi di torsione del modello per clip (positivo = verso la sinistra del personaggio)
 # (le clip "Taglio" di Meshy colpiscono dal lato opposto al nome: "Taglio Dx" chiude a sinistra, quindi fa il taglio sinistro)
-const TWIST={"Incoccare":38.0,"Taglio Dx":32.0,"Taglio Sx":-32.0,"Parata Sx":38.0,"Parata Dx":-38.0,"Pugno Sx":25.0,"Pugno Dx":-25.0}
+const TWIST={"Taglio Dx":32.0,"Taglio Sx":-32.0,"Parata Sx":38.0,"Parata Dx":-38.0,"Pugno Sx":25.0,"Pugno Dx":-25.0}
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","dodge","guard"]
@@ -187,8 +187,7 @@ func _mini(i: int) -> Dictionary:
 			info.ap.animation_started.connect(sync_grip);sync_grip.call("Riposo")
 		if info.ap and p.character!="ziggy":
 			# torsione del corpo: i colpi e le parate a sinistra si girano a sinistra, quelli a destra a destra,
-			# così le due versioni si distinguono anche dall'alto; gli arcieri in Incoccare ruotano di ~40°
-			# (nella clip il corpo si gira di fianco) perché la freccia punti al fronte dell'esagono
+			# così le due versioni si distinguono anche dall'alto; gli arcieri finiscono Incoccare in posa di tiro (vedi _rest_pose)
 			var mdl: Node3D=model
 			info.ap.animation_started.connect(func(n):
 				var yaw=TWIST.get(n,0.0)
@@ -668,7 +667,9 @@ func _rest_pose(i: int,blend:=.25) -> void:
 	if ap==null:return
 	var st=info.get("bow_state",[false,false])
 	if st[0] and st[1] and ap.has_animation("Tirare"):
-		ap.play("Tirare",blend);ap.seek(ap.get_animation("Tirare").length*.45,true);ap.pause()
+		# freccia incoccata e puntata al fronte: posa ferma senza dissolvenza (in pausa la dissolvenza
+		# resterebbe a metà, con l'arciere girato di lato come alla fine di Incoccare)
+		ap.play("Tirare",0.0);ap.seek(ap.get_animation("Tirare").length*.45,true);ap.pause()
 	elif st[0] and ap.has_animation("In guardia arco"):ap.play("In guardia arco",blend)
 	elif ap.has_animation("In guardia"):ap.play("In guardia",blend)
 func _set_gear(i: int,bow: bool,loaded: bool) -> void:
