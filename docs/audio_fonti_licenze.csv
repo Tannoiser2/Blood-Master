@@ -1,0 +1,143 @@
+file,categoria,durata_s,fonte,originale,inizio_s,licenza,note
+swing_1.wav,swing,0.29,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Sabre Swing.wav,0.08,CC0-1.0,
+swing_2.wav,swing,0.3,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Sabre Swing.wav,0.49,CC0-1.0,
+swing_3.wav,swing,0.27,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Sabre Swing.wav,0.94,CC0-1.0,
+swing_4.wav,swing,2.0,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Axe Swing.wav,0.0,CC0-1.0,
+swing_5.wav,swing,0.63,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Axe Swing.wav,2.33,CC0-1.0,
+clash_1.wav,clash,0.39,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/sword-knife-clash-01.wav,0.0,CC0-1.0,
+clash_2.wav,clash,0.49,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/sword-knife-clash-02.wav,0.01,CC0-1.0,
+clash_3.wav,clash,0.43,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/sword-knife-clash-03.wav,0.0,CC0-1.0,
+clash_4.wav,clash,1.09,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/sword-knife-clash-04.wav,0.03,CC0-1.0,
+clash_5.wav,clash,0.79,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/sword-knife-clash-05.wav,0.01,CC0-1.0,
+step_1.wav,step,0.31,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/boots-leather-step-01.wav,0.0,CC0-1.0,
+step_2.wav,step,0.31,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/boots-leather-step-02.wav,0.0,CC0-1.0,
+step_3.wav,step,0.3,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/boots-leather-step-03.wav,0.01,CC0-1.0,
+step_4.wav,step,0.31,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/boots-leather-step-04.wav,0.0,CC0-1.0,
+fall_1.wav,fall,0.34,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/boots-leather-jump-01.wav,0.0,CC0-1.0,Atterraggio di stivali; candidato per caduta.
+fall_2.wav,fall,0.52,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/boots-leather-jump-02.wav,0.0,CC0-1.0,Atterraggio di stivali; candidato per caduta.
+fall_3.wav,fall,0.27,https://opengameart.org/content/fantasy-weapons-and-apparel-sfx-library,sfx/boots-leather-jump-03.wav,0.0,CC0-1.0,Atterraggio di stivali; candidato per caduta.
+grunt_m_1.wav,grunt_m,0.29,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attack0.wav,0.0,CC0-1.0,
+grunt_m_2.wav,grunt_m,0.34,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attack1.wav,0.0,CC0-1.0,
+grunt_m_3.wav,grunt_m,0.278,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attack2.wav,0.0,CC0-1.0,
+grunt_m_4.wav,grunt_m,0.49,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attack3.wav,0.0,CC0-1.0,
+grunt_m_5.wav,grunt_m,0.28,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attack4.wav,0.0,CC0-1.0,
+pain_m_1.wav,pain_m,0.42,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/hurt0.wav,0.0,CC0-1.0,
+pain_m_2.wav,pain_m,0.54,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/hurt1.wav,0.0,CC0-1.0,
+pain_m_3.wav,pain_m,0.52,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/hurt2.wav,0.0,CC0-1.0,
+pain_m_4.wav,pain_m,0.321,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/hurt3.wav,0.0,CC0-1.0,
+pain_m_5.wav,pain_m,0.501,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/hurt4.wav,0.0,CC0-1.0,
+death_m_1.wav,death_m,2.0,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/death0.wav,0.0,CC0-1.0,
+death_m_2.wav,death_m,1.21,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/death1.wav,0.0,CC0-1.0,
+grunt_md_1.wav,grunt_md,0.287,https://opengameart.org/content/orc-voice,ORC GRUNT 1.wav,0.05,CC0-1.0,Interpretazione vocale orchesca profonda.
+grunt_md_2.wav,grunt_md,0.479,https://opengameart.org/content/orc-voice,ORC GRUNT 2.wav,0.09,CC0-1.0,Interpretazione vocale orchesca profonda.
+grunt_md_3.wav,grunt_md,1.474,https://opengameart.org/content/orc-voice,ORC GRUNT 3.wav,0.0,CC0-1.0,Interpretazione vocale orchesca profonda.
+grunt_md_4.wav,grunt_md,1.231,https://opengameart.org/content/orc-voice,ORC GRUNT 4.wav,0.0,CC0-1.0,Interpretazione vocale orchesca profonda.
+grunt_md_5.wav,grunt_md,2.0,https://opengameart.org/content/orc-voice,ORC GRUNT 5.wav,0.0,CC0-1.0,Interpretazione vocale orchesca profonda.
+grunt_f_1.wav,grunt_f,0.365,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 1/attack1.wav,0.0,CC0-1.0,
+grunt_f_2.wav,grunt_f,0.406,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 1/attack2.wav,0.0,CC0-1.0,
+grunt_f_3.wav,grunt_f,0.406,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 1/attack3.wav,0.0,CC0-1.0,
+pain_f_1.wav,pain_f,0.287,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 1/damaged1.wav,0.0,CC0-1.0,
+pain_f_2.wav,pain_f,0.384,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 1/damaged2.wav,0.0,CC0-1.0,
+pain_f_3.wav,pain_f,0.322,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 1/damaged3.wav,0.0,CC0-1.0,
+pain_f_4.wav,pain_f,0.95,https://opengameart.org/content/female-hurt-grunts-groans,female_hurt_grunts_groans_1.ogg,0.31,CC0-1.0,
+pain_f_5.wav,pain_f,0.75,https://opengameart.org/content/female-hurt-grunts-groans,female_hurt_grunts_groans_1.ogg,2.07,CC0-1.0,
+death_f_1.wav,death_f,1.65,https://opengameart.org/content/dying-voices-female-rpg,DEATH -- HIgh dying noise.mp3,0.29,CC0-1.0,
+death_f_2.wav,death_f,0.64,https://opengameart.org/content/dying-voices-female-rpg,DEATH -- misc female british noise.mp3,0.49,CC0-1.0,
+pain_md_1.wav,pain_md,0.454,https://opengameart.org/content/orc-voice,ORC FIGHT.wav,0.08,CC0-1.0,Reazione di lotta orchesca; verificare abbinamento al personaggio.
+pain_md_2.wav,pain_md,0.619,https://opengameart.org/content/orc-voice,ORC FIGHT 2.wav,0.03,CC0-1.0,Reazione di lotta orchesca; verificare abbinamento al personaggio.
+pain_md_3.wav,pain_md,0.626,https://opengameart.org/content/orc-voice,ORC FIGHT 3.wav,0.01,CC0-1.0,Reazione di lotta orchesca; verificare abbinamento al personaggio.
+death_md_1.wav,death_md,2.0,https://opengameart.org/content/orc-voice,ORC DIES.wav,0.06,CC0-1.0,
+grunt_monster_1.wav,grunt_monster,0.79,https://opengameart.org/content/80-cc0-creature-sfx,grunt_01.ogg,0.03,CC0-1.0,
+grunt_monster_2.wav,grunt_monster,0.535,https://opengameart.org/content/80-cc0-creature-sfx,grunt_02.ogg,0.0,CC0-1.0,
+grunt_monster_3.wav,grunt_monster,0.61,https://opengameart.org/content/80-cc0-creature-sfx,grunt_03.ogg,0.05,CC0-1.0,
+pain_monster_1.wav,pain_monster,0.45,https://opengameart.org/content/80-cc0-creature-sfx,hurt_01.ogg,0.0,CC0-1.0,
+pain_monster_2.wav,pain_monster,0.47,https://opengameart.org/content/80-cc0-creature-sfx,hurt_02.ogg,0.0,CC0-1.0,
+pain_monster_3.wav,pain_monster,0.41,https://opengameart.org/content/80-cc0-creature-sfx,hurt_03.ogg,0.0,CC0-1.0,
+death_monster_1.wav,death_monster,0.81,https://opengameart.org/content/80-cc0-rpg-sfx,creature_die_01.ogg,0.05,CC0-1.0,
+pain_bones_1.wav,pain_bones,0.399,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/wood-twigs-break-01.wav,0.0,CC0-1.0,Rottura di rametti come effetto osseo.
+pain_bones_2.wav,pain_bones,0.7,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/wood-twigs-break-02.wav,0.04,CC0-1.0,Rottura di rametti come effetto osseo.
+death_bones_1.wav,death_bones,2.0,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/chimes-wood-rattle.wav,0.09,CC0-1.0,Sonagli di legno come crollo osseo.
+bones_rise_1.wav,bones_rise,0.81,https://opengameart.org/content/80-cc0-rpg-sfx,stones_03.ogg,0.0,CC0-1.0,Pietre smosse; candidato per ricomposizione dello scheletro.
+rocks_1.wav,rocks,0.57,https://opengameart.org/content/80-cc0-rpg-sfx,stones_01.ogg,0.0,CC0-1.0,
+rocks_2.wav,rocks,0.687,https://opengameart.org/content/80-cc0-rpg-sfx,stones_02.ogg,0.09,CC0-1.0,
+rocks_3.wav,rocks,0.81,https://opengameart.org/content/80-cc0-rpg-sfx,stones_03.ogg,0.0,CC0-1.0,
+golem_step_1.wav,golem_step,0.654,https://opengameart.org/content/80-cc0-rpg-sfx,item_stone_01.ogg,0.1,CC0-1.0,Movimento di pietra rallentato al 78%.
+golem_step_2.wav,golem_step,0.308,https://opengameart.org/content/80-cc0-rpg-sfx,item_stone_02.ogg,0.0,CC0-1.0,Movimento di pietra rallentato al 78%.
+golem_step_3.wav,golem_step,0.504,https://opengameart.org/content/80-cc0-rpg-sfx,item_stone_03.ogg,0.0,CC0-1.0,Movimento di pietra rallentato al 78%.
+bow_draw_1.wav,bow_draw,2.0,https://opengameart.org/content/medieval-sound-effects-weapon-textures,English Longbow Draw.wav,0.0,CC0-1.0,
+bow_draw_2.wav,bow_draw,2.0,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Scythian Recurve Draw.wav,0.0,CC0-1.0,
+bow_draw_3.wav,bow_draw,0.65,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Scythian Recurve Draw.wav,11.65,CC0-1.0,
+bow_release_1.wav,bow_release,0.21,https://opengameart.org/content/medieval-sound-effects-weapon-textures,English Longbow Shoot.wav,0.08,CC0-1.0,
+bow_release_2.wav,bow_release,0.2,https://opengameart.org/content/medieval-sound-effects-weapon-textures,English Longbow Shoot.wav,0.42,CC0-1.0,
+bow_release_3.wav,bow_release,0.2,https://opengameart.org/content/medieval-sound-effects-weapon-textures,English Longbow Shoot.wav,0.75,CC0-1.0,
+bow_release_4.wav,bow_release,0.23,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Scythian Recurve Shoot.wav,0.19,CC0-1.0,
+bow_release_5.wav,bow_release,0.2,https://opengameart.org/content/medieval-sound-effects-weapon-textures,Scythian Recurve Shoot.wav,0.89,CC0-1.0,
+arrow_hit_1.wav,arrow_hit,0.37,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/apple-cut-01.wav,0.0,CC0-1.0,Taglio di mela come impatto morbido della freccia.
+arrow_hit_2.wav,arrow_hit,0.29,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/apple-cut-02.wav,0.18,CC0-1.0,Taglio di mela come impatto morbido della freccia.
+arrow_hit_3.wav,arrow_hit,0.36,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/apple-cut-03.wav,0.09,CC0-1.0,Taglio di mela come impatto morbido della freccia.
+arrow_ground_1.wav,arrow_ground,0.95,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/soil-steps-01.wav,0.13,CC0-1.0,Impatto su terra; candidato per freccia a terra.
+shield_block_1.wav,shield_block,0.39,https://opengameart.org/content/10-impactshield-blocks,impact.1.ogg,0.17,CC0-1.0,
+shield_block_2.wav,shield_block,0.398,https://opengameart.org/content/10-impactshield-blocks,impact.2.ogg,0.09,CC0-1.0,
+shield_block_3.wav,shield_block,0.62,https://opengameart.org/content/10-impactshield-blocks,impact.3.ogg,0.12,CC0-1.0,
+hit_1.wav,hit,0.54,https://opengameart.org/content/10-impactshield-blocks,impact.7.ogg,0.16,CC0-1.0,
+hit_2.wav,hit,0.39,https://opengameart.org/content/10-impactshield-blocks,impact.8.ogg,0.13,CC0-1.0,
+hit_3.wav,hit,0.42,https://opengameart.org/content/10-impactshield-blocks,impact.9.ogg,0.38,CC0-1.0,
+kick_1.wav,kick,0.47,https://opengameart.org/content/10-impactshield-blocks,impact.4.ogg,0.47,CC0-1.0,
+kick_2.wav,kick,0.54,https://opengameart.org/content/10-impactshield-blocks,impact.5.ogg,0.44,CC0-1.0,
+kick_3.wav,kick,0.35,https://opengameart.org/content/10-impactshield-blocks,impact.6.ogg,0.23,CC0-1.0,
+dodge_1.wav,dodge,0.4,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/cloth-pouch-shake-01.wav,0.0,CC0-1.0,Fruscio di stoffa.
+dodge_2.wav,dodge,0.4,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/cloth-pouch-shake-02.wav,0.0,CC0-1.0,Fruscio di stoffa.
+stumble_1.wav,stumble,2.0,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/mud-steps-01.wav,0.0,CC0-1.0,Passo nel fango; candidato per arretramento.
+stumble_2.wav,stumble,2.0,https://opengameart.org/content/fantasy-sound-effects-tinysized-sfx,sfx-cc0/mud-steps-02.wav,0.15,CC0-1.0,Passo nel fango; candidato per arretramento.
+armor_1.wav,armor,0.48,https://opengameart.org/content/80-cc0-rpg-sfx,chain_01.ogg,0.0,CC0-1.0,Catene metalliche; candidato per armatura.
+armor_2.wav,armor,0.46,https://opengameart.org/content/80-cc0-rpg-sfx,chain_02.ogg,0.0,CC0-1.0,Catene metalliche; candidato per armatura.
+armor_3.wav,armor,0.78,https://opengameart.org/content/80-cc0-rpg-sfx,chain_03.ogg,0.0,CC0-1.0,Catene metalliche; candidato per armatura.
+charge_m_1.wav,charge_m,1.14,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attackbig0.wav,0.24,CC0-1.0,Sforzo di attacco forte come carica.
+charge_m_2.wav,charge_m,0.9,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attackbig1.wav,0.01,CC0-1.0,Sforzo di attacco forte come carica.
+charge_m_3.wav,charge_m,0.7,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attackbig2.wav,0.01,CC0-1.0,Sforzo di attacco forte come carica.
+charge_1.wav,charge,0.42,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/attackbig3.wav,0.0,CC0-1.0,Carica generica maschile; per le voci specifiche usare charge_m/md/f.
+charge_f_1.wav,charge_f,0.379,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 2/attack1.wav,0.0,CC0-1.0,"Sforzo vocale, non urlo lungo."
+charge_f_2.wav,charge_f,0.393,https://opengameart.org/content/female-rpg-voice-starter-pack,RPG Voice Starter Pack/Type 2/attack2.wav,0.0,CC0-1.0,"Sforzo vocale, non urlo lungo."
+charge_md_1.wav,charge_md,1.31,https://opengameart.org/content/orc-voice,ORC GROWL.wav,0.0,CC0-1.0,"Ringhio profondo, senza frase inglese."
+charge_md_2.wav,charge_md,1.717,https://opengameart.org/content/orc-voice,ORC GROWL 2.wav,0.0,CC0-1.0,"Ringhio profondo, senza frase inglese."
+concentrate_1.wav,concentrate,2.0,https://opengameart.org/content/ghostly-humming,ghostly_humming.ogg,1.0,CC0-1.0,Canto etereo; alternativa al mantra Hoom.
+concentrate_2.wav,concentrate,2.0,https://opengameart.org/content/ghostly-humming,ghostly_humming.ogg,5.0,CC0-1.0,Canto etereo; alternativa al mantra Hoom.
+cast_1.wav,cast,0.62,https://opengameart.org/content/80-cc0-rpg-sfx,spell_01.ogg,0.0,CC0-1.0,
+cast_2.wav,cast,0.53,https://opengameart.org/content/80-cc0-rpg-sfx,spell_02.ogg,0.0,CC0-1.0,
+spell_fire_1.wav,spell_fire,0.94,https://opengameart.org/content/80-cc0-rpg-sfx,spell_fire_01.ogg,0.0,CC0-1.0,
+spell_fire_2.wav,spell_fire,0.79,https://opengameart.org/content/80-cc0-rpg-sfx,spell_fire_02.ogg,0.0,CC0-1.0,
+spell_fire_3.wav,spell_fire,1.65,https://opengameart.org/content/80-cc0-rpg-sfx,spell_fire_03.ogg,0.0,CC0-1.0,
+spell_lightning_1.wav,spell_lightning,2.0,https://opengameart.org/content/spell-sounds,electricspell.ogg,0.39,CC0-1.0,
+spell_lightning_2.wav,spell_lightning,2.0,https://opengameart.org/content/spell-sounds,electricspell.ogg,11.29,CC0-1.0,
+spell_lightning_3.wav,spell_lightning,2.0,https://opengameart.org/content/spell-sounds,electricspell2.ogg,3.23,CC0-1.0,
+spell_heal_1.wav,spell_heal,0.79,https://opengameart.org/content/cure-magic,Cure1.wav,0.0,CC0-1.0,
+spell_heal_2.wav,spell_heal,0.97,https://opengameart.org/content/cure-magic,Cure2.wav,0.0,CC0-1.0,
+spell_heal_3.wav,spell_heal,0.88,https://opengameart.org/content/cure-magic,Cure3.wav,0.0,CC0-1.0,
+spell_wind_1.wav,spell_wind,2.0,https://opengameart.org/content/short-wind-sound,short wind sound.wav,0.0,CC0-1.0,
+spell_dark_1.wav,spell_dark,1.821,https://opengameart.org/content/magic-spell-sfx,magical_3.ogg,0.0,CC0-1.0,
+spell_dark_2.wav,spell_dark,1.72,https://opengameart.org/content/magic-spell-sfx,magical_4.ogg,0.0,CC0-1.0,
+spell_dark_3.wav,spell_dark,1.438,https://opengameart.org/content/magic-spell-sfx,magical_5.ogg,0.0,CC0-1.0,
+frog_1.wav,frog,0.52,https://opengameart.org/content/ribbit-frog-sounds,ribbit_01.mp3,0.14,CC0-1.0,
+frog_2.wav,frog,0.51,https://opengameart.org/content/ribbit-frog-sounds,ribbit_02.mp3,0.0,CC0-1.0,
+frog_3.wav,frog,0.47,https://opengameart.org/content/ribbit-frog-sounds,ribbit_03.mp3,0.0,CC0-1.0,
+explosion_1.wav,explosion,0.36,https://opengameart.org/content/100-cc0-sfx,explosion.ogg,0.07,CC0-1.0,
+fire_loop_1.wav,fire_loop,11.85,https://opengameart.org/content/fireplace-sound-loop,fire.wav,1.0,CC0-1.0, Loop con giunzione sfumata.
+mind_control_1.wav,mind_control,2.0,https://opengameart.org/content/ghostly-humming,ghostly_humming.ogg,10.0,CC0-1.0,Voce eterea come suggestione mentale.
+plague_1.wav,plague,0.28,https://opengameart.org/content/80-cc0-creature-sfx,bug_01.ogg,0.05,CC0-1.0,"Effetto creatura/insetto, candidato per peste."
+plague_2.wav,plague,0.43,https://opengameart.org/content/80-cc0-creature-sfx,bug_02.ogg,0.0,CC0-1.0,"Effetto creatura/insetto, candidato per peste."
+crack_1.wav,crack,0.57,https://opengameart.org/content/80-cc0-rpg-sfx,stones_01.ogg,0.0,CC0-1.0,Movimento di pietre per frattura del terreno.
+crack_2.wav,crack,0.687,https://opengameart.org/content/80-cc0-rpg-sfx,stones_02.ogg,0.09,CC0-1.0,Movimento di pietre per frattura del terreno.
+teleport_1.wav,teleport,1.42,https://opengameart.org/content/teleport-spell,teleport.wav,0.05,CC0-1.0,
+teleport_2.wav,teleport,1.11,https://opengameart.org/content/spell-sounds,teleport.ogg,0.82,CC0-1.0,
+teleport_3.wav,teleport,1.57,https://opengameart.org/content/spell-sounds,teleport.ogg,2.84,CC0-1.0,
+spirit_move_1.wav,spirit_move,1.5,https://opengameart.org/content/short-wind-sound,short wind sound.wav,0.0,CC0-1.0,Soffio di vento.
+pain_spirit_1.wav,pain_spirit,2.0,https://opengameart.org/content/ghost,ghost.wav,0.03,CC0-1.0,
+death_spirit_1.wav,death_spirit,2.0,https://opengameart.org/content/ghost,ghost.wav,0.03,CC0-1.0,Voce spettrale; stessa registrazione di pain_spirit.
+dice_1.wav,dice,0.533,https://opengameart.org/content/card-game-sounds,cockatrice/rolldie.wav,0.03,CC0-1.0,
+turn_1.wav,turn,1.23,https://opengameart.org/content/100-cc0-sfx,gong_01.ogg,0.0,CC0-1.0,
+turn_2.wav,turn,0.9,https://opengameart.org/content/100-cc0-sfx,gong_02.ogg,0.0,CC0-1.0,
+victory_1.wav,victory,1.17,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/victory0.wav,0.0,CC0-1.0,"Esclamazione vocale; candidato, non fanfara."
+defeat_1.wav,defeat,0.813,https://opengameart.org/content/voice-clip-pack-male-adventurer-rpg,RPG Male Adventurer/gameover0.wav,0.0,CC0-1.0,"Esclamazione vocale; candidato, non tema musicale."
+click_1.wav,click,0.2,https://opengameart.org/content/100-cc0-sfx,switch_01.ogg,0.0,CC0-1.0,
+click_2.wav,click,0.24,https://opengameart.org/content/100-cc0-sfx,switch_02.ogg,0.0,CC0-1.0,
+crowd_1.wav,crowd,14.85,https://opengameart.org/content/crowd-shoutingspeaking-ambience,crowd_shouting_0.ogg,0.5,CC0-1.0,Folla di voci sovrapposte: verificare resa da arena. Loop con giunzione sfumata.

@@ -84,7 +84,7 @@ func box(color: Color,radius: int=8) -> StyleBoxFlat:
 func label(text: String,font_size: int=17,color: Color=INK) -> Label:
 	var l=Label.new();l.text=text;l.add_theme_font_size_override("font_size",font_size);l.add_theme_color_override("font_color",color);return l
 func button(text: String,callback: Callable,primary: bool=false) -> Button:
-	var b=Button.new();b.text=text;b.pressed.connect(callback);b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	var b=Button.new();b.text=text;b.pressed.connect(func():if board3d!=null and is_instance_valid(board3d):board3d.ui_sfx("click",-14.0));b.pressed.connect(callback);b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	if primary:
 		var s=box(GOLD);s.content_margin_left=20;s.content_margin_right=20;s.content_margin_top=13;s.content_margin_bottom=13
 		b.add_theme_stylebox_override("normal",s);b.add_theme_color_override("font_color",Color("151b19"))
@@ -782,7 +782,7 @@ func _manual_content() -> void:
 	var row=HBoxContainer.new();v.add_child(row);row.add_child(button("‹ Indietro",func():manual_page=posmod(manual_page-1,12);_manual_content()));row.add_child(label("Pagina %d / 12"%(manual_page+1)));row.add_child(button("Avanti ›",func():manual_page=posmod(manual_page+1,12);_manual_content()));row.add_child(button("Chiudi",manual_window.queue_free))
 	var l=label("Chiarimento dell’autore: Disperdi magia consuma la mossa solo se riesce.",14,GOLD);v.add_child(l)
 func _credits() -> void:
-	var w=AcceptDialog.new();w.title="Blood Master Deluxe";w.dialog_text="Ideazione e sviluppo: Stefano Ancillai e Marco Ramadori\nDisegni: Luigi Filipponi\nEdizione originale: Devil’s Den\n\nVersione digitale realizzata dalle scansioni dell’autore.\nMotore Godot 4.7 · Partite online con Firebase\n\nLe illustrazioni e il regolamento appartengono ai rispettivi autori.";add_child(w);w.confirmed.connect(w.queue_free);w.popup_centered()
+	var w=AcceptDialog.new();w.title="Blood Master Deluxe";w.dialog_text="Ideazione e sviluppo: Stefano Ancillai e Marco Ramadori\nDisegni: Luigi Filipponi\nEdizione originale: Devil’s Den\n\nVersione digitale realizzata dalle scansioni dell’autore.\nMotore Godot 4.7 · Partite online con Firebase\nEffetti sonori: registrazioni CC0 (OpenGameArt, Freesound e altri; elenco in docs/audio_fonti_licenze.csv)\n\nLe illustrazioni e il regolamento appartengono ai rispettivi autori.";add_child(w);w.confirmed.connect(w.queue_free);w.popup_centered()
 func _online_menu(parent: VBoxContainer) -> void:
 	parent.add_child(label("Multiplayer · stanza privata",18,GOLD))
 	var name=LineEdit.new();name.placeholder_text="Il tuo nome";name.text="Giocatore";parent.add_child(name)

@@ -349,6 +349,7 @@ func copy_from(b) -> void:
 
 func sync() -> void:
 	if game==null or game.state.is_empty() or replaying:return
+	_ui_events()
 	var step=[]   # tracce del passo: {i, clip, from, to, yaw, delay}
 	var actors=[];var victims=[]
 	for i in game.state.fighters.size():
@@ -890,6 +891,7 @@ func _explosion(at: Vector3,color: Color,radius: float) -> void:
 	_one_shot(f,at,2.0)
 	var s=_smoke(40,Vector3.ONE*.25,1.0);s.one_shot=true;s.explosiveness=.7;_one_shot(s,at+Vector3(0,.2,0),3.5)
 	_one_shot(_sparks(60,4.0),at,1.5)
+	_sfx("explosion",at,0.0,0.0)
 	var ball=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.2;sm.height=.4;ball.mesh=sm;var m=_fx_mat(Color(1,.7,.3,.6),2.5);m.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;ball.material_override=m
 	viewport.add_child(ball);ball.global_position=at
 	var tw=create_tween();tw.tween_property(ball,"scale",Vector3.ONE*radius*2.6,.3).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
@@ -990,7 +992,7 @@ func _rebuild(info: Dictionary) -> void:
 	var glow=_sprite_particles(40,true);glow.lifetime=1.2;glow.emission_shape=CPUParticles3D.EMISSION_SHAPE_SPHERE;glow.emission_sphere_radius=.3;glow.direction=Vector3.UP;glow.spread=10
 	glow.initial_velocity_min=.4;glow.initial_velocity_max=.9;glow.gravity=Vector3.ZERO;glow.color_ramp=_ramp([[0,Color(.8,.5,1,0)],[.3,Color(.8,.5,1,.7)],[1,Color(.5,.2,1,0)]]);glow.one_shot=true;glow.explosiveness=.3
 	_one_shot(glow,base+Vector3(0,.1,0),2.0)
-	_sfx("death_bones",base,0.0,-4.0,.8)
+	_sfx("bones_rise",base,0.0,-2.0)
 	if info.get("model")!=null:
 		var mdl: Node3D=info.model;var y0=mdl.position.y
 		mdl.position.y=y0-1.1;mdl.visible=true
@@ -1147,6 +1149,9 @@ func _show_effects(list) -> void:
 			"wall","livingfire":   # fiamme alte (muro, ad anello sul bordo dell'esagono) o fuoco che serpeggia (fuoco vivo)
 				var tall=kind=="wall"
 				var fl=_flame(70 if tall else 36,Vector3(.28,.02,.28),1.5 if tall else .9,1.2 if tall else .9);fl.position.y=.08;fl.local_coords=true;root.add_child(fl);fl.emitting=true
+				if sound and not _variants("fire_loop").is_empty():   # crepitio continuo delle fiamme
+					var st=_variants("fire_loop")[0].duplicate();if st is AudioStreamOggVorbis:st.loop=true
+					var fp=AudioStreamPlayer3D.new();fp.stream=st;fp.volume_db=-12.0 if tall else -16.0;fp.unit_size=3.0;root.add_child(fp);fp.play(randf()*8.0)
 				if tall:fl.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;fl.emission_ring_axis=Vector3.UP;fl.emission_ring_radius=.4;fl.emission_ring_inner_radius=.28;fl.emission_ring_height=.02
 				var sm2=_smoke(12,Vector3(.2,.05,.2),.7);sm2.position.y=.9 if tall else .5;root.add_child(sm2);sm2.emitting=true
 				var lt=OmniLight3D.new();lt.light_color=Color(1,.5,.15);lt.light_energy=1.4;lt.omni_range=2.2;lt.position.y=.6;root.add_child(lt)
@@ -1176,7 +1181,48 @@ func _show_effects(list) -> void:
 				glow.position.y=.05;root.add_child(glow);glow.emitting=true
 # --- Suoni (opzione): armi, passi, urla, magie -----------------------------------
 # I file sono in assets/audio (sintetizzati da tools/audio/synth.py): nome_1, nome_2, ...
-var sound=true
+var sound=true:
+	set(v):
+		sound=v
+		if is_inside_tree():_crowd_update()
+const SHIELDED=["gascor","anteos","skelos","sketos"]   # parate sullo scudo: colpo sordo invece del clangore
+const ARMORED=["gascor","anteos","ut","ramok","nuchra"]   # tintinnio di maglia ai passi
+var _turn_seen=0;var _log_last="";var _end_played=false;var _crowd: AudioStreamPlayer
+# suoni non posizionali (interfaccia, dado, gong del turno, fine partita)
+func ui_sfx(name: String,db:=-6.0) -> void:
+	if not sound:return
+	var list=_variants(name)
+	if list.is_empty():return
+	var p=AudioStreamPlayer.new();p.stream=list[randi()%list.size()];p.volume_db=db;add_child(p);p.play();p.finished.connect(p.queue_free)
+func _crowd_update() -> void:
+	var on=sound and game!=null and not game.state.is_empty() and game.state.get("phase","")!="finished"
+	if on and _crowd==null:
+		var list=_variants("crowd")
+		if list.is_empty():return
+		var st=list[0].duplicate();if st is AudioStreamOggVorbis:st.loop=true
+		_crowd=AudioStreamPlayer.new();_crowd.stream=st;_crowd.volume_db=-24.0;add_child(_crowd);_crowd.play()
+	elif not on and _crowd!=null:_crowd.queue_free();_crowd=null
+func _ui_events() -> void:
+	# gong a ogni nuovo turno, dado quando il diario riporta un tiro, esclamazione a fine partita, folla di sottofondo
+	var turn=int(game.state.get("turn",0))
+	if turn>_turn_seen:
+		if _turn_seen>0:ui_sfx("turn",-10.0)
+		_turn_seen=turn
+	var log: Array=game.state.get("log",[])
+	var fresh=[]
+	for k in range(log.size()-1,-1,-1):
+		if str(log[k])==_log_last:break
+		fresh.append(str(log[k]))
+	if not log.is_empty():
+		if _log_last!="" and fresh.any(func(l):return "dado" in l):ui_sfx("dice",-8.0)
+		_log_last=str(log.back())
+	if game.state.get("phase","")=="finished" and not _end_played:
+		_end_played=true
+		var humans=[]
+		for f in game.state.fighters:
+			if str(f.get("controller",""))=="human" and not int(f.team) in humans:humans.append(int(f.team))
+		ui_sfx("victory" if humans.is_empty() or int(game.state.get("winner",-1)) in humans else "defeat",-4.0)
+	_crowd_update()
 var labels_on=true          # nomi e barre sopra le miniature (spenti: ritratti nell'interfaccia)
 func set_labels(v: bool) -> void:
 	labels_on=v
@@ -1216,8 +1262,12 @@ func _sound_track(t: Dictionary,info: Dictionary,length: float,mode: String) -> 
 	if not sound or not minis.has(t.i):return
 	var pos: Vector3=info.root.global_position+Vector3(0,.6,0);var v=_voice(t.i);var mv=str(t.get("move",""))
 	if t.get("strike",false) and mv!="shoot":
-		if v!="spirit" and v!="bones":_sfx("grunt_"+v,pos,.05,-4.0,_pitch(t.i))
-		_sfx("swing",pos,length*.3,-3.0)
+		if mv=="charge" and v in ["m","md","f"]:_sfx("charge_"+v,pos,.05,-3.0,_pitch(t.i))   # grido di carica
+		elif v!="spirit" and v!="bones":_sfx("grunt_"+v,pos,.05,-4.0,_pitch(t.i))
+		if mv=="kick":_sfx("kick",pos,length*.4,-2.0)
+		else:_sfx("swing",pos,length*.3,-3.0)
+	if mv in ["dodge","roll"]:_sfx("dodge",pos,.1,-4.0)
+	if t.get("pushed",false):_sfx("stumble",pos,0.0,-9.0)   # sbilanciato: arretra strascicando
 	# il clangore della parata lo fa _parry_fx al momento dell impatto
 	if mv=="load":_sfx("bow_draw",pos,.1,-6.0)
 	if mv=="shoot":_sfx("bow_release",pos,length*.55,-2.0)
@@ -1228,8 +1278,10 @@ func _sound_track(t: Dictionary,info: Dictionary,length: float,mode: String) -> 
 	if SPELL_FX.has(mv):
 		_sfx("cast",pos,.1,-6.0)
 		var kind={"firestaff":"fire","fireball":"fire","wall":"fire","livingfire":"fire","lightning":"lightning","shock":"lightning",
-			"heal":"heal","shield":"heal","vortex":"wind","teleport":"wind","dematerialize":"wind","float":"wind"}.get(mv,"dark")
-		_sfx("spell_"+kind,pos,length*.45,-3.0)
+			"heal":"heal","shield":"heal","vortex":"wind","float":"wind"}.get(mv,"dark")
+		var special={"teleport":"teleport","dematerialize":"teleport","abyss":"crack","control":"mind_control","plague":"plague"}
+		if special.has(mv):_sfx(special[mv],pos,length*.45,-3.0)
+		else:_sfx("spell_"+kind,pos,length*.45,-3.0)
 	var hit=int(t.get("hit",0))
 	if hit>0:
 		_sfx("hit",pos,t.get("delay",0.0)*0.0,-1.0)
@@ -1239,8 +1291,12 @@ func _sound_track(t: Dictionary,info: Dictionary,length: float,mode: String) -> 
 	if mv=="down" and t.get("stay",false):_sfx("fall",pos,.35,-2.0)
 	if mode=="passi" or (mode=="lineare" and v!="spirit"):   # passi sulla sabbia lungo il tragitto
 		var fast=t.clip in ["Correre","Carica"];var gap=.27 if fast else .42
-		var n=mini(int(length/gap),24)
-		for k in n:_sfx("step",info.root.global_position,k*gap+.05,-14.0 if not fast else -11.0)
+		var n=mini(int(length/gap),24);var who=str(game.state.fighters[t.i].character)
+		if who=="golem":gap=.6;n=mini(int(length/gap),12)
+		for k in n:
+			_sfx("golem_step" if who=="golem" else "step",info.root.global_position,k*gap+.05,(-6.0 if who=="golem" else (-14.0 if not fast else -11.0)),.85 if who=="golem" else 1.0)
+			if who in ARMORED and k%2==0:_sfx("armor",info.root.global_position,k*gap+.1,-16.0)
+	elif mode=="lineare" and v=="spirit" and str(t.get("from",""))!=str(t.get("to","")):_sfx("spirit_move",info.root.global_position,.05,-6.0)
 # --- Sangue (opzione) -------------------------------------------------------------
 # Uno sbuffo proporzionato alle ferite; poi le gocce cadono nell'esagono e restano lì.
 var blood=false
@@ -1289,7 +1345,10 @@ func _parry_fx(defender: Dictionary,attacker: Dictionary,word: String) -> void:
 		viewport.add_child(flash);flash.global_position=hit
 		var ft=create_tween();ft.tween_property(flash,"scale",Vector3.ONE*4,.15);ft.parallel().tween_property(fm,"albedo_color:a",0.0,.2);ft.tween_callback(flash.queue_free)
 		_flicker_light(hit,Color(1,.9,.7),3.0,2.5,.25)
-		_sfx("clash",hit,0.0,0.0)
+		var dc=""
+		for k in minis:
+			if minis[k]==defender:dc=str(game.state.fighters[k].character)
+		_sfx("shield_block" if dc in SHIELDED else "clash",hit,0.0,0.0)
 	var l=Label3D.new();l.text=word;l.font_size=64;l.outline_size=14;l.modulate=Color("9fd6ff") if word!="MANCATO" else Color("d0d0d0");l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
 	viewport.add_child(l);l.global_position=d+Vector3(0,1.45,0)
 	var t=create_tween();t.tween_property(l,"global_position:y",l.global_position.y+.5,1.0);t.parallel().tween_property(l,"modulate:a",0.0,1.0).set_delay(.4);t.tween_callback(l.queue_free)
