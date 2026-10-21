@@ -369,18 +369,24 @@ func _build_game() -> void:
 	for side in ["left","right","top","bottom"]:over.add_theme_constant_override("margin_"+side,12)
 	stage.add_child(over)
 	var stack=VBoxContainer.new();stack.mouse_filter=Control.MOUSE_FILTER_IGNORE;stack.add_theme_constant_override("separation",10);over.add_child(stack)
-	portraits=HBoxContainer.new();portraits.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.alignment=BoxContainer.ALIGNMENT_CENTER;portraits.add_theme_constant_override("separation",8);stack.add_child(portraits)   # faccette in alto, una sola fila
 	stage.resized.connect(_refresh_portraits)
 	var cols=HBoxContainer.new();cols.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_theme_constant_override("separation",12);cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;stack.add_child(cols)
+	# faccette in colonna sui bordi: blu a sinistra, rossi a destra, così non coprono l'arena
+	team_cols=[]
+	for side in 2:
+		var tc=VBoxContainer.new();tc.mouse_filter=Control.MOUSE_FILTER_IGNORE;tc.add_theme_constant_override("separation",6);tc.custom_minimum_size.x=CARD_W
+		team_cols.append(tc)
+	cols.add_child(team_cols[0])
 	var left=VBoxContainer.new();left.mouse_filter=Control.MOUSE_FILTER_IGNORE;left.alignment=BoxContainer.ALIGNMENT_END;cols.add_child(left)
 	picker=_overlay_panel(.88);left.add_child(picker)
 	var mid=VBoxContainer.new();mid.mouse_filter=Control.MOUSE_FILTER_IGNORE;mid.alignment=BoxContainer.ALIGNMENT_END;mid.size_flags_horizontal=Control.SIZE_EXPAND_FILL;cols.add_child(mid)
 	var midrow=HBoxContainer.new();midrow.mouse_filter=Control.MOUSE_FILTER_IGNORE;midrow.alignment=BoxContainer.ALIGNMENT_CENTER;mid.add_child(midrow)
-	action_panel=_overlay_panel(.9);midrow.add_child(action_panel)
+	action_panel=_overlay_panel(.9);midrow.add_child(action_panel);panel_home=midrow
 	sidebar=VBoxContainer.new();sidebar.add_theme_constant_override("separation",8);action_panel.add_child(sidebar)
 	hint_label=label("Trascina: sposta · tasto destro: ruota · rotellina: zoom · clic su un personaggio: scheda",12,MUTED)
 	hint_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;hint_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	var right=VBoxContainer.new();right.mouse_filter=Control.MOUSE_FILTER_IGNORE;right.custom_minimum_size.x=300;cols.add_child(right)
+	cols.add_child(team_cols[1])
 	journal_panel=_overlay_panel(.72);right.add_child(journal_panel)
 	var jv=VBoxContainer.new();journal_panel.add_child(jv)
 	var jh=HBoxContainer.new();jv.add_child(jh);jh.add_child(label("DIARIO",13,GOLD));jh.add_child(spacer())
@@ -389,71 +395,97 @@ func _build_game() -> void:
 	var fill=Control.new();fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
 	right.add_child(hint_label)
 	_refresh_portraits()
-var portraits: HBoxContainer
+var team_cols: Array=[]
+var panel_home: Control
+var cards: Dictionary={}
+const CARD_W=196.0
 func _refresh_portraits() -> void:
-	# faccette sempre visibili su una sola fila: ritratto, barre (o solo numeri se sono tanti),
-	# punti magia, ultima mossa e formula coi dadi. La larghezza si adatta al numero di personaggi.
-	if portraits==null:return
-	clear(portraits);portraits.visible=not game.state.is_empty() and game.state.phase!="deploy"
-	if not portraits.visible:return
+	# faccette in colonna: volto, nome e barre (ferite, fatica, magia); sotto, la pedina giocata e la formula col dado.
+	# Chi sta agendo ha il riquadro acceso e la pedina grande.
+	if team_cols.is_empty():return
+	cards={}
+	if action_panel!=null and is_instance_valid(action_panel) and action_panel.get_parent() in team_cols:action_panel.reparent(panel_home,false)   # non va buttato con le faccette
+	for tc in team_cols:clear(tc);tc.visible=not game.state.is_empty() and game.state.phase!="deploy"
+	if game.state.is_empty() or game.state.phase=="deploy":return
 	var notes=_fighter_notes()
-	var shown=[]
+	var shown=[[],[]]
 	for i in game.state.fighters.size():
 		var p=game.state.fighters[i]
 		if p.cell=="" and p.alive:continue
 		if not p.alive and int(p.get("owner",-1))>=0:continue   # golem evocati e caduti: spariscono
-		shown.append(i)
-	if shown.is_empty():return
-	# con le squadre: blu (Ordine 0) a sinistra, rossi a destra, separati da uno spazio al centro
-	var teams=[]
-	for i in shown:
-		if not int(game.state.fighters[i].team) in teams:teams.append(int(game.state.fighters[i].team))
-	teams.sort()
-	var split=teams.size()>=2
-	if split:shown.sort_custom(func(a,b):return int(game.state.fighters[a].team)<int(game.state.fighters[b].team) or (int(game.state.fighters[a].team)==int(game.state.fighters[b].team) and a<b))
-	var avail=maxf(400.0,(stage.size.x if stage else 1280.0)-24.0-(32.0*(teams.size()-1) if split else 0.0))
-	var w=clampf((avail-8.0*(shown.size()-1))/shown.size()-10.0,58.0,150.0)   # larghezza interna del riquadro
-	var compact=w<104.0
-	var font=11 if w>=90.0 else 10
-	var prev_team=-1
-	for i in shown:
-		var p=game.state.fighters[i]
-		if split and prev_team!=-1 and int(p.team)!=prev_team:
-			var gap=Control.new();gap.custom_minimum_size.x=24;gap.size_flags_horizontal=Control.SIZE_EXPAND_FILL;gap.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.add_child(gap)
-		prev_team=int(p.team)
-		var team_col=Color("69cec1") if int(p.team)==0 else Color("e68078")
-		var acting=int(game.state.get("active",-1))==i and game.state.phase in ["acting","opportunity","reaction","stumble"]
-		var card=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,.88),8);sb.border_color=GOLD if acting else team_col;sb.set_border_width_all(4 if acting else 2)
-		sb.content_margin_left=4;sb.content_margin_right=4;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
-		card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);card.custom_minimum_size.x=w+8;portraits.add_child(card)
-		var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
-		var path="res://assets/reborn/minis/%s.webp"%p.character
-		if not ResourceLoader.exists(path):path=card_path(p.character) if game.catalog.has(p.character) else ""
-		var img=TextureRect.new();img.custom_minimum_size=Vector2(w,minf(w*.62,64.0));img.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;img.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		img.mouse_filter=Control.MOUSE_FILTER_IGNORE;img.clip_contents=true
-		if path!="":img.texture=load(path)
-		v.add_child(img)
-		var nm=label(p.name.split(" ")[0]+("" if p.alive else " †"),font+1,team_col);nm.custom_minimum_size.x=w;nm.clip_text=true;v.add_child(nm)
-		var hp=maxi(0,int(p.hp));var fat=int(p.fatigue)+int(p.permanent)
-		var mage=bool(game.definition(p).get("mage",false))
-		if compact:   # tanti personaggi: solo numeri, ferite/fatica (e magia)
-			var t=label("%d/%d · %d%s"%[hp,int(p.max_hp),fat," · %dm"%int(p.magic) if mage else ""],font,MUTED);t.tooltip_text="ferite / massimo · fatica"+(" · punti magia" if mage else "");t.mouse_filter=Control.MOUSE_FILTER_PASS;v.add_child(t)
-		else:
-			v.add_child(_meter(float(hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%hp,w))
-			v.add_child(_meter(clampf(float(fat)/10.0,0,1),Color("b48cff"),"%d fatica"%fat,w))
-			v.add_child(label("%d ferite · %d fatica"%[hp,fat],font,MUTED))
-			if mage:v.add_child(label("%d punti magia"%int(p.magic),font,Color("8fb8ff")))
-		var n=notes.get(i,{})
-		# la pedina estratta, sotto il ritratto di chi la gioca (durante la scelta segreta resta quella del turno prima)
-		var mv_def=game.move(p) if p.alive else {}
-		if not mv_def.is_empty() and str(n.get("move",""))!="":
+		shown[posmod(int(p.team),2)].append(i)
+	var avail=maxf(300.0,(stage.size.y if stage else 800.0)-30.0)
+	var active=int(game.state.get("active",-1))
+	if game.state.phase in ["opportunity","reaction"] and not game.state.get("pending",{}).get("reactors",[]).is_empty():active=int(game.state.pending.reactors[0])
+	var acting_phase=game.state.phase in ["acting","opportunity","reaction","stumble","upkeep"]
+	for side in 2:
+		var n=maxi(1,shown[side].size())
+		var po=_panel_owner();var room=avail
+		if po>=0 and po in shown[side] and _human(po):room-=240.0   # il riquadro delle azioni sta in questa colonna
+		var budget=(room-6.0*(n-1))/n
+		var compact=budget<112.0;var tiny=budget<76.0
+		for i in shown[side]:
+			var p=game.state.fighters[i];var team_col=Color("69cec1") if int(p.team)==0 else Color("e68078")
+			var on=acting_phase and i==active
+			var card=PanelContainer.new();var sb=box(Color(.32,.25,.08,.97) if on else Color(PANEL.r,PANEL.g,PANEL.b,.9),8)
+			sb.border_color=GOLD if on else team_col;sb.set_border_width_all(4 if on else 2)
+			if on:sb.shadow_color=Color(GOLD.r,GOLD.g,GOLD.b,.6);sb.shadow_size=10
+			sb.content_margin_left=5;sb.content_margin_right=5;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
+			card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);card.custom_minimum_size.x=CARD_W
+			team_cols[side].add_child(card);cards[i]=card
+			var v=VBoxContainer.new();v.add_theme_constant_override("separation",3);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
+			var head=HBoxContainer.new();head.add_theme_constant_override("separation",6);head.mouse_filter=Control.MOUSE_FILTER_IGNORE;v.add_child(head)
+			var fs=28.0 if tiny else 44.0
+			var face=TextureRect.new();face.custom_minimum_size=Vector2(fs,fs);face.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;face.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;face.mouse_filter=Control.MOUSE_FILTER_IGNORE
+			var fp="res://assets/ui/faces/%s.webp"%p.character
+			if not ResourceLoader.exists(fp):fp="res://assets/reborn/minis/%s.webp"%p.character
+			if ResourceLoader.exists(fp):face.texture=load(fp)
+			head.add_child(face)
+			var info=VBoxContainer.new();info.add_theme_constant_override("separation",2);info.size_flags_horizontal=Control.SIZE_EXPAND_FILL;info.mouse_filter=Control.MOUSE_FILTER_IGNORE;head.add_child(info)
+			var nm=label(p.name.split(" ")[0]+("" if p.alive else " †"),13,GOLD if on else team_col);nm.clip_text=true;nm.custom_minimum_size.x=CARD_W-fs-22;info.add_child(nm)
+			var hp=maxi(0,int(p.hp));var fat=int(p.fatigue)+int(p.permanent);var mage=bool(game.definition(p).get("mage",false))
+			var bw=CARD_W-fs-24
+			if not tiny:
+				info.add_child(_meter(float(hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%hp,bw))
+				info.add_child(_meter(clampf(float(fat)/10.0,0,1),Color("b48cff"),"%d fatica"%fat,bw))
+				if mage:info.add_child(_meter(clampf(float(p.magic)/15.0,0,1),Color("6fa8ff"),"%d punti magia"%int(p.magic),bw))
+			var nums=label("%d ferite · %d fatica%s"%[hp,fat," · %d magia"%int(p.magic) if mage else ""],10,MUTED);nums.clip_text=true;nums.custom_minimum_size.x=bw;info.add_child(nums)
+			# la pedina giocata (piccola) e la formula col dado; grande e in evidenza mentre agisce
+			var nt=notes.get(i,{});var mv_def=game.move(p) if p.alive else {}
+			if mv_def.is_empty() or (str(nt.get("move",""))=="" and not on) or (tiny and not on):continue
+			var row=HBoxContainer.new();row.add_theme_constant_override("separation",5);row.mouse_filter=Control.MOUSE_FILTER_IGNORE;v.add_child(row)
+			var ts=(58.0 if on else (22.0 if compact else 30.0))
 			var tk=TextureRect.new();tk.texture=load(str(mv_def.get("texture","")));tk.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;tk.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			var th=clampf(w*.62,40.0,72.0);tk.custom_minimum_size=Vector2(w,th);tk.tooltip_text=_move_tip(mv_def);tk.mouse_filter=Control.MOUSE_FILTER_PASS;v.add_child(tk)
-		if not n.get("lines",[]).is_empty():
-			var rt=RichTextLabel.new();rt.bbcode_enabled=true;rt.fit_content=false;rt.scroll_active=false;rt.custom_minimum_size=Vector2(w,(font+4)*3)
-			rt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;rt.clip_contents=true   # al massimo tre righe: la fila resta bassa
-			rt.add_theme_font_size_override("normal_font_size",font);rt.mouse_filter=Control.MOUSE_FILTER_IGNORE
-			rt.text=_log_bbcode(n.lines.slice(maxi(0,n.lines.size()-1))).replace("width=18 height=18","width=%d height=%d"%[font+3,font+3]);v.add_child(rt)
+			tk.custom_minimum_size=Vector2(ts,ts);tk.tooltip_text=_move_tip(mv_def);tk.mouse_filter=Control.MOUSE_FILTER_PASS;row.add_child(tk)
+			var lines=nt.get("lines",[])
+			if compact and not on:
+				var ml=label(str(mv_def.name),10,GOLD);ml.clip_text=true;ml.custom_minimum_size.x=CARD_W-ts-20;row.add_child(ml);continue
+			var rt=RichTextLabel.new();rt.bbcode_enabled=true;rt.scroll_active=false;rt.fit_content=true;rt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+			rt.custom_minimum_size=Vector2(CARD_W-ts-20,0);rt.size_flags_horizontal=Control.SIZE_EXPAND_FILL;rt.mouse_filter=Control.MOUSE_FILTER_IGNORE
+			var fsz=12 if on else 10;rt.add_theme_font_size_override("normal_font_size",fsz);rt.add_theme_font_size_override("bold_font_size",fsz)
+			var txt="[b][color=#%s]%s[/color][/b]"%[GOLD.to_html(false),str(mv_def.name)]
+			if not lines.is_empty():txt+="\n"+_log_bbcode(lines.slice(lines.size()-1)).replace("width=18 height=18","width=%d height=%d"%[fsz+3,fsz+3])
+			rt.text=txt;row.add_child(rt)
+	call_deferred("_place_panel")
+func _panel_owner() -> int:
+	# il personaggio a cui si riferisce il riquadro delle azioni (se c'è)
+	match str(game.state.get("phase","")):
+		"acting","upkeep":return int(game.state.active)
+		"opportunity","reaction":return int(game.state.pending.reactors[0]) if not game.state.pending.get("reactors",[]).is_empty() else -1
+		"stumble":return int(game.state.pending.actor)
+	return -1
+func _place_panel() -> void:
+	# il riquadro delle azioni compare nella colonna, subito sotto la faccetta del personaggio che deve decidere
+	if action_panel==null or not is_instance_valid(action_panel):return
+	var o=_panel_owner()
+	if o>=0 and cards.has(o) and is_instance_valid(cards[o]):
+		var card: Control=cards[o];var col: Control=card.get_parent()
+		if action_panel.get_parent()!=col:action_panel.reparent(col,false)
+		col.move_child(action_panel,card.get_index()+1)
+		action_panel.custom_minimum_size.x=CARD_W
+	elif action_panel.get_parent()!=panel_home:
+		action_panel.custom_minimum_size.x=0
+		action_panel.reparent(panel_home,false)
 func _fighter_notes() -> Dictionary:
 	# dal diario: per ogni personaggio la mossa rivelata per ultima e i tiri di dado che ne sono seguiti
 	var names=[]
@@ -490,10 +522,17 @@ func _log_bbcode(lines: Array) -> String:
 		t=_dice_re.sub(t,"[img width=18 height=18]res://assets/ui/dice_$1.png[/img]",true)
 		out.append(t)
 	return "\n".join(out)
+var panel_narrow=false
 func _layout_overlays() -> void:
-	# i pulsanti consecutivi stanno sulla stessa riga; il pannello sparisce se è vuoto
+	# i pulsanti consecutivi stanno sulla stessa riga; il pannello sparisce se è vuoto.
+	# Sotto una faccetta (colonna stretta) i pulsanti restano uno sotto l'altro e i testi vanno a capo.
 	var kids=sidebar.get_children();var row: HBoxContainer=null
 	for c in kids:
+		if panel_narrow:
+			if c is Button:c.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+			elif c is Label and c.autowrap_mode!=TextServer.AUTOWRAP_OFF:c.custom_minimum_size.x=CARD_W-30
+			elif c is Label:c.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;c.custom_minimum_size.x=CARD_W-30
+			continue
 		if c is Button and not c is CheckButton:
 			if row==null:
 				row=HBoxContainer.new();row.alignment=BoxContainer.ALIGNMENT_CENTER;row.add_theme_constant_override("separation",8)
@@ -509,6 +548,7 @@ func _refresh() -> void:
 	clear(sidebar);clear(picker)
 	turn_label.text=("STANZA "+room_code+" · " if room_code!="" else "")+"TURNO %d" % game.state.turn
 	_refresh_portraits()
+	panel_narrow=_panel_owner()>=0 and cards.has(_panel_owner()) and _human(_panel_owner())
 	log_box.text=_log_bbcode(game.state.log.slice(maxi(0,game.state.log.size()-40)))
 	board.highlights=[];board.preview_facing=-1;board.focus_fighter=-1;board.selected=selected_cell
 	status.text=""
@@ -526,7 +566,10 @@ func _refresh() -> void:
 		"upkeep":_upkeep_panel()
 		"finished":_finish_panel()
 		"net_reveal":sidebar.add_child(label("Tutti hanno scelto. Apertura delle mosse…",19,GOLD))
+	var owner=_panel_owner()
+	if owner>=0 and not _human(owner):clear(sidebar)   # decide l'IA: basta la faccetta accesa, niente riquadro di passaggio
 	_layout_overlays()
+	call_deferred("_place_panel")
 	# sangue sulla mappa 2D: macchie proporzionate alle ferite appena subite
 	for i in game.state.fighters.size():
 		var q=game.state.fighters[i];var was=int(_last_hp.get(i,q.hp))
@@ -588,16 +631,12 @@ func _action_panel() -> void:
 	var i=int(game.state.active);var p=game.state.fighters[i];var m=game.move(p)
 	board.highlights=game.targets(i);board.preview_facing=selected_facing;board.focus_fighter=i
 	if not _human(i):return   # la pedina estratta si vede sotto la faccetta del personaggio: niente riquadro
-	# una riga compatta: tessera estratta, chi la gioca, valori e cosa fare
-	var row=HBoxContainer.new();row.add_theme_constant_override("separation",12);sidebar.add_child(row)
-	var t=TextureRect.new();t.texture=load(m.texture);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;t.custom_minimum_size=Vector2(86,74);row.add_child(t)
-	var col=VBoxContainer.new();col.add_theme_constant_override("separation",2);row.add_child(col)
-	var h=HBoxContainer.new();col.add_child(h)
-	h.add_child(label(p.name,20,Color("79cfbf") if int(p.team)==0 else Color("ed9992")));h.add_child(label("· "+m.name,20,GOLD))
-	col.add_child(label(_move_tip(m).split("\n",true,1)[1] if "\n" in _move_tip(m) else "",13,MUTED))
+	# la pedina e i valori sono già nella faccetta accesa: qui solo cosa fare
+	var col=VBoxContainer.new();col.add_theme_constant_override("separation",2);sidebar.add_child(col)
+	col.add_child(label(_move_tip(m).split("\n",true,1)[1] if "\n" in _move_tip(m) else "",12,MUTED))
 	board.highlights=game.targets(i);board.preview_facing=selected_facing;board.focus_fighter=i
 	if not _human(i):col.add_child(label("Il personaggio sta decidendo la sua azione…",13,MUTED));return
-	col.add_child(label("Tocca una casella evidenziata, scegli l’orientamento e conferma.",13,MUTED))
+	var hint=label("Tocca una casella evidenziata, scegli l’orientamento e conferma.",12,MUTED);hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;col.add_child(hint)
 	if selected_cell!="":sidebar.add_child(label("Destinazione / bersaglio: "+selected_cell,15,GOLD))
 	_facing_controls()
 	if m.get("spell",false) and m.id in ["fireball","lightning","control","abyss"]:
@@ -651,7 +690,7 @@ func _finish_panel() -> void:
 func _facing_controls() -> void:
 	var row=HBoxContainer.new();sidebar.add_child(row)
 	row.add_child(button("↶",func():selected_facing=posmod(selected_facing-1,6);_refresh()))
-	row.add_child(label("Orientamento %d / 6"%(selected_facing+1),15))
+	row.add_child(label(("Fronte %d/6" if panel_narrow else "Orientamento %d / 6")%(selected_facing+1),15))
 	row.add_child(button("↷",func():selected_facing=posmod(selected_facing+1,6);_refresh()))
 func _wrap(text: String) -> void:
 	var l=label(text,15,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=320;sidebar.add_child(l)
