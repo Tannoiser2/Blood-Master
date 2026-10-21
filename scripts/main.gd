@@ -196,7 +196,7 @@ func _show_menu() -> void:
 	top.add_child(spacer());top.add_child(label("Regole",14,MUTED))
 	for option in [[false,"Originali"],[true,"Modificate"]]:
 		var rb=button(option[1],func():house_rules=option[0];_save_settings();_show_menu())
-		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde e tridente l'affondo e la carica colpiscono fino a due esagoni davanti." if option[0] else "Il regolamento originale di Blood Master."
+		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde, tridente e il bastone di Zenyo l'affondo e la carica colpiscono fino a due esagoni davanti." if option[0] else "Il regolamento originale di Blood Master."
 		if house_rules==option[0]:rb.add_theme_color_override("font_color",GOLD)
 		top.add_child(rb)
 	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))
@@ -663,7 +663,7 @@ func _action_panel() -> void:
 	var self_only=tg.size()==1 and str(tg[0])==str(p.cell)
 	if tg.size()==1 and selected_cell=="":selected_cell=str(tg[0])   # un solo bersaglio possibile: già scelto
 	var msg="Tocca una casella evidenziata, scegli l’orientamento e conferma."
-	if _reach_tip(p,m.id)!="":msg+=" Con la lancia puoi colpire anche il nemico a due esagoni davanti."
+	if _reach_tip(p,m.id)!="":msg+=" Con l’arma lunga puoi colpire anche il nemico a due esagoni davanti."
 	if self_only:msg="Questa pedina non ha bersaglio: premi Esegui la mossa."
 	elif tg.is_empty():msg="Nessun bersaglio raggiungibile: puoi solo rinunciare all’azione."
 	elif tg.size()==1:msg="Un solo bersaglio possibile, già selezionato: premi Esegui la mossa."
@@ -737,7 +737,7 @@ func _tile(path: String,width: int) -> void:
 func _reach_tip(p: Dictionary,id: String) -> String:
 	# regola modificata delle lance: affondo e carica arrivano al secondo esagono davanti
 	if bool(game.state.get("house",false)) and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
-		return "\nLancia: colpisce anche il secondo esagono davanti (regola modificata)"
+		return "\nArma lunga: colpisce anche il secondo esagono davanti (regola modificata)"
 	return ""
 func _move_tip(m: Dictionary) -> String:
 	var text=m.name+"\n"
