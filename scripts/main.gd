@@ -386,7 +386,13 @@ func _build_game() -> void:
 	for side in 2:
 		var tc=VBoxContainer.new();tc.mouse_filter=Control.MOUSE_FILTER_IGNORE;tc.add_theme_constant_override("separation",6);tc.custom_minimum_size.x=CARD_W
 		team_cols.append(tc)
-	cols.add_child(team_cols[0])
+	# le colonne stanno fisse sui bordi dell'arena, fuori dal flusso: il centro non può spingerle fuori schermo
+	for side in 2:
+		var dock=MarginContainer.new();dock.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		dock.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE if side==0 else Control.PRESET_RIGHT_WIDE)
+		dock.offset_left=12.0 if side==0 else -CARD_W-12.0;dock.offset_right=CARD_W+12.0 if side==0 else -12.0
+		dock.offset_top=12.0;dock.offset_bottom=-12.0;stage.add_child(dock);dock.add_child(team_cols[side])
+	var lgap=Control.new();lgap.custom_minimum_size.x=CARD_W;lgap.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_child(lgap)
 	var left=VBoxContainer.new();left.mouse_filter=Control.MOUSE_FILTER_IGNORE;left.alignment=BoxContainer.ALIGNMENT_END;cols.add_child(left)
 	picker=_overlay_panel(.88);left.add_child(picker)
 	var mid=VBoxContainer.new();mid.mouse_filter=Control.MOUSE_FILTER_IGNORE;mid.alignment=BoxContainer.ALIGNMENT_END;mid.size_flags_horizontal=Control.SIZE_EXPAND_FILL;cols.add_child(mid)
@@ -395,12 +401,12 @@ func _build_game() -> void:
 	sidebar=VBoxContainer.new();sidebar.add_theme_constant_override("separation",8);action_panel.add_child(sidebar)
 	hint_label=label("Trascina: sposta · tasto destro: ruota · rotellina: zoom · clic su un personaggio: scheda",12,MUTED)
 	hint_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;hint_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	var right=VBoxContainer.new();right.mouse_filter=Control.MOUSE_FILTER_IGNORE;right.custom_minimum_size.x=300;cols.add_child(right)
-	cols.add_child(team_cols[1])
+	var right=VBoxContainer.new();right.mouse_filter=Control.MOUSE_FILTER_IGNORE;right.custom_minimum_size.x=240;cols.add_child(right)
+	var rgap=Control.new();rgap.custom_minimum_size.x=CARD_W;rgap.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_child(rgap)
 	journal_panel=_overlay_panel(.72);right.add_child(journal_panel)
 	var jv=VBoxContainer.new();journal_panel.add_child(jv)
 	var jh=HBoxContainer.new();jv.add_child(jh);jh.add_child(label("DIARIO",13,GOLD));jh.add_child(spacer())
-	log_box=RichTextLabel.new();log_box.bbcode_enabled=true;log_box.scroll_following=true;log_box.custom_minimum_size=Vector2(270,240);log_box.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;log_box.add_theme_font_size_override("normal_font_size",14);jv.add_child(log_box)
+	log_box=RichTextLabel.new();log_box.bbcode_enabled=true;log_box.scroll_following=true;log_box.custom_minimum_size=Vector2(210,240);log_box.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;log_box.add_theme_font_size_override("normal_font_size",14);jv.add_child(log_box)
 	jh.add_child(_bar_button("−",func():log_box.visible=not log_box.visible,"Riduci o apri il diario"))
 	var fill=Control.new();fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
 	right.add_child(hint_label)
@@ -555,7 +561,7 @@ func _layout_overlays() -> void:
 				sidebar.add_child(row);sidebar.move_child(row,c.get_index())
 			sidebar.remove_child(c);row.add_child(c)
 		elif c is Label and c.autowrap_mode!=TextServer.AUTOWRAP_OFF:
-			c.custom_minimum_size.x=520;row=null
+			c.custom_minimum_size.x=420;row=null
 		else:row=null
 	action_panel.visible=sidebar.get_child_count()>0
 	picker.visible=picker.get_child_count()>0
@@ -637,8 +643,9 @@ func _move_honeycomb(ids: Array,p: Dictionary,info: Label,on_pick: Callable) -> 
 		var m=game.move(p,id);var col=k%cols;var row=k/cols
 		var t=TextureButton.new();t.texture_normal=load(m.texture);t.ignore_texture_size=true;t.stretch_mode=TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 		t.custom_minimum_size=Vector2(w,h);t.size=Vector2(w,h);t.position=Vector2(col*(w*.75+gap),row*(h+gap)+((h+gap)*.5 if col%2==1 else 0.0))
-		t.tooltip_text=_move_tip(m);t.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
-		var tip=_move_tip(m).replace("\n"," · ")
+		var full=_move_tip(m)+_reach_tip(p,id)
+		t.tooltip_text=full;t.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+		var tip=full.replace("\n"," · ")
 		t.mouse_entered.connect(func():info.text=tip)
 		t.pressed.connect(func():on_pick.call(id))
 		c.add_child(t);k+=1
@@ -656,6 +663,7 @@ func _action_panel() -> void:
 	var self_only=tg.size()==1 and str(tg[0])==str(p.cell)
 	if tg.size()==1 and selected_cell=="":selected_cell=str(tg[0])   # un solo bersaglio possibile: già scelto
 	var msg="Tocca una casella evidenziata, scegli l’orientamento e conferma."
+	if _reach_tip(p,m.id)!="":msg+=" Con la lancia puoi colpire anche il nemico a due esagoni davanti."
 	if self_only:msg="Questa pedina non ha bersaglio: premi Esegui la mossa."
 	elif tg.is_empty():msg="Nessun bersaglio raggiungibile: puoi solo rinunciare all’azione."
 	elif tg.size()==1:msg="Un solo bersaglio possibile, già selezionato: premi Esegui la mossa."
@@ -726,6 +734,11 @@ func _wrap(text: String) -> void:
 	var l=label(text,15,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=320;sidebar.add_child(l)
 func _tile(path: String,width: int) -> void:
 	var t=TextureRect.new();t.texture=load(path);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;t.custom_minimum_size=Vector2(width,width*.866);sidebar.add_child(t)
+func _reach_tip(p: Dictionary,id: String) -> String:
+	# regola modificata delle lance: affondo e carica arrivano al secondo esagono davanti
+	if bool(game.state.get("house",false)) and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
+		return "\nLancia: colpisce anche il secondo esagono davanti (regola modificata)"
+	return ""
 func _move_tip(m: Dictionary) -> String:
 	var text=m.name+"\n"
 	text+=("Attacco %s · "%str(m.attack) if m.attack!=null else "")+"Difesa %s"%str(m.defense)

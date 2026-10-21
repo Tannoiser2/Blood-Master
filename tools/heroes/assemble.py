@@ -21,11 +21,11 @@ CID = sys.argv[-1]
 # kind: 'sword' trova la guardia, 'pole' trova la testa dalla larghezza degli estremi.
 CFG = {
     'ut':      dict(name='Ut', kind='sword', length=1.50, grip=.235, shaft=(-.20, -.12), heavy=True),
-    'shannon': dict(name='Shannon', kind='pole', length=2.05, grip=.32, shaft=(-.85, -.25), heavy=False),
+    'shannon': dict(name='Shannon', kind='pole', length=2.05, grip=.60, shaft=(-.85, -.25), heavy=False),
     'nuchra':  dict(name='Nuchra', kind='pole', length=1.30, grip=.40, shaft=(-.48, -.18), heavy=True, sep=-.17, gshift=(0, .08, 0)),
     'zenyo':   dict(name='Zenyo', kind='pole', length=1.80, grip=.50, shaft=(-.85, -.25), heavy=False),
     'shaara':  dict(name='Shaara', weapon=False, heavy=False),
-    'ramok':   dict(name='Ramok', kind='pole', length=2.05, grip=.32, shaft=(-.85, -.25), heavy=True),
+    'ramok':   dict(name='Ramok', kind='pole', length=2.05, grip=.60, shaft=(-.85, -.25), heavy=True),
 }[CID]
 SRC = root / f'source_art/{CID}/meshy'
 ANTEOS = root / 'source_art/anteos/anteos.blend'

@@ -26,16 +26,16 @@ CFG = {
     'thorn': dict(name='Thorn', prop=None, clips=[
         ('Calcio', 'calcio'), ('Pugno', 'pugno'), ('Pustole', 'pustole'), ('Paura', 'paura'), ('Vecchiaia', 'vecchiaia'),
         ('Evocare', 'evocare'), ('Peste', 'peste')]),
-    'sanguinaria': dict(name='Sanguinaria', prop='trident.glb', length=1.85, grip=.32, clips=[
+    'sanguinaria': dict(name='Sanguinaria', prop='trident.glb', length=1.85, grip=.50, clips=[
         ('Affondo', 'affondo'), ('Parata Dx', 'parata_dx'), ('Parata Sx', 'parata_sx'), ('Muro', 'muro'),
         ('Teletrasporto', 'teletrasporto'), ('Trasformazione', 'trasformazione'), ('Fuoco vivo', 'fuoco_vivo'), ('Abisso', 'abisso')]),
     'ziggy': dict(name='Ziggynowskij', prop=None, clips=[
         ('Scossa', 'scossa'), ('Cura', 'cura'), ('Drenare', 'drenare'), ('Controllo', 'controllo'), ('Fulmine', 'fulmine'),
         ('Smaterializzare', 'smaterializzare'), ('Fluttuare', 'fluttuare')]),
     'golem': dict(name='Golem', prop=None, clips=[('Schianto', 'schianto')]),
-    'skelos': dict(name='Skelos', prop='../../skelos/meshy/spear.glb', length=2.0, grip=.27, shield=True, clips=[
+    'skelos': dict(name='Skelos', prop='../../skelos/meshy/spear.glb', length=2.0, grip=.55, shield=True, clips=[
         ('Fendente', 'fendente'), ('Taglio Dx', 'taglio_dx'), ('Taglio Sx', 'taglio_sx'), ('Parata Dx', 'parata_dx'), ('Parata Sx', 'parata_sx')]),
-    'sketos': dict(name='Sketos', prop='../../skelos/meshy/spear.glb', length=2.0, grip=.27, shield=True, clips=[
+    'sketos': dict(name='Sketos', prop='../../skelos/meshy/spear.glb', length=2.0, grip=.55, shield=True, clips=[
         ('Fendente', 'fendente'), ('Taglio Dx', 'taglio_dx'), ('Taglio Sx', 'taglio_sx'), ('Parata Dx', 'parata_dx'), ('Parata Sx', 'parata_sx')]),
 }[CID]
 SRC = root / f'source_art/{CID}/meshy'

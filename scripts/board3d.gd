@@ -403,6 +403,10 @@ func sync() -> void:
 			var v=int(game.state.get("last_shot",{}).get("victim",-1))
 			track["arrow"]={"victim":v,"hit":v>=0 and v in victims and int(game.state.fighters[v].hp)<int(prev.get(v,{}).get("hp",0))}
 		step.append(track)
+		# lancia: colpo a due esagoni (regola modificata), con la casella in mezzo libera
+		if track.strike and bool(game.state.get("house",false)) and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
+			var mid=BloodRules.neighbor(p.cell,int(p.facing));var far=BloodRules.neighbor(mid,int(p.facing))
+			if game.at(mid,i)==-1 and game.at(far,i)!=-1 and game.cells.has(far):track["reach"]=cell_pos(far)
 		# il difensore di fronte mostra la sua pedina difensiva mentre arriva il colpo
 		if track.strike:
 			var front=game.at(BloodRules.neighbor(p.cell,int(p.facing)),i)
@@ -612,6 +616,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
 		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
 		if info.get("spirit",false):_spirit_move(t,info)
+		if t.has("reach"):_reach_fx(root.position,t.reach,(anim.length/rate if anim else 1.0)*.35)
 		if t.has("parried") and minis.has(int(t.parried)):_parry_fx(info,minis[int(t.parried)],str(t.get("parry_word","PARATA!")))
 		if t.get("dead",false) and str(game.state.fighters[t.i].character)=="golem":_shatter(info)
 		elif t.get("dead",false) and not str(game.state.fighters[t.i].character) in ["skelos","sketos","ziggy"]:_bury(info,(anim.length/rate if anim else 1.5)+1.0)
@@ -1386,6 +1391,19 @@ func _parry_fx(defender: Dictionary,attacker: Dictionary,word: String) -> void:
 	if back.length()>.01 and word!="MANCATO":   # il difensore cede un passo all'impatto e torna
 		back=back.normalized()*.12;var p0=fig.position
 		var kt=create_tween();kt.tween_property(fig,"global_position",fig.global_position+back,.08);kt.tween_property(fig,"position",p0,.25)
+# colpo di lancia a due esagoni: una striscia dorata sul terreno dal lanciere al bersaglio e la scritta
+func _reach_fx(from: Vector3,to: Vector3,delay: float) -> void:
+	await get_tree().create_timer(delay).timeout
+	var d=to-from;d.y=0
+	if d.length()<.1:return
+	var strip=MeshInstance3D.new();var pm=PlaneMesh.new();pm.size=Vector2(.32,d.length());strip.mesh=pm
+	var mat=_fx_mat(Color(1,.82,.3),3.0);mat.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;strip.material_override=mat
+	viewport.add_child(strip);strip.global_position=from+d*.5+Vector3(0,.06,0);strip.rotation.y=atan2(d.x,d.z)
+	_ring(to,Color(1,.82,.3),.55,.6)
+	var l=Label3D.new();l.text="PORTATA 2";l.font_size=56;l.outline_size=12;l.modulate=Color(1,.85,.35);l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
+	viewport.add_child(l);l.global_position=from+d*.5+Vector3(0,1.3,0)
+	var tw=create_tween();tw.tween_property(mat,"albedo_color:a",0.0,1.4).set_delay(.4);tw.parallel().tween_property(l,"modulate:a",0.0,1.0).set_delay(.8)
+	tw.tween_callback(func():strip.queue_free();l.queue_free())
 func _float(at: Vector3,text: String) -> void:
 	var l=Label3D.new();l.text=text;l.font_size=72;l.outline_size=14;l.modulate=Color("ff7b6b");l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
 	viewport.add_child(l);l.position=at+Vector3(0,1.35,0)

@@ -1,7 +1,7 @@
 extends SceneTree
 func _init() -> void:call_deferred("run")
 func run() -> void:
-	root.size=Vector2i(1440,900)
+	root.size=Vector2i(int(OS.get_environment("W")) if OS.get_environment("W")!="" else 1440,900)
 	var scene=load("res://scenes/main.tscn").instantiate();root.add_child(scene)
 	await create_timer(1).timeout
 	var ids=OS.get_environment("IDS").split(",")

@@ -461,6 +461,7 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 			var lost=removable[rng.randi_range(0,removable.size()-1)];b.lost.append(lost);note(b.name+" perde la mossa "+definition(b).moves[lost].name+" per un critico.")
 		if extra==6:_kill(j);note("Doppio sei! "+b.name+" viene ucciso.");return true
 	var result=combat_table(total)
+	if not magic and m.id!="shoot" and distance(a.cell,b.cell)==2:note("%s colpisce con la lancia a due esagoni di distanza (regola modificata)." % a.name)
 	note("%s attacca %s: %d + %d + %d + dado %d%s = %d; %d ferite%s." % [a.name,b.name,attack,dv,positional,d," + dado %d" % extra if extra>0 else "",total,result.wounds," · sbilanciato (S)" if result.unbalance and result.wounds>0 else ""])
 	_hurt(j,int(result.wounds),not magic)
 	# Nello stesso attacco lo sbilanciamento conta una volta sola: la "S" della tabella e il tiro
