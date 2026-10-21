@@ -404,12 +404,23 @@ func _refresh_portraits() -> void:
 		if not p.alive and int(p.get("owner",-1))>=0:continue   # golem evocati e caduti: spariscono
 		shown.append(i)
 	if shown.is_empty():return
-	var avail=maxf(400.0,(stage.size.x if stage else 1280.0)-24.0)
+	# con le squadre: blu (Ordine 0) a sinistra, rossi a destra, separati da uno spazio al centro
+	var teams=[]
+	for i in shown:
+		if not int(game.state.fighters[i].team) in teams:teams.append(int(game.state.fighters[i].team))
+	teams.sort()
+	var split=teams.size()>=2
+	if split:shown.sort_custom(func(a,b):return int(game.state.fighters[a].team)<int(game.state.fighters[b].team) or (int(game.state.fighters[a].team)==int(game.state.fighters[b].team) and a<b))
+	var avail=maxf(400.0,(stage.size.x if stage else 1280.0)-24.0-(32.0*(teams.size()-1) if split else 0.0))
 	var w=clampf((avail-8.0*(shown.size()-1))/shown.size()-10.0,58.0,150.0)   # larghezza interna del riquadro
 	var compact=w<104.0
 	var font=11 if w>=90.0 else 10
+	var prev_team=-1
 	for i in shown:
 		var p=game.state.fighters[i]
+		if split and prev_team!=-1 and int(p.team)!=prev_team:
+			var gap=Control.new();gap.custom_minimum_size.x=24;gap.size_flags_horizontal=Control.SIZE_EXPAND_FILL;gap.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.add_child(gap)
+		prev_team=int(p.team)
 		var team_col=Color("69cec1") if int(p.team)==0 else Color("e68078")
 		var card=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,.88),8);sb.border_color=team_col;sb.set_border_width_all(2)
 		sb.content_margin_left=4;sb.content_margin_right=4;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
