@@ -21,7 +21,7 @@ const MODELS={"gascor":"res://assets/models/gascor/gascor.glb","anteos":"res://a
 	"sanguinaria":"res://assets/models/sanguinaria/sanguinaria.glb","ziggy":"res://assets/models/ziggy/ziggy.glb",
 	"golem":"res://assets/models/golem/golem.glb","skelos":"res://assets/models/skelos/skelos.glb","sketos":"res://assets/models/sketos/sketos.glb"}
 const CLIP={"guard":"In guardia","advance":"Avanzare","run":"Correre","charge":"Carica","cleave":"Fendente",
-	"left":"Taglio Sx","right":"Taglio Dx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
+	"left":"Taglio Dx","right":"Taglio Sx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
 	"dodge":"Schivata","roll":"Rotolare","unbalanced":"Sbilanciato","down":"A terra","rise":"Rialzarsi","again":"In guardia",
 	"spin":"Taglio Dx","sweep":"Taglio Sx","meditate":"Riposo",
 	"load":"Incoccare","shoot":"Tirare","weapon":"Riposo",
@@ -37,6 +37,10 @@ const SPELL_FX={"firestaff":Color(1,.45,.1),"shield":Color(.45,.7,1),"vortex":Co
 	"wall":Color(1,.35,.1),"teleport":Color(1,.3,.25),"transform":Color(.3,.9,.4),"livingfire":Color(1,.5,.1),"abyss":Color(.35,.1,.45),
 	"shock":Color(.4,.8,1),"heal":Color(.4,1,.6),"drain":Color(.6,.2,.8),"control":Color(.85,.4,1),"lightning":Color(.6,.85,1),"dematerialize":Color(.5,.5,1)}   # rotazione e spazzata: le clip di taglio più vicine
 const REPLAY_PACE=.8
+const OWN_CLIP={"thrust":"Calcio volante","right":"Pugno Dx","left":"Pugno Sx","sweep":"Spazzata","meditate":"Meditazione"}
+# gradi di torsione del modello per clip (positivo = verso la sinistra del personaggio)
+# (le clip "Taglio" di Meshy colpiscono dal lato opposto al nome: "Taglio Dx" chiude a sinistra, quindi fa il taglio sinistro)
+const TWIST={"Incoccare":38.0,"Taglio Dx":32.0,"Taglio Sx":-32.0,"Parata Sx":38.0,"Parata Dx":-38.0,"Pugno Sx":25.0,"Pugno Dx":-25.0}
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","dodge","guard"]
@@ -181,10 +185,14 @@ func _mini(i: int) -> Dictionary:
 			var sync_grip=func(n):
 				var rest_pose=str(n) in REST_GRIP;grip_rest.visible=rest_pose;grip_act.visible=not rest_pose
 			info.ap.animation_started.connect(sync_grip);sync_grip.call("Riposo")
-		if info.ap and info.ap.has_animation("Incoccare"):   # arcieri: nella clip Incoccare il corpo ruota di ~40°, la freccia deve puntare al fronte
+		if info.ap and p.character!="ziggy":
+			# torsione del corpo: i colpi e le parate a sinistra si girano a sinistra, quelli a destra a destra,
+			# così le due versioni si distinguono anche dall'alto; gli arcieri in Incoccare ruotano di ~40°
+			# (nella clip il corpo si gira di fianco) perché la freccia punti al fronte dell'esagono
 			var mdl: Node3D=model
 			info.ap.animation_started.connect(func(n):
-				var tw=create_tween();tw.tween_property(mdl,"rotation:y",deg_to_rad(38.0) if n=="Incoccare" else 0.0,.25))
+				var yaw=TWIST.get(n,0.0)
+				var tw=create_tween();tw.tween_property(mdl,"rotation:y",deg_to_rad(yaw),.18 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE))
 		if p.character=="ziggy":   # lo spirito fluttua sopra la basetta
 			model.position.y=.14
 			var bob=create_tween().set_loops();bob.bind_node(model)
@@ -342,8 +350,9 @@ func _clip_for(i: int,id: String,bow: bool) -> String:
 	if id=="guard" and str(game.state.fighters[i].character)=="golem" and game.move(game.state.fighters[i]).get("attack")!=null and info.get("ap")!=null and info.ap.has_animation("Schianto"):
 		return "Schianto"   # la guardia del golem è un colpo: pugni giù sul nemico
 	if bow and info.get("ap")!=null and info.ap.has_animation(base+" arco"):return base+" arco"
-	# Shaara: la pedina "Calcio volante" occupa il posto dell'affondo, ma è un calcio
-	if id=="thrust" and str(game.state.fighters[i].character)=="shaara" and info.get("ap")!=null and info.ap.has_animation("Calcio"):return "Calcio"
+	# mosse proprie del modello, se le ha (Shaara: calcio volante, pugni, spazzata, meditazione)
+	var own=OWN_CLIP.get(id,"")
+	if own!="" and info.get("ap")!=null and info.ap.has_animation(own):return own
 	return base
 func _view(p: Dictionary) -> Dictionary:
 	return {"cell":p.cell,"facing":int(p.facing),"current":p.current,"done":p.done,"hp":int(p.hp),"unbalanced":p.unbalanced,"down":p.down,"alive":p.alive,"team":int(p.team),"character":p.character,"pieces":bool(p.get("pieces",false))}

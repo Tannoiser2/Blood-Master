@@ -156,6 +156,13 @@ for a in clips:
 EXTRA = {'Parata Sx': 'anim_parata2h.glb', 'Parata Dx': 'anim_parata2h.glb'} if CFG.get('weapon', True) else {}  # Two-handed Parry (149)
 if CFG['heavy']:
     EXTRA['Fendente'] = 'anim_martello.glb'                                    # Heavy Hammer Swing (128)
+# Shaara (monaca a mani nude): mosse proprie dal catalogo Meshy, generate sul rig di Anteos
+if CID == 'shaara':
+    EXTRA.update({'Calcio volante': '../../anteos/meshy/anim_calcio_volante.glb',   # Flying Fist Kick (94)
+                  'Pugno Dx': '../../anteos/meshy/anim_pugno_dx.glb',               # Right Jab from Guard (192)
+                  'Pugno Sx': '../../anteos/meshy/anim_pugno_sx.glb',               # Left Jab from Guard (191)
+                  'Spazzata': '../../anteos/meshy/anim_spazzata.glb',               # Sweeping Kick (217)
+                  'Meditazione': '../../anteos/meshy/anim_meditazione.glb'})        # Sit Cross-legged on Floor (363)
 for name, fname in EXTRA.items():
     objs = imported(root / 'source_art/ut/meshy' / fname)
     sa = next(o for o in objs if o.type == 'ARMATURE'); act = sa.animation_data.action
