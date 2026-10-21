@@ -56,7 +56,13 @@ func hazard(k: String,kind: String="") -> Dictionary:
 		if e.cell==k and (kind=="" or e.kind==kind): return e
 	return {}
 func blocked(k: String,except: int=-1) -> bool:
-	return not cells.has(k) or at(k,except)!=-1 or not hazard(k,"vortex").is_empty()
+	return not cells.has(k) or at(k,except)!=-1 or not hazard(k,"vortex").is_empty() or bones_at(k,except)
+# lo scheletro in pezzi resta sull'esagono: le ossa sono un ostacolo (così potrà rialzarsi lì)
+func bones_at(k: String,except: int=-1) -> bool:
+	for i in state.fighters.size():
+		var p=state.fighters[i]
+		if i!=except and p.alive and p.cell==k and p.get("pieces",false):return true
+	return false
 func snapshot() -> Dictionary:
 	var out=state.duplicate(true)
 	out.rng_state=str(rng.state)
@@ -250,7 +256,7 @@ func targets(i: int,id: String="") -> Array:
 			if dist>int(m.range) or not in_view(p,k):continue
 			var occupant=at(k)
 			if m.target=="self" and k!=p.cell:continue
-			if m.target=="empty" and blocked(k,i):continue
+			if m.target=="empty" and (blocked(k,i) or k==p.cell):continue   # la propria casella non è libera
 			if m.id=="teleport" and dist>p.magic:continue
 			if m.id=="livingfire" and (dist!=1 or not posmod(direction(p.cell,k)-int(p.facing),6) in FACING_FRONT):continue
 			if m.target=="enemy" and (occupant==-1 or int(state.fighters[occupant].team)==team):continue
@@ -679,7 +685,12 @@ func finish_turn() -> void:
 	_check_end()
 func advance_effect(facing: int) -> bool:
 	if state.phase!="upkeep":return false
-	var e=state.effects[state.upkeep.pop_front()];e.facing=posmod(facing,6)
+	# chi viene messo fuori combattimento perde i suoi effetti: gli indici vanno ricalcolati sugli effetti rimasti
+	var pending=[]
+	for idx in state.upkeep:
+		if int(idx)>=0 and int(idx)<state.effects.size():pending.append(state.effects[int(idx)])
+	if pending.is_empty():state.upkeep=[];begin_turn();_check_end();return true
+	var e=pending.pop_front();e.facing=posmod(facing,6)
 	for step in die():
 		var next=neighbor(e.cell,e.facing)
 		if not cells.has(next):break
@@ -688,6 +699,11 @@ func advance_effect(facing: int) -> bool:
 		if victim!=-1:
 			if e.kind=="vortex":_knock(victim,true)
 			else:_magic_hit(int(e.owner),victim,15);state.fighters[victim].burning=true
+	state.upkeep=[]
+	for x in pending:
+		var at_k=state.effects.find(x)
+		if at_k>=0:state.upkeep.append(at_k)
+	if state.phase in ["finished","round_result","campaign_finished"]:return true
 	if state.upkeep.is_empty():begin_turn()
 	else:state.active=int(state.effects[state.upkeep[0]].owner)
 	return true

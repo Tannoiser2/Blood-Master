@@ -174,20 +174,46 @@ static func _spell_cell(game: BloodRules,i: int,m: Dictionary,k: String) -> floa
 		"abyss":
 			s=12.0 if enemy else -20.0 if friend else 0.0
 			s+=_blocks_enemy(game,i,k)*3.0
-		"vortex","wall":
+		"wall":
 			if friend:return -20.0
-			s=(6.0 if enemy else 0.0)+_blocks_enemy(game,i,k)*4.0
-		"livingfire":s=6.0 if enemy else 2.0
+			s=(6.0 if enemy else 0.0)+minf(_blocks_enemy(game,i,k),2.5)*3.0
+		"vortex":   # il gorgo poi si sposta di 1-6 esagoni a ogni fine turno travolgendo chi incontra
+			s=3.0+minf(_blocks_enemy(game,i,k),2.0)*2.0
+			for j in _enemies(game,i):
+				var d=BloodRules.distance(k,game.state.fighters[j].cell)
+				if d<=5:s+=4.0/float(maxi(1,d))
+			for j in _allies(game,i):
+				if BloodRules.distance(k,game.state.fighters[j].cell)<=1:s-=4.0
+		"livingfire":   # il fuoco vivente si muove ogni turno: vale per i nemici che ha intorno
+			s=7.0
+			for j in _enemies(game,i):
+				var d=BloodRules.distance(k,game.state.fighters[j].cell)
+				if d<=5:s+=6.0/float(maxi(1,d))
+			for j in _allies(game,i):
+				if BloodRules.distance(k,game.state.fighters[j].cell)<=1:s-=4.0
 		"summon":   # il Golem compare vicino ai nemici, meglio se a contatto
 			var nd=99
 			for j in _enemies(game,i):nd=mini(nd,BloodRules.distance(k,game.state.fighters[j].cell))
 			s=14.0-float(nd)*2.5+_blocks_enemy(game,i,k)*2.0
-		"teleport":
-			s=-_threat_at(game,i,k)*2.0+_cover_at(game,i,k) if _trouble(game,i)>.4 else -float(BloodRules.distance(k,game.state.fighters[_focus(game,i)].cell)) if _focus(game,i)!=-1 else 0.0
+		"teleport":   # via di fuga quando si è in difficoltà e circondati
+			var adj=0
+			for j in _enemies(game,i):
+				if BloodRules.distance(p.cell,game.state.fighters[j].cell)==1:adj+=1
+			if _trouble(game,i)>.35 and adj>0:s=8.0+_trouble(game,i)*10.0+float(adj)*3.0-_threat_at(game,i,k)*2.0+_cover_at(game,i,k)-float(BloodRules.distance(p.cell,k))*.3
+			else:s=-10.0
 		_:
 			if enemy:
 				var b=game.state.fighters[occ];s=8.0+(1.0-_health(b))*4.0
-				if m.id in ["control","transform","sleep","age"]:s=6.0+_health(b)*6.0   # meglio sul nemico più in forma
+				if m.id in ["transform","age"]:s=(14.0 if m.id=="transform" else 7.0)+_health(b)*7.0   # meglio sul nemico più in forma
+				if m.id=="plague":s=12.0+_health(b)*6.0
+				if m.id=="sleep":   # 3 dadi meno la stazza diventano fatica; a 9 o più crolla a terra
+					var size=float(game.definition(b).get("size",5));s=6.0+maxf(0.0,10.5-size)*1.2+float(b.fatigue)*.6+_health(b)*3.0
+				if m.id=="control":   # riesce se il dado è <= punti giocati (fino a 4): rende se il controllato ha amici accanto da colpire
+					var chance=float(mini(4,int(p.magic)))/6.0;var mates=0
+					for t in game.state.fighters.size():
+						var q=game.state.fighters[t]
+						if t!=occ and game.living(q) and int(q.team)==int(b.team) and BloodRules.distance(q.cell,b.cell)==1:mates+=1
+					s=chance*(12.0+float(mates)*8.0+_health(b)*4.0)
 				if m.id=="drain":s+=(1.0-_health(p))*6.0
 			elif friend:s=-20.0
 	return s
@@ -233,16 +259,26 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 			else:
 				var top=-INF
 				for k in targets:top=maxf(top,_spell_cell(game,i,m,k))
-				score=top+2.0
+				score=top+2.0-float(m.cost)*.5   # la magia costa: le più care devono valere di più
 				if m.id=="heal":score=16.0*(1.0-_health(p))-2.0
-				if m.id=="summon" and game.own_golem(i)>=0:score=22.0-trouble*10.0   # senza Evocazione il Golem si sbriciola
-				if m.id=="shield":score=4.0+float(adjacent)*5.0+trouble*6.0
-				if m.id in ["pustules","shock","fear"]:
+				if m.id=="summon" and game.own_golem(i)>=0:   # senza Evocazione il Golem si sbriciola: conviene se sta combattendo
+					var g=game.state.fighters[game.own_golem(i)];var gd=99
+					for j in _enemies(game,i):gd=mini(gd,BloodRules.distance(g.cell,game.state.fighters[j].cell))
+					score=6.0+(10.0 if gd==1 else (6.0 if gd<=2 else 1.0))+_health(g)*4.0-trouble*8.0
+				if m.id=="shield":score=1.0+float(adjacent)*3.0+trouble*5.0
+				if m.id in ["pustules","shock"]:
 					var hit=0.0
 					for j in game.state.fighters.size():
 						var t=game.state.fighters[j]
-						if game.living(t) and j!=i and BloodRules.distance(p.cell,t.cell)<=int(m.get("range",1)):hit+=(5.0 if t.team!=_team(game,i) else -7.0)
+						if game.living(t) and j!=i and BloodRules.distance(p.cell,t.cell)<=(2 if m.id=="pustules" else 1):hit+=(5.0 if int(t.team)!=_team(game,i) else -7.0)
 					score=hit
+				if m.id=="fear":   # gli avversari che lo vedono entro 5 perdono la mossa, quelli accanto vanno sbilanciati
+					var hit=0.0
+					for j in _enemies(game,i):
+						var t=game.state.fighters[j];var d=BloodRules.distance(p.cell,t.cell)
+						if d<=5 and game.in_view(t,p.cell):hit+=4.0
+						if d==1:hit+=3.0
+					score=hit-2.0
 		elif m.get("attack")!=null and m.id!="charge":
 			if targets.is_empty():score=-20.0
 			else:
@@ -276,6 +312,14 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 		if id=="weapon":score=18.0 if p.get("bow",false) and nearest<=WEAPON_RANGE else -10.0
 		if id=="meditate":score=(8.0 if adjacent==0 else -6.0)+trouble*4.0
 		# esposizione: la difesa della pedina scelta conta quando i nemici ci attaccano (valore alto = più ferite subite)
+		if id=="again":   # "Ancora" mantiene in gioco gorgo e fuoco vivente: valgono quanto i nemici che hanno intorno
+			for e in game.state.effects:
+				if int(e.owner)==i and str(e.kind) in ["vortex","livingfire"]:
+					var ev=3.0
+					for j in _enemies(game,i):
+						var d=BloodRules.distance(str(e.cell),game.state.fighters[j].cell)
+						if d<=5:ev+=5.0/float(maxi(1,d))
+					score+=ev
 		if not id in ["run","charge","float","teleport","dematerialize"]:score-=float(m.get("defense",0))*exposure
 		if id=="guard" and within2>0:   # in guardia si colpisce per primi chi si avvicina
 			var gbest=0.0
@@ -316,7 +360,10 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 	if targets.is_empty():
 		if m.id=="guard":return {"wait":true,"facing":facing}
 		return {"pass":true,"facing":int(p.facing)}
-	return {"target":selected,"facing":facing,"extra":0}
+	var extra=0   # punti magia in più: il controllo riesce col dado <= punti giocati, palla di fuoco e fulmine colpiscono più forte
+	if m.id=="control":extra=clampi(int(p.magic)-int(m.cost),0,3)
+	elif m.id in ["fireball","lightning"]:extra=clampi(int(p.magic)-int(m.cost)-3,0,3)
+	return {"target":selected,"facing":facing,"extra":extra}
 
 static func reaction(game: BloodRules,i: int) -> String:
 	var s=game.state.pending;var v=int(game.move(game.state.fighters[s.actor]).get("value",0)) if s.kind=="spell" else 0
@@ -338,3 +385,34 @@ static func opportunity(game: BloodRules,i: int) -> String:
 		var choice=choose_move(game,i)
 		if game.move(p,choice).get("spell",false) and not game.targets(i,choice).is_empty():return choice
 	return "pass"
+
+# ------------------------------------------------------------------ gorgo e fuoco vivente
+# A fine turno il mago sposta il suo effetto (gorgo o fuoco vivente) di 1-6 esagoni nella direzione scelta:
+# si sceglie quella che in media travolge più nemici e meno amici, altrimenti verso il nemico più vicino.
+static func effect_facing(game: BloodRules) -> int:
+	var e=game.state.effects[game.state.upkeep[0]];var owner=int(e.owner);var team=_team(game,owner)
+	var best=-INF;var choice=int(game.state.fighters[owner].facing)
+	for f in 6:
+		var score=0.0;var cell=str(e.cell);var path=[]
+		for step in 6:
+			var nxt=BloodRules.neighbor(cell,f)
+			if not game.cells.has(nxt):break
+			cell=nxt;path.append(cell)
+		if path.is_empty():continue
+		for roll in range(1,7):   # media sui sei risultati del dado
+			var v=0.0
+			for k in mini(roll,path.size()):
+				var o=game.at(path[k])
+				if o==-1:continue
+				var enemy=int(game.state.fighters[o].team)!=team
+				v+=(3.0 if enemy else -4.0)
+			var end=path[mini(roll,path.size())-1]
+			for j in _enemies(game,owner):   # dove si ferma conta: il turno dopo minaccia chi gli sta accanto
+				var d=BloodRules.distance(end,game.state.fighters[j].cell)
+				if d<=2:v+=1.0/float(d+1)
+			score+=v/6.0
+		var near=99
+		for j in _enemies(game,owner):near=mini(near,BloodRules.distance(path.back(),game.state.fighters[j].cell))
+		score-=float(near)*.05
+		if score>best:best=score;choice=f
+	return choice

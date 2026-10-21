@@ -203,7 +203,7 @@ func host_tick() -> void:
 		elif s.phase=="opportunity" and ai:changed=game.opportunity(BloodAI.opportunity(game,i))
 		elif s.phase=="reaction" and ai:changed=game.react(BloodAI.reaction(game,i))
 		elif s.phase=="stumble" and ai:changed=game.choose_stumble(s.pending.path.back())
-		elif s.phase=="upkeep" and ai:changed=game.advance_effect(int(s.fighters[i].facing))
+		elif s.phase=="upkeep" and ai:changed=game.advance_effect(BloodAI.effect_facing(game))
 		elif s.phase=="draw":
 			if not s.fighters.any(func(p):return p.guarding and p.controller=="human"):game.draw_next();changed=true
 		if changed:frame+=1

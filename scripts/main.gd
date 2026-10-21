@@ -422,7 +422,8 @@ func _refresh_portraits() -> void:
 			var gap=Control.new();gap.custom_minimum_size.x=24;gap.size_flags_horizontal=Control.SIZE_EXPAND_FILL;gap.mouse_filter=Control.MOUSE_FILTER_IGNORE;portraits.add_child(gap)
 		prev_team=int(p.team)
 		var team_col=Color("69cec1") if int(p.team)==0 else Color("e68078")
-		var card=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,.88),8);sb.border_color=team_col;sb.set_border_width_all(2)
+		var acting=int(game.state.get("active",-1))==i and game.state.phase in ["acting","opportunity","reaction","stumble"]
+		var card=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,.88),8);sb.border_color=GOLD if acting else team_col;sb.set_border_width_all(4 if acting else 2)
 		sb.content_margin_left=4;sb.content_margin_right=4;sb.content_margin_top=4;sb.content_margin_bottom=4;card.add_theme_stylebox_override("panel",sb)
 		card.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.modulate=Color(1,1,1,1) if p.alive else Color(.55,.55,.55,.7);card.custom_minimum_size.x=w+8;portraits.add_child(card)
 		var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
@@ -443,7 +444,11 @@ func _refresh_portraits() -> void:
 			v.add_child(label("%d ferite · %d fatica"%[hp,fat],font,MUTED))
 			if mage:v.add_child(label("%d punti magia"%int(p.magic),font,Color("8fb8ff")))
 		var n=notes.get(i,{})
-		var mv=label(str(n.get("move","")),font+1,GOLD);mv.custom_minimum_size.x=w;mv.clip_text=true;v.add_child(mv)
+		# la pedina estratta, sotto il ritratto di chi la gioca (durante la scelta segreta resta quella del turno prima)
+		var mv_def=game.move(p) if p.alive else {}
+		if not mv_def.is_empty() and str(n.get("move",""))!="":
+			var tk=TextureRect.new();tk.texture=load(str(mv_def.get("texture","")));tk.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;tk.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			var th=clampf(w*.62,40.0,72.0);tk.custom_minimum_size=Vector2(w,th);tk.tooltip_text=_move_tip(mv_def);tk.mouse_filter=Control.MOUSE_FILTER_PASS;v.add_child(tk)
 		if not n.get("lines",[]).is_empty():
 			var rt=RichTextLabel.new();rt.bbcode_enabled=true;rt.fit_content=false;rt.scroll_active=false;rt.custom_minimum_size=Vector2(w,(font+4)*3)
 			rt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;rt.clip_contents=true   # al massimo tre righe: la fila resta bassa
@@ -581,6 +586,8 @@ func _move_honeycomb(ids: Array,p: Dictionary,info: Label,on_pick: Callable) -> 
 	return c
 func _action_panel() -> void:
 	var i=int(game.state.active);var p=game.state.fighters[i];var m=game.move(p)
+	board.highlights=game.targets(i);board.preview_facing=selected_facing;board.focus_fighter=i
+	if not _human(i):return   # la pedina estratta si vede sotto la faccetta del personaggio: niente riquadro
 	# una riga compatta: tessera estratta, chi la gioca, valori e cosa fare
 	var row=HBoxContainer.new();row.add_theme_constant_override("separation",12);sidebar.add_child(row)
 	var t=TextureRect.new();t.texture=load(m.texture);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;t.custom_minimum_size=Vector2(86,74);row.add_child(t)
@@ -738,7 +745,7 @@ func _drive() -> void:
 			var i=int(s.pending.actor)
 			if s.fighters[i].controller=="ai":acted=game.choose_stumble(s.pending.path.back())
 		"upkeep":
-			if s.fighters[s.active].controller=="ai":acted=game.advance_effect(int(s.fighters[s.active].facing))
+			if s.fighters[s.active].controller=="ai":acted=game.advance_effect(BloodAI.effect_facing(game))
 		"draw":
 			var guarding=s.fighters.any(func(p):return p.guarding and p.controller=="human")
 			if auto_draw and not guarding:game.draw_next();acted=true

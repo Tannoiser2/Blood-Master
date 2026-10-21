@@ -181,6 +181,10 @@ func _mini(i: int) -> Dictionary:
 			var sync_grip=func(n):
 				var rest_pose=str(n) in REST_GRIP;grip_rest.visible=rest_pose;grip_act.visible=not rest_pose
 			info.ap.animation_started.connect(sync_grip);sync_grip.call("Riposo")
+		if info.ap and info.ap.has_animation("Incoccare"):   # arcieri: nella clip Incoccare il corpo ruota di ~40°, la freccia deve puntare al fronte
+			var mdl: Node3D=model
+			info.ap.animation_started.connect(func(n):
+				var tw=create_tween();tw.tween_property(mdl,"rotation:y",deg_to_rad(38.0) if n=="Incoccare" else 0.0,.25))
 		if p.character=="ziggy":   # lo spirito fluttua sopra la basetta
 			model.position.y=.14
 			var bob=create_tween().set_loops();bob.bind_node(model)
@@ -431,6 +435,8 @@ func sync() -> void:
 			states[i]={"burning":bool(q.get("burning",false)) and q.alive,"shield":bool(q.get("shield",false)) and q.alive,"plague":int(q.get("plague",-1))>=0 and q.alive,
 				"control":int(q.get("controller_by",-1))>=0 and q.alive,"frog":bool(q.get("frog",false))}
 		step.append({"labels":labels,"turn":int(game.state.get("turn",0)),"effects":game.state.effects.duplicate(true),"states":states})
+		for tr in step:   # chi muore resta visibile finché la sua animazione non è finita
+			if tr.get("dead",false) and minis.has(int(tr.get("i",-1))):minis[int(tr.i)]["dying"]=true
 		if is_visible_in_tree():
 			queue.append(step)
 			if not playing:_play_queue()
@@ -496,7 +502,9 @@ func _refresh_tokens() -> void:
 		if not replaying:
 			_set_status(i,int(p.hp),int(p.max_hp),p.alive)
 			if not playing:_set_rim(i,p.current)
-		info.root.visible=p.cell!="" and not (p.character=="golem" and not p.alive)   # il golem sbriciolato non torna
+		# i caduti escono dall'arena (come la miniatura tolta dal tabellone): nessuno resta sopra un corpo
+		var gone=not p.alive and (info.get("buried",false) or (not info.get("dying",false) and not replaying))
+		info.root.visible=p.cell!="" and not gone and not (p.character=="golem" and not p.alive)   # il golem sbriciolato non torna
 		if not playing:
 			if info.token:_token(i)
 			_set_gear(i,bool(p.get("bow",false)),bool(p.get("loaded",false)))
@@ -596,6 +604,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if info.get("spirit",false):_spirit_move(t,info)
 		if t.has("parried") and minis.has(int(t.parried)):_parry_fx(info,minis[int(t.parried)],str(t.get("parry_word","PARATA!")))
 		if t.get("dead",false) and str(game.state.fighters[t.i].character)=="golem":_shatter(info)
+		elif t.get("dead",false) and not str(game.state.fighters[t.i].character) in ["skelos","sketos","ziggy"]:_bury(info,(anim.length/rate if anim else 1.5)+1.0)
 		if str(game.state.fighters[t.i].character) in ["skelos","sketos"]:
 			if t.get("pieces",false) or t.get("dead",false):_bones(info,t.get("dead",false))
 			elif t.get("rebuild",false):_rebuild(info)
@@ -940,6 +949,16 @@ func _shatter(info: Dictionary) -> void:
 		tw.tween_callback(r.queue_free)
 # Scheletro in pezzi: le ossa si sparpagliano e restano a terra finché un mago non lo rigenera;
 # alla rigenerazione volano di nuovo insieme e lo scheletro si rialza. Se muore davvero, svaniscono.
+# il corpo, dopo la morte, sprofonda nella sabbia in una nube di polvere e lascia libero l'esagono
+func _bury(info: Dictionary,after: float) -> void:
+	info["buried"]=false
+	await get_tree().create_timer(after).timeout
+	var root: Node3D=info.root
+	if not is_instance_valid(root):return
+	_burst(root.global_position+Vector3(0,.1,0),Color(.6,.5,.38),60,.45)
+	var fig: Node3D=info.pivot;var y0=fig.position.y
+	var tw=create_tween();tw.tween_property(fig,"position:y",y0-.5,1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():root.visible=false;fig.position.y=y0;info["buried"]=true;info["dying"]=false)
 func _bones(info: Dictionary,gone: bool) -> void:
 	if info.has("bones"):return
 	var root: Node3D=info.root;var base=root.global_position
@@ -1195,7 +1214,7 @@ func ui_sfx(name: String,db:=-6.0) -> void:
 	if list.is_empty():return
 	var p=AudioStreamPlayer.new();p.stream=list[randi()%list.size()];p.volume_db=db;add_child(p);p.play();p.finished.connect(p.queue_free)
 func _crowd_update() -> void:
-	var on=sound and game!=null and not game.state.is_empty() and game.state.get("phase","")!="finished"
+	var on=false   # folla di sottofondo tolta su richiesta
 	if on and _crowd==null:
 		var list=_variants("crowd")
 		if list.is_empty():return
@@ -1214,7 +1233,6 @@ func _ui_events() -> void:
 		if str(log[k])==_log_last:break
 		fresh.append(str(log[k]))
 	if not log.is_empty():
-		if _log_last!="" and fresh.any(func(l):return "dado" in l):ui_sfx("dice",-8.0)
 		_log_last=str(log.back())
 	if game.state.get("phase","")=="finished" and not _end_played:
 		_end_played=true
@@ -1380,6 +1398,7 @@ func replay() -> void:
 			if is_instance_valid(m):m.queue_free()
 		minis[i].erase("bones")
 		if minis[i].get("model")!=null and not minis[i].has("frog_node"):minis[i].model.visible=true
+		minis[i].erase("buried");minis[i].erase("dying")
 	clear_blood();clear_arrows();_show_effects([]);_apply_states({})
 	await get_tree().create_timer(.6).timeout
 	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
