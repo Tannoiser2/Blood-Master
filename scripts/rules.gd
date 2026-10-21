@@ -230,8 +230,16 @@ func in_view(p: Dictionary,k: String) -> bool:
 	var vec=Vector2(1.5*delta.x,sqrt(3.0)*(delta.y+delta.x*.5))
 	var forward=Vector2.UP.rotated(int(p.facing)*PI/3)
 	return absf(forward.angle_to(vec))<=PI/3+.001
+const SPEARS=["shannon","ramok","skelos","sketos","sanguinaria"]   # lance, alabarde e tridente
+func spear_reach(p: Dictionary,m: Dictionary) -> bool:
+	# regola modificata: con un'arma lunga l'affondo e la carica arrivano a due esagoni davanti
+	return bool(state.get("house",false)) and str(p.character) in SPEARS and str(m.get("id","")) in ["thrust","charge"]
+func acting_team(p: Dictionary) -> int:
+	# sotto controllo mentale si combatte per la squadra del mago che controlla
+	var c=int(p.get("controller_by",-1))
+	return int(state.fighters[c].team) if c>=0 and c<state.fighters.size() else int(p.team)
 func targets(i: int,id: String="") -> Array:
-	var p=state.fighters[i];var m=move(p,id);var out=[]
+	var p=state.fighters[i];var m=move(p,id);var out=[];var team=acting_team(p)
 	if m.is_empty():return out
 	if not state.get("spin",{}).is_empty() and int(state.spin.actor)==i:return state.spin.remaining
 	if m.get("spell",false):
@@ -244,7 +252,7 @@ func targets(i: int,id: String="") -> Array:
 			if m.target=="empty" and blocked(k,i):continue
 			if m.id=="teleport" and dist>p.magic:continue
 			if m.id=="livingfire" and (dist!=1 or not posmod(direction(p.cell,k)-int(p.facing),6) in FACING_FRONT):continue
-			if m.target=="enemy" and (occupant==-1 or state.fighters[occupant].team==p.team):continue
+			if m.target=="enemy" and (occupant==-1 or int(state.fighters[occupant].team)==team):continue
 			out.append(k)
 		return out
 	if m.id in ["run","charge","float"]:return reachable(i,int(definition(p).sprint)).keys()
@@ -255,10 +263,11 @@ func targets(i: int,id: String="") -> Array:
 	if m.attack!=null:
 		for j in state.fighters.size():
 			var t=state.fighters[j]
-			if not living(t) or t.team==p.team or t.pieces or not hazard(t.cell,"vortex").is_empty():continue
+			if not living(t) or int(t.team)==team or t.pieces or not hazard(t.cell,"vortex").is_empty():continue
 			if m.id=="shoot":
 				if in_view(p,t.cell):out.append(t.cell)
 			elif distance(p.cell,t.cell)==1 and posmod(direction(p.cell,t.cell)-int(p.facing),6) in m.red:out.append(t.cell)
+			elif spear_reach(p,m) and t.cell==neighbor(neighbor(p.cell,int(p.facing)),int(p.facing)):out.append(t.cell)
 		return out
 	return [p.cell]
 const FACING_FRONT=[5,0,1]
@@ -337,6 +346,7 @@ func act(command: Dictionary) -> bool:
 		if m.id=="load":p.loaded=true;p.bow=true
 		if m.id=="charge" and p.alive:
 			var target=at(neighbor(p.cell,int(p.facing)),i)
+			if target==-1 and spear_reach(p,m):target=at(neighbor(neighbor(p.cell,int(p.facing)),int(p.facing)),i)   # la lancia arriva più lontano
 			if target!=-1 and state.fighters[target].team!=p.team:
 				_attack_request(i,target,facing,int(state.pending.get("charge_imbalance",0)));return true
 			_knock(i,false);note(p.name+": carica senza contatto, sbilanciato.")
@@ -417,8 +427,9 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 	if b.get("shield",false):dv=-15
 	if not defense.get("blue",[]).is_empty() and not side in defense.blue:dv=int(defense.secondary)
 	var positional=[0,1,3,5,3,1][side] if not side in defense.get("red",[]) else 0
-	var attack=int(m.get("attack",0))+bonus
-	if a.meditated and not magic:attack=int(m.get("attack",0))*2+bonus;a.meditated=false
+	var base_attack=int(m.attack) if m.get("attack")!=null else 0   # cariche senza valore d'attacco (alcuni maghi): 0
+	var attack=base_attack+bonus
+	if a.meditated and not magic:attack=base_attack*2+bonus;a.meditated=false
 	if m.id=="shoot":attack=15-distance(a.cell,b.cell)
 	if not magic:attack+=int(a.sprint_mod)-int(a.fatigue)-int(a.permanent)
 	dv+=int(b.sprint_mod)+int(b.fatigue)+int(b.permanent)
@@ -547,7 +558,10 @@ func _cast_pending() -> void:
 			if j!=-1:
 				var n=die();note("%s drena %s: dado %d." % [p.name,state.fighters[j].name,n]);_hurt(j,n,false);p.hp+=n;p.max_hp=maxi(p.hp,p.max_hp)
 		"control":
-			if j!=-1 and die()<=mini(4,1+extra):state.fighters[j].controller_by=i
+			if j!=-1:
+				var cd=die()
+				if cd<=mini(4,1+extra):state.fighters[j].controller_by=i;note("Controllo mentale su %s: dado %d, riuscito: la sua prossima azione la decide %s." % [state.fighters[j].name,cd,p.name])
+				else:note("Controllo mentale su %s: dado %d, fallito." % [state.fighters[j].name,cd])
 		"lightning":
 			var hit=[];var here=p.cell
 			for step in mini(7,distance(p.cell,k)):

@@ -21,7 +21,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 CLIPS = [('Riposo', 'riposo'), ('Camminata', 'walking'), ('Correre', 'running'), ('In guardia', 'guardia'),
          ('Avanzare', 'avanzare'), ('Carica', 'carica'), ('Affondo', 'affondo'), ('Taglio Dx', 'taglio_dx'),
          ('Taglio Sx', 'taglio_sx'), ('Parata Dx', 'parata_dx'), ('Parata Sx', 'parata_sx'), ('Schivata', 'schivata'),
-         ('Rotolare', 'rotolare'), ('Calcio', 'calcio'), ('A terra', 'a_terra'), ('Rialzarsi', 'rialzarsi'),
+         ('Rotolare', 'rotolare'), ('Calcio', 'calcio'), ('A terra', 'a_terra'), ('Morte', 'morte'), ('Rialzarsi', 'rialzarsi'),
          ('Sbilanciato', 'sbilanciato'), ('Incoccare', 'incoccare'), ('Tirare', 'tirare'),
          ('In guardia arco', 'guardia_arco'), ('Avanzare arco', 'avanzare_arco'), ('Correre arco', 'correre_arco'),
          ('Sbilanciato arco', 'sbilanciato_arco')]

@@ -36,6 +36,7 @@ CLIPS = [  # nome della clip = nome della pedina; (file Meshy, azione di libreri
     ('Rotolare', 'anim_roll.glb'),                  # Roll Dodge (158)
     ('Calcio', 'anim_kick.glb'),                    # Simple Kick (103)
     ('A terra', 'anim_down.glb'),                   # Falling Down (366)
+    ('Morte', 'anim_morte.glb'),                    # Knock Down (187): finisce disteso sulla schiena
     ('Rialzarsi', 'anim_rise.glb'),                 # Stand Up 2 (345)
     ('Sbilanciato', 'anim_unbalanced.glb'),         # Hit Reaction (178)
 ]

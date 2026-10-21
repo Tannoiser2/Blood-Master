@@ -85,6 +85,21 @@ def clash(d=.9, base=900):
     return mix(y * .6, hit)
 
 
+def clang(d=1.1, base=None):
+    """Lama contro lama: colpo secco, 'shing' strisciato e un lungo ronzio metallico che batte."""
+    base = base or rng.uniform(1300, 2100); x = t(d); ring = np.zeros_like(x)
+    for r, a, dec in ((1, 1, 4.5), (1.006, .8, 4.5), (2.31, .55, 6), (2.33, .4, 6), (3.87, .35, 8), (5.13, .25, 10), (7.4, .15, 13)):
+        ring += a * np.sin(2 * np.pi * base * r * x + rng.uniform(0, 6)) * np.exp(-x * dec)      # coppie vicine = battimenti
+    transient = hp(noise(.02), 2500) * env(int(SR * .02), .0002, .005, 3) * 1.5
+    n = noise(.22); scrape = np.zeros(len(n)); seg = 256
+    for s0 in range(0, len(n), seg):   # strisciata: banda alta che scende
+        f = 6500 - 3500 * s0 / len(n)
+        scrape[s0:s0 + seg] = bp(n[max(0, s0 - 512):s0 + seg], f * .8, min(f * 1.25, 10000))[-len(n[s0:s0 + seg]):]
+    scrape *= env(len(n), .005, .12, 2.5) * .35
+    body = lp(noise(.08), 900) * env(int(SR * .08), .001, .03, 4) * .5           # il "tonk" dell'impatto
+    return mix(ring * .55, transient, at(scrape, .01, d), body)
+
+
 def flesh(d=.35):
     x = t(d)
     thud = np.sin(2 * np.pi * (90 - 40 * x / d) * x) * env(len(x), .002, .09, 4)
@@ -244,7 +259,7 @@ def swirl(d=1.1):
 def build():
     for k in range(3):
         save(f'swing_{k + 1}', whoosh(rng.uniform(.25, .38), rng.uniform(250, 400), rng.uniform(2000, 3200)), .6)
-        save(f'clash_{k + 1}', clash(.9, rng.uniform(700, 1200)))
+        save(f'clash_{k + 1}', clang(1.1))
         save(f'hit_{k + 1}', armor_hit(.5) if k == 2 else flesh(.35))
     for k in range(4):
         save(f'step_{k + 1}', step_sand(rng.uniform(.12, .18)), .35)
@@ -262,6 +277,20 @@ def build():
     for k in range(2):
         save(f'grunt_f_{k + 1}', shout('f', rng.uniform(.22, .3), (300, 360, 270, .3), ('aa_f', 'e_f'), .3, 'effort'), .6)
     save('death_m_1', shout('m', 1.5, (170, 250, 80, .1), ('a', 'u'), .45), .85)
+    # voci profonde (maghi e guerrieri robusti): più basse, più rauche, vocali scure
+    for k, (d, f0s, vw) in enumerate([(.8, (95, 150, 75), ('o', 'u')), (.65, (105, 165, 85), ('a', 'o')), (.9, (90, 140, 70), ('e', 'o')), (.6, (110, 170, 90), ('a', 'u'))]):
+        save(f'pain_md_{k + 1}', shout('m', d, f0s, vw, .5), .85)
+    for k in range(3):
+        save(f'grunt_md_{k + 1}', shout('m', rng.uniform(.28, .4), (95, 120, 80, .3), (['o', 'a', 'u'][k], 'o'), .6, 'effort'), .65)
+    save('death_md_1', shout('m', 1.7, (120, 175, 60, .1), ('o', 'u'), .55), .9)
+    save('death_md_2', shout('m', 1.4, (110, 160, 55, .15), ('a', 'u'), .6), .9)
+    # altre voci maschili e femminili, per non ripetere sempre le stesse
+    save('pain_m_4', shout('m', .7, (160, 230, 115), ('e', 'a'), .3), .8)
+    save('death_m_2', shout('m', 1.3, (180, 260, 90, .12), ('e', 'u'), .4), .85)
+    save('pain_f_3', shout('f', .65, (300, 480, 260), ('e_f', 'aa_f'), .18), .8)
+    save('pain_f_4', shout('f', .75, (340, 540, 290), ('aa_f', 'u'), .22), .8)
+    save('grunt_f_3', shout('f', .26, (280, 340, 250, .3), ('e_f', 'aa_f'), .3, 'effort'), .6)
+    save('death_f_2', shout('f', 1.2, (360, 560, 210, .12), ('e_f', 'u'), .2), .85)
     save('death_f_1', shout('f', 1.4, (380, 600, 200, .1), ('aa_f', 'u'), .25), .85)
     save('pain_monster_1', growl(.9, 60)); save('pain_monster_2', growl(.7, 70)); save('death_monster_1', growl(1.6, 50))
     save('grunt_monster_1', growl(.4, 75), .6)

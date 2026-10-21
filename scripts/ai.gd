@@ -21,17 +21,21 @@ static var CHARGE_W=.6
 static var BACK_W=.8
 
 # ------------------------------------------------------------------ valutazioni di base
+static func _team(game: BloodRules,i: int) -> int:
+	# chi è sotto controllo mentale agisce per la squadra del mago che lo controlla
+	var p=game.state.fighters[i];var c=int(p.get("controller_by",-1))
+	return int(game.state.fighters[c].team) if c>=0 else int(p.team)
 static func _enemies(game: BloodRules,i: int) -> Array:
-	var p=game.state.fighters[i];var out=[]
+	var team=_team(game,i);var out=[]
 	for j in game.state.fighters.size():
 		var b=game.state.fighters[j]
-		if j!=i and game.living(b) and not b.get("pieces",false) and b.team!=p.team and b.cell!="":out.append(j)
+		if j!=i and game.living(b) and not b.get("pieces",false) and int(b.team)!=team and b.cell!="":out.append(j)
 	return out
 static func _allies(game: BloodRules,i: int) -> Array:
-	var p=game.state.fighters[i];var out=[]
+	var team=_team(game,i);var out=[]
 	for j in game.state.fighters.size():
 		var b=game.state.fighters[j]
-		if j!=i and game.living(b) and not b.get("pieces",false) and b.team==p.team and b.cell!="":out.append(j)
+		if j!=i and game.living(b) and not b.get("pieces",false) and int(b.team)==team and b.cell!="":out.append(j)
 	return out
 static func _health(p: Dictionary) -> float:
 	return clampf(float(p.hp)/maxf(1.0,float(p.max_hp)),0,1)
@@ -147,26 +151,26 @@ static func _move_score(game: BloodRules,i: int,k: String,m: Dictionary) -> floa
 	if not game.hazard(k).is_empty():s-=25.0
 	if m.id=="charge":
 		var front=game.at(BloodRules.neighbor(k,int(p.facing)))
-		if front!=-1 and game.state.fighters[front].team!=p.team:
+		if front!=-1 and game.state.fighters[front].team!=_team(game,i):
 			s+=12.0+_expected_wounds(game,i,front,m,k)*2.0
 		else:s-=15.0
 	return s
 static func _spell_cell(game: BloodRules,i: int,m: Dictionary,k: String) -> float:
 	# valore di un incantesimo lanciato sulla cella k
 	var p=game.state.fighters[i];var occ=game.at(k);var s=0.0
-	var enemy=occ!=-1 and game.state.fighters[occ].team!=p.team
+	var enemy=occ!=-1 and game.state.fighters[occ].team!=_team(game,i)
 	var friend=occ!=-1 and not enemy
 	match m.id:
 		"fireball":
 			for j in game.state.fighters.size():
 				var t=game.state.fighters[j]
-				if game.living(t) and BloodRules.distance(k,t.cell)<=1:s+=(6.0 if t.team!=p.team else -9.0)
+				if game.living(t) and BloodRules.distance(k,t.cell)<=1:s+=(6.0 if t.team!=_team(game,i) else -9.0)
 		"lightning":
 			s=4.0*(1.0 if enemy else 0.0)
 			var here=p.cell
 			for step in mini(7,BloodRules.distance(p.cell,k)):
 				here=BloodRules.neighbor(here,BloodRules.direction(here,k));var o=game.at(here)
-				if o!=-1:s+=(5.0 if game.state.fighters[o].team!=p.team else -8.0)
+				if o!=-1:s+=(5.0 if game.state.fighters[o].team!=_team(game,i) else -8.0)
 		"abyss":
 			s=12.0 if enemy else -20.0 if friend else 0.0
 			s+=_blocks_enemy(game,i,k)*3.0
@@ -227,7 +231,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 					var hit=0.0
 					for j in game.state.fighters.size():
 						var t=game.state.fighters[j]
-						if game.living(t) and j!=i and BloodRules.distance(p.cell,t.cell)<=int(m.get("range",1)):hit+=(5.0 if t.team!=p.team else -7.0)
+						if game.living(t) and j!=i and BloodRules.distance(p.cell,t.cell)<=int(m.get("range",1)):hit+=(5.0 if t.team!=_team(game,i) else -7.0)
 					score=hit
 		elif m.get("attack")!=null and m.id!="charge":
 			if targets.is_empty():score=-20.0
@@ -247,7 +251,10 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 			for k in targets:top=maxf(top,_move_score(game,i,k,m))
 			score=(top-here)*.8+2.0
 			if id=="charge":score=top*CHARGE_W-(8.0 if adjacent>0 else 0.0)   # già in mischia: meglio colpire da fermi
-			if id=="concentrate":score=(14.0 if p.magic<3 else 4.0)+(top-here)*.3-float(adjacent)*4.0
+			if id=="concentrate":
+				score=(14.0 if p.magic<3 else 4.0)+(top-here)*.3-float(adjacent)*4.0
+				for sk in game.state.fighters:   # uno scheletro in pezzi da rigenerare (amico o nemico): ne vale la pena
+					if sk.alive and sk.get("pieces",false) and int(p.magic)>=2:score+=22.0;break
 			if id=="load":score=(14.0 if not p.get("loaded",false) else -5.0)+(top-here)*.3-float(adjacent)*6.0
 			if id=="rise":score=25.0
 			if id in ["run","charge"]:score-=float(p.fatigue)*.6
@@ -276,7 +283,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 static func command(game: BloodRules,i: int) -> Dictionary:
 	var p=game.state.fighters[i];var m=game.move(p);var targets=game.targets(i)
 	# un mago che si concentra rigenera uno scheletro in pezzi, se ha abbastanza magia da rischiare il tiro
-	if m.id=="concentrate" and int(p.magic)>=4:
+	if m.id=="concentrate" and int(p.magic)>=2:
 		for j in game.state.fighters.size():
 			var sk=game.state.fighters[j]
 			if sk.alive and sk.get("pieces",false):return {"type":"regenerate","fighter":j}
