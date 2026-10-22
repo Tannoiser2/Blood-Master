@@ -392,6 +392,7 @@ func _build_game() -> void:
 		dock.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE if side==0 else Control.PRESET_RIGHT_WIDE)
 		dock.offset_left=12.0 if side==0 else -CARD_W-12.0;dock.offset_right=CARD_W+12.0 if side==0 else -12.0
 		dock.offset_top=12.0;dock.offset_bottom=-12.0;stage.add_child(dock);dock.add_child(team_cols[side])
+		if side==1:dock.grow_horizontal=Control.GROW_DIRECTION_BEGIN   # se serve più spazio cresce verso l'arena, non fuori schermo
 	var lgap=Control.new();lgap.custom_minimum_size.x=CARD_W;lgap.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_child(lgap)
 	var left=VBoxContainer.new();left.mouse_filter=Control.MOUSE_FILTER_IGNORE;left.alignment=BoxContainer.ALIGNMENT_END;cols.add_child(left)
 	picker=_overlay_panel(.88);left.add_child(picker)
@@ -552,7 +553,16 @@ func _layout_overlays() -> void:
 	var kids=sidebar.get_children();var row: HBoxContainer=null
 	for c in kids:
 		if panel_narrow:
-			if c is Button:c.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+			if c is Button:
+				c.size_flags_horizontal=Control.SIZE_EXPAND_FILL;c.clip_text=true;c.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
+				c.add_theme_font_size_override("font_size",14);c.custom_minimum_size.x=0;c.tooltip_text=c.text
+				for st in ["normal","hover","pressed","disabled"]:   # meno margine laterale: il pulsante sta nella colonna
+					var sb=c.get_theme_stylebox(st)
+					if sb is StyleBoxFlat:sb=sb.duplicate();sb.content_margin_left=8;sb.content_margin_right=8;c.add_theme_stylebox_override(st,sb)
+			elif c is HBoxContainer:   # intestazioni (fase · nome): vanno a capo invece di allargare la colonna
+				for h in c.get_children():
+					if h is Label:h.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;h.custom_minimum_size.x=0;h.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+				c.custom_minimum_size.x=0
 			elif c is Label and c.autowrap_mode!=TextServer.AUTOWRAP_OFF:c.custom_minimum_size.x=CARD_W-30
 			elif c is Label:c.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;c.custom_minimum_size.x=CARD_W-30
 			continue
