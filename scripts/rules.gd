@@ -391,6 +391,7 @@ func guard_attack(i: int,k: String,facing: int) -> bool:
 	if not k in targets(i):p.facing=old;return false
 	p.guarding=false;state.active=i;_attack_request(i,at(k,i),p.facing);return true
 func _attack_request(i: int,j: int,facing: int,charge_imbalance: int=0) -> void:
+	state.last_attack={"actor":i,"victim":j}   # per la mappa 3D: chi para o subisce il colpo
 	state.pending={"kind":"attack","actor":i,"victim":j,"facing":facing,"charge_imbalance":charge_imbalance,"reactors":[j]}
 	if reaction_options(j).size()>1:state.phase="reaction"
 	else:_attack_pending()

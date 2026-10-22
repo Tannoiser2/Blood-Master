@@ -413,6 +413,8 @@ func sync() -> void:
 		# il difensore di fronte mostra la sua pedina difensiva mentre arriva il colpo
 		if track.strike:
 			var front=game.at(BloodRules.neighbor(p.cell,int(p.facing)),i)
+			var la=game.state.get("last_attack",{})
+			if int(la.get("actor",-1))==i and int(la.get("victim",-1))>=0:front=int(la.victim)   # il vero bersaglio (anche di lato o a due esagoni)
 			if front!=-1 and not front in victims and minis.has(front):
 				var fq=game.state.fighters[front];var defensive=fq.current in DEFENSIVE
 				var hit_at=minis[i].ap.get_animation(track.clip).length*.45 if minis[i].ap and minis[i].ap.has_animation(track.clip) else .5
@@ -433,13 +435,13 @@ func sync() -> void:
 			var was_move: String=prev[i].current if CLIP.has(prev[i].current) and prev[i].current in MOVING else "run"
 			if (p.unbalanced or p.down) and not prev[i].current in MOVING:
 				# spinto indietro dal colpo: barcolla all'indietro senza girarsi, dopo che il colpo è arrivato
-				step.append({"i":i,"clip":_clip_for(i,"unbalanced",bool(p.get("bow",false))),"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"move":"unbalanced","strike":false,"pushed":true,"hit":prev[i].hp-int(p.hp)})
+				step.append({"i":i,"clip":_clip_for(i,"unbalanced",bool(p.get("bow",false))),"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after_strike":true,"move":"unbalanced","strike":false,"pushed":true,"hit":prev[i].hp-int(p.hp)})
 				step.append({"i":i,"clip":clip,"from":cell_pos(p.cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"after":true,"move":"down" if clip in ["A terra","Morte"] else "unbalanced","strike":false,"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive,"pieces":bool(p.get("pieces",false))})
 				continue
 			step.append({"i":i,"clip":CLIP[was_move],"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":was_move,"strike":false})
 			moved=true
 		# chi ha anche un suo movimento in questo passo prima lo completa, poi reagisce sul posto
-		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after":moved,"move":"down" if clip in ["A terra","Morte"] else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive,"pieces":bool(p.get("pieces",false))})
+		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after_strike":true,"after":moved,"move":"down" if clip in ["A terra","Morte"] else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive,"pieces":bool(p.get("pieces",false))})
 	for i in game.state.fighters.size():
 		if game.state.fighters[i].cell!="":prev[i]=_view(game.state.fighters[i])
 	if not step.is_empty():
@@ -544,11 +546,23 @@ func _play_queue() -> void:
 
 func _play_step(step: Array,fluid: bool) -> void:
 	var longest=0.0;var ends={}
+	# prima chi colpisce: da lì si sa l'istante esatto dell'impatto (dopo eventuali rotazioni e passi),
+	# poi parate e reazioni partono in quell'istante, così colpo e parata si vedono insieme
+	var impact=-1.0
+	for t in step:
+		if t.has("labels") or not t.get("strike",false) or t.get("after",false):continue
+		var info=minis.get(t.i)
+		if info==null:continue
+		var dur=_run_track(t,info,fluid);t["_done"]=true
+		ends[t.i]=maxf(ends.get(t.i,0.0),t.delay+dur);longest=maxf(longest,t.delay+dur)
+		impact=maxf(impact,float(t.get("impact_at",-1.0)))
 	for pass_after in [false,true]:   # le reazioni "after" partono quando finisce il movimento dello stesso personaggio
 		for t in step:
-			if t.has("labels") or t.get("after",false)!=pass_after:continue
+			if t.has("labels") or t.get("after",false)!=pass_after or t.get("_done",false):continue
 			var info=minis.get(t.i)
 			if info==null:continue
+			if impact>=0.0 and t.has("parried"):t.delay=maxf(.05,impact-.35)
+			elif impact>=0.0 and t.get("after_strike",false):t.delay=maxf(t.delay,impact)
 			if pass_after:t.delay=maxf(t.delay,ends.get(t.i,0.0))
 			var dur=_run_track(t,info,fluid)
 			ends[t.i]=maxf(ends.get(t.i,0.0),t.delay+dur)
@@ -602,12 +616,15 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 			return d0+_run_track(walk,info,fluid,forced)
 		var d1=_run_track(walk,info,fluid,forced)
 		var act=t.duplicate();act.split=true;act.from=t.to;act.delay=t.delay+d1;act.erase("path")
-		return d1+_run_track(act,info,fluid)
+		var d2=_run_track(act,info,fluid);t["impact_at"]=act.get("impact_at",-1.0)
+		return d1+d2
 	var anim: Animation=pl.anim;var length: float=pl.length;var turn: float=pl.turn
 	var dist: float=pl.dist;var m: Dictionary=pl.m;var mode: String=pl.mode;var loops: int=pl.loops
 	var natural=length;var rate=1.0
 	if forced>0 and mode!="fermo":rate=clampf(natural/forced,.35,2.5);length=forced
 	if OS.get_environment("BM_DEBUG")=="1":print("TRACK ",game.state.fighters[t.i].character," ",t.clip," ",mode," dist %.2f len %.2f loops %d"%[dist,length,loops])
+	if t.get("strike",false):   # istante del colpo: a metà circa della clip (in fondo alla corsa per le cariche)
+		t["impact_at"]=t.delay+turn+((length*.85) if mode in ["passi","profilo"] else (anim.length/rate*.45 if anim else .5))
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
@@ -1511,22 +1528,33 @@ func replay() -> void:
 	replaying=false;playing=false;Engine.time_scale=1.0;_refresh_tokens()
 
 func _play_turn(group: Array) -> void:
-	var moves={};var acts=[];var labels={}
+	var moves={};var acts=[];var labels={};var sn=0
 	for step in group:
+		sn+=1
 		for t in step:
 			if t.has("labels"):labels=t.labels;continue
 			if not minis.has(t.i):continue
 			if t.from.distance_to(t.to)>.05 and not t.get("after",false) and not t.get("pushed",false):
 				if moves.has(t.i):moves[t.i].to=t.to;moves[t.i].yaw=t.yaw;moves[t.i].facing=t.get("facing",-1)   # più spostamenti nello stesso turno: un solo tragitto
 				else:moves[t.i]=t.duplicate();moves[t.i].delay=0.0
-			else:acts.append(t)
+			else:t["_step"]=sn;acts.append(t)
 	var span=0.0
 	for i in moves:span=maxf(span,_plan(moves[i],minis[i]).length)
 	var longest=0.0
 	for i in moves:longest=maxf(longest,_run_track(moves[i],minis[i],true,span))
 	if longest>0:await get_tree().create_timer(longest).timeout
 	longest=0.0
-	for t in acts:longest=maxf(longest,t.delay+_run_track(t,minis[t.i],true))
+	var impacts={}   # per ogni passo: istante del colpo, così parate e reazioni partono insieme al colpo
+	for t in acts:
+		if t.get("strike",false):
+			longest=maxf(longest,t.delay+_run_track(t,minis[t.i],true));t["_done"]=true
+			impacts[t._step]=maxf(impacts.get(t._step,-1.0),float(t.get("impact_at",-1.0)))
+	for t in acts:
+		if t.get("_done",false):continue
+		var imp=float(impacts.get(t._step,-1.0))
+		if imp>=0.0 and t.has("parried"):t.delay=maxf(.05,imp-.35)
+		elif imp>=0.0 and t.get("after_strike",false):t.delay=maxf(t.delay,imp)
+		longest=maxf(longest,t.delay+_run_track(t,minis[t.i],true))
 	if longest>0:await get_tree().create_timer(longest).timeout
 	for step in group:
 		for t in step:
