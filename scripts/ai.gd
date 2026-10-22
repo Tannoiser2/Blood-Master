@@ -268,7 +268,8 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 				for k in targets:top=maxf(top,_spell_cell(game,i,m,k))
 				score=top+2.0-float(m.cost)*.5   # la magia costa: le più care devono valere di più
 				if m.id=="heal":score=16.0*(1.0-_health(p))-2.0
-				if m.id=="summon" and game.own_golem(i)>=0:   # senza Evocazione il Golem si sbriciola: conviene se sta combattendo
+				if m.id=="summon" and game.own_golem(i)>=0 and game.hr("golem"):score=-5.0   # resta in campo da solo
+				elif m.id=="summon" and game.own_golem(i)>=0:   # senza Evocazione il Golem si sbriciola: conviene se sta combattendo
 					var g=game.state.fighters[game.own_golem(i)];var gd=99
 					for j in _enemies(game,i):gd=mini(gd,BloodRules.distance(g.cell,game.state.fighters[j].cell))
 					score=22.0+(8.0 if gd==1 else (5.0 if gd<=2 else 1.0))+_health(g)*4.0-trouble*6.0   # 40 ferite gratis: tenerlo vale quasi sempre

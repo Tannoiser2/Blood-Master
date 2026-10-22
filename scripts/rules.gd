@@ -143,8 +143,8 @@ static func _restore_numbers(value):
 #  arrows: frecce contate, 5 + un dado per arciere
 #  zoc: zone di controllo (ci si ferma accanto al nemico, sganciarsi costa un colpo)
 #  scenery: elementi di scena a caso nell'arena
-const HOUSE_RULES=["fall","push","reach","arrows","zoc","scenery"]
-var house: Dictionary={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true}
+const HOUSE_RULES=["fall","push","reach","arrows","zoc","scenery","golem"]
+var house: Dictionary={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true,"golem":true}
 var house_rules:=true:   # compatibilità: tutte accese o tutte spente
 	set(v):
 		house_rules=v
@@ -621,6 +621,7 @@ func _knock(i: int,ground: bool,sized:=false) -> void:
 	if definition(p).kind=="ziggy":return
 	if definition(p).kind=="golem" and not sized:note(p.name+" è troppo massiccio: resta in piedi.");return
 	if definition(p).kind=="skeleton":p.pieces=true;p.current="pieces";p.done=true;note(p.name+" va in pezzi.");return
+	if definition(p).kind=="golem" and hr("golem"):note(p.name+" barcolla ma resta in piedi (Golem più resistente).");return
 	if definition(p).kind=="golem":note(p.name+" viene sbilanciato e si riduce in polvere (regola del Golem).");_kill(i);return
 	if ground or p.unbalanced or p.down:p.down=true;p.unbalanced=false;p.current="down"
 	else:p.unbalanced=true;p.current="unbalanced"
@@ -788,7 +789,7 @@ func finish_turn() -> void:
 		if p.plague>=0:_hurt(i,2,false)
 		if p.character=="golem" and p.get("owner",-1)>=0:
 			var owner=state.fighters[p.owner]
-			if not owner.alive or owner.current!="summon":
+			if not owner.alive or (owner.current!="summon" and not hr("golem")):
 				note(p.name+" si sbriciola: "+(owner.name+" è fuori combattimento." if not owner.alive else owner.name+" non ha rigiocato Evocazione."));_kill(i)
 	var remaining=[]
 	for e in state.effects:
