@@ -450,6 +450,18 @@ func sync() -> void:
 			_shots_seen=int(game.state.get("shots",0))
 			var v=int(game.state.get("last_shot",{}).get("victim",-1))
 			track["arrow"]={"victim":v,"hit":v>=0 and v in victims and int(game.state.fighters[v].hp)<int(prev.get(v,{}).get("hp",0))}
+		# chi viene colpito da questa traccia: serve per far reagire ognuno al SUO colpo, uno dopo l'altro
+		if track.has("arrow") and int(track.arrow.victim)>=0:track["hits"]=[int(track.arrow.victim)]
+		elif SPELL_FX.has(id) and not track.get("targets",[]).is_empty():track["hits"]=track.targets.duplicate()
+		elif track.strike:
+			var hs=[];var la0=game.state.get("last_attack",{})
+			if int(la0.get("actor",-1))==i and int(la0.get("victim",-1))>=0:hs.append(int(la0.victim))
+			for v in victims:
+				if v!=i and not v in hs and BloodRules.distance(str(game.state.fighters[v].cell),str(p.cell))<=2 and int(game.state.fighters[v].team)!=int(p.team):hs.append(v)
+			if hs.is_empty():
+				var f0=game.at(BloodRules.neighbor(p.cell,int(p.facing)),i)
+				if f0!=-1:hs.append(f0)
+			track["hits"]=hs
 		step.append(track)
 		# lancia: colpo a due esagoni (regola modificata), con la casella in mezzo libera
 		if track.strike and game.hr("reach") and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
@@ -611,28 +623,58 @@ func _play_queue() -> void:
 	playing=false;_refresh_tokens()
 
 func _play_step(step: Array,fluid: bool) -> void:
+	# Sequenza chiara: 1) chi si sposta senza colpire (es. chi provoca un colpo di guardia o di ZOC);
+	# 2) i colpi UNO DOPO L'ALTRO, ognuno con la freccia a terra da chi colpisce a chi è colpito;
+	# 3) parate e reazioni di ogni bersaglio nell'istante in cui arriva il SUO colpo (freccia o magia comprese).
+	step=step.map(func(t):return t.duplicate())   # copia: le tracce salvate per il replay restano intatte
 	var longest=0.0;var ends={}
-	# prima chi colpisce: da lì si sa l'istante esatto dell'impatto (dopo eventuali rotazioni e passi),
-	# poi parate e reazioni partono in quell'istante, così colpo e parata si vedono insieme
-	var impact=-1.0
+	var is_striker=func(t):return not t.has("labels") and not t.get("after",false) and (t.get("strike",false) or t.has("hits"))
+	var movers_end=0.0
 	for t in step:
-		if t.has("labels") or not t.get("strike",false) or t.get("after",false):continue
+		if t.has("labels") or is_striker.call(t) or t.get("after",false) or t.get("after_strike",false) or t.has("parried"):continue
+		if (t.from as Vector3).distance_to(t.to)<.05 and not t.has("path"):continue
 		var info=minis.get(t.i)
 		if info==null:continue
 		var dur=_run_track(t,info,fluid);t["_done"]=true
+		ends[t.i]=maxf(ends.get(t.i,0.0),t.delay+dur);longest=maxf(longest,t.delay+dur);movers_end=maxf(movers_end,t.delay+dur)
+	var impact=-1.0;var hit_at={};var next_start=0.0
+	for t in step:
+		if not is_striker.call(t):continue
+		var info=minis.get(t.i)
+		if info==null:continue
+		if (t.from as Vector3).distance_to(t.to)<.05:t.delay=maxf(t.delay,movers_end)   # colpisce da fermo: dopo che l'altro è arrivato
+		t.delay=maxf(t.delay,next_start)
+		var dur=_run_track(t,info,fluid);t["_done"]=true
 		ends[t.i]=maxf(ends.get(t.i,0.0),t.delay+dur);longest=maxf(longest,t.delay+dur)
-		impact=maxf(impact,float(t.get("impact_at",-1.0)))
+		var imp=float(t.get("impact_at",t.delay+dur*.5));impact=maxf(impact,imp)
+		for v in t.get("hits",[]):hit_at[int(v)]=maxf(hit_at.get(int(v),0.0),imp)
+		next_start=imp+.5   # il colpo successivo parte dopo che questo è arrivato
+		var col=SPELL_FX.get(str(t.move),Color(1,.25,.2))
+		if not t.has("arrow"):
+			for v in t.get("hits",[]):
+				if minis.has(int(v)) and int(v)!=int(t.i):_attack_marker(t.to,minis[int(v)].root.global_position,col,t.delay,imp+.25)
+	if impact<0.0:   # nessuno colpisce (gorgo o fuoco che si spostano, abisso...): prima si vede l'effetto arrivare, poi le reazioni
+		for t in step:
+			if t.has("labels") and t.has("effects") and step.any(func(x):return x.get("after_strike",false)):
+				_show_effects(t.effects);impact=.6
 	for pass_after in [false,true]:   # le reazioni "after" partono quando finisce il movimento dello stesso personaggio
 		for t in step:
 			if t.has("labels") or t.get("after",false)!=pass_after or t.get("_done",false):continue
 			var info=minis.get(t.i)
 			if info==null:continue
-			if impact>=0.0 and t.has("parried"):t.delay=maxf(.05,impact-.35)
-			elif impact>=0.0 and t.get("after_strike",false):t.delay=maxf(t.delay,impact)
+			var mine=float(hit_at.get(int(t.i),impact))   # l'istante in cui arriva il colpo diretto a LUI
+			if mine>=0.0 and t.has("parried"):t.delay=maxf(.05,mine-.35)
+			elif mine>=0.0 and t.get("after_strike",false):t.delay=maxf(t.delay,mine)
 			if pass_after:t.delay=maxf(t.delay,ends.get(t.i,0.0))
 			var dur=_run_track(t,info,fluid)
 			ends[t.i]=maxf(ends.get(t.i,0.0),t.delay+dur)
 			longest=maxf(longest,t.delay+dur)
+	if OS.get_environment("BM_TIMING")=="1":   # verifica dei tempi: chi parte quando, e quando arriva il colpo
+		var out=[]
+		for t in step:
+			if t.has("labels") or not minis.has(t.i):continue
+			out.append("%s:%s@%.2f%s%s"%[str(game.state.fighters[t.i].name).left(8),t.clip,float(t.delay),(" imp %.2f"%float(t.impact_at)) if t.has("impact_at") else "",(" ->"+str(t.hits)) if t.has("hits") else ""])
+		print("PASSO ",out)
 	await get_tree().create_timer(longest).timeout
 	for t in step:
 		if t.has("labels"):
@@ -646,6 +688,42 @@ func _play_step(step: Array,fluid: bool) -> void:
 		var info=minis.get(t.i)
 		if info and info.ap and not t.get("stay",false) and not t.clip in ["A terra","Morte"]:_end_pose(t.i)
 
+# durata del volo della freccia (come in _shoot) e del viaggio di ogni magia (come in _cast_fx)
+func _arrow_flight(t: Dictionary,info: Dictionary) -> float:
+	var v=minis.get(int(t.arrow.victim),{})
+	if v.is_empty():return .4
+	var a: Vector3=info.root.global_position+Vector3(0,.8,0);var b: Vector3=v.root.global_position+Vector3(0,.65,0)
+	return clampf(a.distance_to(b)/8.0,.25,1.0)
+func _spell_travel(t: Dictionary,info: Dictionary) -> float:
+	var hand: Vector3=info.root.global_position+Vector3(0,.8,0);var dest: Vector3=t.get("spell_at",Vector3.INF)
+	if dest==Vector3.INF:
+		for v in t.get("targets",[]):
+			if minis.has(int(v)):dest=minis[int(v)].root.global_position;break
+	var d=hand.distance_to(dest) if dest!=Vector3.INF else 1.0
+	match str(t.move):
+		"fireball","vortex","wall","livingfire","abyss":return clampf(d/8.0,.15,.6)+.1
+		"drain":return .9
+		"plague","control":return .7
+		"firestaff":return .35
+		"lightning","shock":return .12
+	return .2
+# freccia luminosa a terra dall'attaccante al bersaglio: si vede chi colpisce chi
+func _attack_marker(from: Vector3,to: Vector3,color: Color,start: float,until: float) -> void:
+	var dir=to-from;dir.y=0
+	if dir.length()<.2:return
+	var root=Node3D.new();viewport.add_child(root);root.global_position=from+Vector3(0,.04,0)
+	root.look_at(root.global_position+dir.normalized(),Vector3.UP)
+	var mat=_fx_mat(color,2.5);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.albedo_color=Color(color,0.0);mat.no_depth_test=false
+	var len=maxf(.1,dir.length()-.55)
+	var shaft=MeshInstance3D.new();var bm=BoxMesh.new();bm.size=Vector3(.07,.01,len);shaft.mesh=bm;shaft.material_override=mat;shaft.position=Vector3(0,0,-(.3+len*.5));root.add_child(shaft)
+	var head=MeshInstance3D.new();var cm=CylinderMesh.new();cm.top_radius=0.0;cm.bottom_radius=.13;cm.height=.24;cm.radial_segments=3;head.mesh=cm;head.material_override=mat
+	head.rotation.x=-PI/2;head.position=Vector3(0,0,-(.3+len+.1));head.scale=Vector3(1,1,.15);root.add_child(head)
+	var ring=MeshInstance3D.new();var tm=TorusMesh.new();tm.inner_radius=.36;tm.outer_radius=.42;ring.mesh=tm;ring.material_override=mat;root.add_child(ring)   # anello sotto chi attacca
+	var tw=create_tween()
+	if start>0:tw.tween_interval(start)
+	tw.tween_property(mat,"albedo_color:a",.85,.18)
+	tw.tween_interval(maxf(.1,until-start-.18))
+	tw.tween_property(mat,"albedo_color:a",0.0,.35);tw.tween_callback(root.queue_free)
 func _plan(t: Dictionary,info: Dictionary) -> Dictionary:
 	# come verrà animata la traccia: modalità, durata naturale, ripetizioni
 	var ap=info.ap;var pivot=info.pivot
@@ -690,8 +768,11 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 	var natural=length;var rate=1.0
 	if forced>0 and mode!="fermo":rate=clampf(natural/forced,.35,2.5);length=forced
 	if OS.get_environment("BM_DEBUG")=="1":print("TRACK ",game.state.fighters[t.i].character," ",t.clip," ",mode," dist %.2f len %.2f loops %d"%[dist,length,loops])
-	if t.get("strike",false):   # istante del colpo: a metà circa della clip (in fondo alla corsa per le cariche)
-		t["impact_at"]=t.delay+turn+((length*.85) if mode in ["passi","profilo"] else (anim.length/rate*.45 if anim else .5))
+	if t.get("strike",false) or t.has("hits"):   # istante in cui il colpo ARRIVA davvero sul bersaglio
+		var clip_len=(anim.length/rate if anim else 1.0)
+		if t.has("arrow"):t["impact_at"]=t.delay+turn+clip_len*.55+_arrow_flight(t,info)      # rilascio + volo della freccia
+		elif SPELL_FX.has(str(t.get("move",""))):t["impact_at"]=t.delay+turn+clip_len*.45+_spell_travel(t,info)   # lancio + viaggio della magia
+		else:t["impact_at"]=t.delay+turn+((length*.85) if mode in ["passi","profilo"] else clip_len*.45)   # a metà clip; in fondo alla corsa per le cariche
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
@@ -1620,19 +1701,10 @@ func _play_turn(group: Array) -> void:
 	var longest=0.0
 	for i in moves:longest=maxf(longest,_run_track(moves[i],minis[i],true,span))
 	if longest>0:await get_tree().create_timer(longest).timeout
-	longest=0.0
-	var impacts={}   # per ogni passo: istante del colpo, così parate e reazioni partono insieme al colpo
-	for t in acts:
-		if t.get("strike",false):
-			longest=maxf(longest,t.delay+_run_track(t,minis[t.i],true));t["_done"]=true
-			impacts[t._step]=maxf(impacts.get(t._step,-1.0),float(t.get("impact_at",-1.0)))
-	for t in acts:
-		if t.get("_done",false):continue
-		var imp=float(impacts.get(t._step,-1.0))
-		if imp>=0.0 and t.has("parried"):t.delay=maxf(.05,imp-.35)
-		elif imp>=0.0 and t.get("after_strike",false):t.delay=maxf(t.delay,imp)
-		longest=maxf(longest,t.delay+_run_track(t,minis[t.i],true))
-	if longest>0:await get_tree().create_timer(longest).timeout
+	# poi gli scontri, un passo alla volta con la stessa sequenza della partita (colpi uno dopo l'altro)
+	for k in range(1,sn+1):
+		var part=acts.filter(func(t):return int(t.get("_step",0))==k)
+		if not part.is_empty():await _play_step(part,true)
 	for step in group:
 		for t in step:
 			if t.has("effects"):_show_effects(t.effects)
