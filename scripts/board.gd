@@ -118,8 +118,31 @@ func hexagon(center: Vector2,radius: float) -> PackedVector2Array:
 	return poly
 func _background() -> StyleBoxFlat:
 	var s=StyleBoxFlat.new();s.bg_color=Color("140e0a");s.set_corner_radius_all(8);s.set_border_width_all(2);s.border_color=Color("8a6a35");return s
+# due dita (iPad, telefoni): pizzico = zoom, rotazione delle dita = gira la mappa
+var _touches={}
+func _pinch(event: InputEvent) -> bool:
+	if event is InputEventMagnifyGesture:   # trackpad e Safari
+		var f=event.factor;zoom=clampf(zoom*f,.8,3.5);queue_redraw();accept_event();return true
+	if event is InputEventScreenTouch:
+		if event.pressed:_touches[event.index]=event.position
+		else:_touches.erase(event.index)
+		if _touches.size()>=2:_dragging=true   # niente clic al rilascio dopo un pizzico
+		return false
+	if event is InputEventScreenDrag and _touches.has(event.index):
+		if _touches.size()<2:_touches[event.index]=event.position;return false
+		var keys=_touches.keys();var other=keys[1] if keys[0]==event.index else keys[0]
+		var a0: Vector2=_touches[event.index];var b: Vector2=_touches[other];var a1: Vector2=event.position
+		var d0=a0.distance_to(b);var d1=a1.distance_to(b)
+		if d0>8.0 and d1>8.0:
+			var f=d1/d0;zoom=clampf(zoom*f,.8,3.5);queue_redraw()
+			var da=(a1-b).angle()-(a0-b).angle()
+			if absf(da)<.5:rot+=da
+		_touches[event.index]=a1;_dragging=true;accept_event();return true
+	return false
 func _gui_input(event: InputEvent) -> void:
 	if game==null:return
+	if _pinch(event):return
+	if _touches.size()>=2 and (event is InputEventMouseMotion or event is InputEventMouseButton):return   # il mouse emulato dal tocco tace mentre si pizzica
 	if event is InputEventMouseButton:
 		if event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
 			zoom=clampf(zoom*(1.12 if event.button_index==MOUSE_BUTTON_WHEEL_UP else .89),.8,3.5);queue_redraw();accept_event()

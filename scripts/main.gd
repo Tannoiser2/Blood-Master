@@ -75,14 +75,20 @@ func _ready() -> void:
 		roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
 		_start_local();return
 	_show_splash()
+# simboli (◀ ▶ ✕ …) che Cinzel e Alegreya non hanno: sul web non c'è un font di sistema di riserva
+var font_symbols: Font=load("res://assets/fonts/NotoSansSymbols2-sub.ttf")
+func _with_symbols(path: String) -> FontFile:
+	var base: FontFile=load(path)
+	if not font_symbols in base.fallbacks:base.fallbacks=base.fallbacks+[font_symbols]
+	return base
 func _font(path: String,weight: int) -> Font:
-	var f=FontVariation.new();f.base_font=load(path);f.variation_opentype={TextServerManager.get_primary_interface().name_to_tag("wght"):weight};return f
+	var f=FontVariation.new();f.base_font=_with_symbols(path);f.variation_opentype={TextServerManager.get_primary_interface().name_to_tag("wght"):weight};return f
 func tex_box(file: String,margin: int,cl:=14,ct:=9) -> StyleBoxTexture:
 	var b=StyleBoxTexture.new();b.texture=load(UI+file)
 	b.texture_margin_left=margin;b.texture_margin_right=margin;b.texture_margin_top=margin;b.texture_margin_bottom=margin
 	b.content_margin_left=cl;b.content_margin_right=cl;b.content_margin_top=ct;b.content_margin_bottom=ct;return b
 func _build_theme() -> void:
-	font_body=_font("res://assets/fonts/Alegreya.ttf",500);font_head=_font("res://assets/fonts/Cinzel.ttf",700);font_title=load("res://assets/fonts/CinzelDecorative-Bold.ttf")
+	font_body=_font("res://assets/fonts/Alegreya.ttf",500);font_head=_font("res://assets/fonts/Cinzel.ttf",700);font_title=_with_symbols("res://assets/fonts/CinzelDecorative-Bold.ttf")
 	var t=Theme.new();t.default_font_size=17;t.default_font=font_body
 	t.set_color("font_color","Label",INK);t.set_color("font_color","Button",INK)
 	t.set_color("font_color","RichTextLabel",INK)
@@ -302,7 +308,12 @@ func _show_menu() -> void:
 	var order=_pool_order()
 	for half in 2:
 		var g=GridContainer.new();g.columns=2;g.add_theme_constant_override("h_separation",8);g.add_theme_constant_override("v_separation",8);two.add_child(g)
-		for id in order.slice(half*7,half*7+7):g.add_child(_pool_card(id,cw))
+		var ids: Array=order.slice(half*7,half*7+7)
+		var fighters=ids.filter(func(x):return not _free_agent(x));var mages=ids.filter(func(x):return _free_agent(x))
+		for id in fighters:g.add_child(_pool_card(id,cw))
+		if fighters.size()%2==1:   # casella vuota: i maghi stanno tutti insieme nell'ultima riga
+			var gap=Control.new();gap.custom_minimum_size=Vector2(cw,1);g.add_child(gap)
+		for id in mages:g.add_child(_pool_card(id,cw))
 	var right=panel_content(cols,10);right.get_parent().get_parent().custom_minimum_size.x=side_w;_team_column(right,1)
 	status=label(message,13,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;status.custom_minimum_size.x=side_w-24;right.add_child(status)
 	if mode=="online":
@@ -1020,7 +1031,7 @@ func _manual_content() -> void:
 	var row=HBoxContainer.new();v.add_child(row);row.add_child(button("‹ Indietro",func():manual_page=posmod(manual_page-1,12);_manual_content()));row.add_child(label("Pagina %d / 12"%(manual_page+1)));row.add_child(button("Avanti ›",func():manual_page=posmod(manual_page+1,12);_manual_content()));row.add_child(button("Chiudi",manual_window.queue_free))
 	var l=label("Chiarimento dell’autore: Disperdi magia consuma la mossa solo se riesce.",14,GOLD);v.add_child(l)
 func _credits() -> void:
-	var w=AcceptDialog.new();w.title="Blood Master Deluxe";w.dialog_text="Ideazione e sviluppo: Stefano Ancillai e Marco Ramadori\nDisegni: Luigi Filipponi\nEdizione originale: Devil’s Den\n\nVersione digitale realizzata dalle scansioni dell’autore.\nMotore Godot 4.7 · Partite online con Firebase\nEffetti sonori: registrazioni CC0 (OpenGameArt, Freesound e altri; elenco in docs/audio_fonti_licenze.csv)\nCaratteri: Cinzel, Cinzel Decorative (Natanael Gama) e Alegreya (Huerta Tipográfica), SIL Open Font License\n\nLe illustrazioni e il regolamento appartengono ai rispettivi autori.";add_child(w);w.confirmed.connect(w.queue_free);w.popup_centered()
+	var w=AcceptDialog.new();w.title="Blood Master Deluxe";w.dialog_text="Ideazione e sviluppo: Stefano Ancillai e Marco Ramadori\nDisegni: Luigi Filipponi\nEdizione originale: Devil’s Den\n\nVersione digitale realizzata dalle scansioni dell’autore.\nMotore Godot 4.7 · Partite online con Firebase\nEffetti sonori: registrazioni CC0 (OpenGameArt, Freesound e altri; elenco in docs/audio_fonti_licenze.csv)\nCaratteri: Cinzel, Cinzel Decorative (Natanael Gama) e Alegreya (Huerta Tipográfica), Noto Sans Symbols 2 (Google), SIL Open Font License\n\nLe illustrazioni e il regolamento appartengono ai rispettivi autori.";add_child(w);w.confirmed.connect(w.queue_free);w.popup_centered()
 func _online_menu(parent: VBoxContainer) -> void:
 	parent.add_child(label("Multiplayer · stanza privata",18,GOLD))
 	var name=LineEdit.new();name.placeholder_text="Il tuo nome";name.text="Giocatore";parent.add_child(name)
