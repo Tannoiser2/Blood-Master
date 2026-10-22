@@ -172,12 +172,12 @@ static func _spell_cell(game: BloodRules,i: int,m: Dictionary,k: String) -> floa
 			for j in game.state.fighters.size():
 				var t=game.state.fighters[j]
 				if game.living(t) and BloodRules.distance(k,t.cell)<=1:s+=(6.0 if t.team!=_team(game,i) else -9.0)
-		"lightning":
-			s=4.0*(1.0 if enemy else 0.0)
+		"lightning":   # potentissimo: colpisce tutti quelli sulla linea
+			s=8.0*(1.0 if enemy else 0.0)
 			var here=p.cell
 			for step in mini(7,BloodRules.distance(p.cell,k)):
 				here=BloodRules.neighbor(here,BloodRules.direction(here,k));var o=game.at(here)
-				if o!=-1:s+=(5.0 if game.state.fighters[o].team!=_team(game,i) else -8.0)
+				if o!=-1:s+=(9.0 if game.state.fighters[o].team!=_team(game,i) else -10.0)
 		"abyss":
 			s=12.0 if enemy else -20.0 if friend else 0.0
 			s+=_blocks_enemy(game,i,k)*3.0
@@ -335,7 +335,9 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 						var d=BloodRules.distance(str(e.cell),game.state.fighters[j].cell)
 						if d<=5:ev+=5.0/float(maxi(1,d))
 					score+=ev
-		if not id in ["run","charge","float","teleport","dematerialize"]:score-=float(m.get("defense",0))*exposure
+		if m.id=="dematerialize":   # intoccabile per un turno ma non fa nulla: solo per sfuggire a una mischia pericolosa, mai di fila
+			score=(3.0+trouble*10.0+float(adjacent)*2.0 if adjacent>0 else -6.0)-(8.0 if p.previous=="dematerialize" or p.current=="dematerialize" else 0.0)
+		if not m.id in ["run","charge","float","teleport","dematerialize"]:score-=float(m.get("defense",0))*exposure
 		if id=="guard" and within2>0:   # in guardia si colpisce per primi chi si avvicina
 			var gbest=0.0
 			for j in _enemies(game,i):
