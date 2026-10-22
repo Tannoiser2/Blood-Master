@@ -1208,17 +1208,42 @@ func _show_effects(list) -> void:
 		if not game.cells.has(k):continue
 		var kind=str(e.get("kind",""));var root=Node3D.new();viewport.add_child(root);root.position=cell_pos(k);effect_nodes.append(root)
 		match kind:
-			"wall","livingfire":   # fiamme alte (muro, ad anello sul bordo dell'esagono) o fuoco che serpeggia (fuoco vivo)
+			"wall","livingfire":
 				var tall=kind=="wall"
-				var fl=_flame(70 if tall else 36,Vector3(.28,.02,.28),1.5 if tall else .9,1.2 if tall else .9);fl.position.y=.08;fl.local_coords=true;root.add_child(fl);fl.emitting=true
 				if sound and not _variants("fire_loop").is_empty():   # crepitio continuo delle fiamme
 					var st=_variants("fire_loop")[0].duplicate();if st is AudioStreamOggVorbis:st.loop=true
 					var fp=AudioStreamPlayer3D.new();fp.stream=st;fp.volume_db=-12.0 if tall else -16.0;fp.unit_size=3.0;root.add_child(fp);fp.play(randf()*8.0)
-				if tall:fl.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;fl.emission_ring_axis=Vector3.UP;fl.emission_ring_radius=.4;fl.emission_ring_inner_radius=.28;fl.emission_ring_height=.02
-				var sm2=_smoke(12,Vector3(.2,.05,.2),.7);sm2.position.y=.9 if tall else .5;root.add_child(sm2);sm2.emitting=true
-				var lt=OmniLight3D.new();lt.light_color=Color(1,.5,.15);lt.light_energy=1.4;lt.omni_range=2.2;lt.position.y=.6;root.add_child(lt)
+				var lt=OmniLight3D.new();lt.omni_range=2.2;root.add_child(lt)
+				if tall:
+					# MURO INFERNALE: basamento esagonale di roccia rovente con crepe rosse e una cortina di fiamme rosso cupo
+					var base=MeshInstance3D.new();var cyl=CylinderMesh.new();cyl.radial_segments=6;cyl.rings=1;cyl.top_radius=.5;cyl.bottom_radius=.54;cyl.height=.22;base.mesh=cyl
+					base.position.y=.11;base.rotation.y=PI/6
+					var rm=StandardMaterial3D.new();rm.albedo_color=Color(.16,.07,.05);rm.roughness=.9;rm.emission_enabled=true;rm.emission=Color(.9,.12,.02);rm.emission_energy_multiplier=.9
+					base.material_override=rm;root.add_child(base)
+					var hot=base.create_tween().set_loops();hot.tween_property(rm,"emission_energy_multiplier",1.6,.6);hot.tween_property(rm,"emission_energy_multiplier",.7,.6)
+					var fl=_flame(110,Vector3(.3,.02,.3),1.8,1.4);fl.position.y=.2;fl.local_coords=true;root.add_child(fl)
+					fl.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;fl.emission_ring_axis=Vector3.UP;fl.emission_ring_radius=.46;fl.emission_ring_inner_radius=.36;fl.emission_ring_height=.02
+					fl.color_ramp=_ramp([[0,Color(1,.35,.05,0)],[.15,Color(1,.25,.03,.95)],[.6,Color(.75,.06,.02,.7)],[1,Color(.25,.02,.01,0)]]);fl.emitting=true
+					var sm2=_smoke(16,Vector3(.3,.05,.3),.8);sm2.position.y=1.2;root.add_child(sm2);sm2.emitting=true
+					lt.light_color=Color(1,.25,.08);lt.light_energy=1.6;lt.position.y=.5
+				else:
+					# FUOCO VIVENTE: una palla di fuoco giallo-bianca che fluttua e pulsa, con fiamme che le girano attorno
+					var orb=Node3D.new();orb.position.y=.55;root.add_child(orb)
+					var core=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.17;sm.height=.34;core.mesh=sm
+					var cm=_fx_mat(Color(1,.92,.55),4.0);cm.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;core.material_override=cm;orb.add_child(core)
+					var halo=MeshInstance3D.new();var hm2=SphereMesh.new();hm2.radius=.28;hm2.height=.56;halo.mesh=hm2
+					var hmat=_fx_mat(Color(1,.6,.1,.35),2.0);hmat.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;halo.material_override=hmat;orb.add_child(halo)
+					var bob=orb.create_tween().set_loops();bob.tween_property(orb,"position:y",.75,.7).set_trans(Tween.TRANS_SINE);bob.tween_property(orb,"position:y",.5,.7).set_trans(Tween.TRANS_SINE)
+					var beat=core.create_tween().set_loops();beat.tween_property(core,"scale",Vector3.ONE*1.25,.25);beat.tween_property(core,"scale",Vector3.ONE*.9,.35)
+					var swirl=_flame(60,Vector3(.05,.05,.05),.7,.7);swirl.local_coords=true;orb.add_child(swirl)
+					swirl.emission_shape=CPUParticles3D.EMISSION_SHAPE_RING;swirl.emission_ring_axis=Vector3.UP;swirl.emission_ring_radius=.32;swirl.emission_ring_inner_radius=.25;swirl.emission_ring_height=.05
+					swirl.tangential_accel_min=3.0;swirl.tangential_accel_max=4.5;swirl.gravity=Vector3(0,.8,0)
+					swirl.color_ramp=_ramp([[0,Color(1,1,.7,0)],[.2,Color(1,.9,.35,.9)],[.7,Color(1,.5,.1,.6)],[1,Color(.6,.2,.05,0)]]);swirl.emitting=true
+					var spin=orb.create_tween().set_loops();spin.tween_property(orb,"rotation:y",TAU,1.2).from(0.0)
+					var drip=_flame(20,Vector3(.1,.02,.1),.5,.6);drip.position.y=.05;drip.local_coords=true;root.add_child(drip);drip.emitting=true   # tracce di brace sotto
+					lt.light_color=Color(1,.75,.3);lt.light_energy=1.8;lt.position.y=.7
 				var tw=lt.create_tween().set_loops()
-				for z in 5:tw.tween_property(lt,"light_energy",randf_range(.8,1.8),.08)
+				for z in 5:tw.tween_property(lt,"light_energy",lt.light_energy*randf_range(.6,1.3),.08)
 			"vortex":   # gorgo: spirale azzurra che gira dentro l'esagono, scintille risucchiate al centro
 				var disc=MeshInstance3D.new();var pm=PlaneMesh.new();pm.size=Vector2(1.0,1.0);disc.mesh=pm;disc.position.y=.1
 				var dm=StandardMaterial3D.new();dm.albedo_texture=_fx_texture("spiral");dm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;dm.blend_mode=BaseMaterial3D.BLEND_MODE_ADD

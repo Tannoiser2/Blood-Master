@@ -518,6 +518,7 @@ func _fighter_notes() -> Dictionary:
 	var out={};var last_attacker=-1
 	for raw in game.state.log:
 		var line=str(raw)
+		if line.begins_with("Turno "):out={};last_attacker=-1;continue   # nuovo turno: le pedine giocate si azzerano
 		if line.begins_with("Sbilanciamento:") and last_attacker>=0:
 			out[last_attacker].lines.append(line.trim_suffix(".").replace("Sbilanciamento: ","sbil. "));continue
 		var who=-1;var rest=""
