@@ -308,8 +308,15 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 		if m.get("rest",false):score+=minf(10.0,float(p.fatigue)*2.0)*(1.0 if adjacent==0 else .3)
 		if id=="guard":score=maxf(score,(5.0 if nearest<=2 else -1.0)+(2.0 if adjacent>0 else 0.0))
 		if id.begins_with("parry"):score=float(adjacent)*3.5+trouble*4.0-6.0
-		if id=="shoot":score=-20.0 if targets.is_empty() else 10.0+(16.0 if adjacent==0 else 0.0)
-		if id=="weapon":score=18.0 if p.get("bow",false) and nearest<=WEAPON_RANGE else -10.0
+		if id=="shoot":   # tiro: 15 meno la distanza, fortissimo anche a bruciapelo; la freccia incoccata non va sprecata
+			if targets.is_empty():score=-20.0
+			else:
+				var top=0.0
+				for k in targets:
+					var o=game.at(k,i)
+					if o!=-1:top=maxf(top,_target_value(game,i,o,_expected_wounds(game,i,o,m,p.cell)))
+				score=top+18.0+(6.0 if adjacent==0 else 0.0)
+		if id=="weapon":score=18.0 if p.get("bow",false) and (nearest<=WEAPON_RANGE or int(p.get("arrows",-1))==0) else -10.0   # senza frecce si riprende la spada
 		if id=="meditate":score=(8.0 if adjacent==0 else -6.0)+trouble*4.0
 		# esposizione: la difesa della pedina scelta conta quando i nemici ci attaccano (valore alto = più ferite subite)
 		if id=="again":   # "Ancora" mantiene in gioco gorgo e fuoco vivente: valgono quanto i nemici che hanno intorno

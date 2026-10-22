@@ -390,6 +390,9 @@ func sync() -> void:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
 		var track={"i":i,"clip":_clip_for(i,id,bool(p.get("bow",false))),"bow":bool(p.get("bow",false)),"loaded":bool(p.get("loaded",false)) or id=="shoot","from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		var route: Array=p.get("path",[])
+		if route.size()>1 and str(route.back())==str(p.cell) and BloodRules.distance(str(was.cell),str(route[0]))==1:
+			track["path"]=route.map(func(c):return _spot(i,str(c)))   # segue il percorso vero, esagono per esagono
 		if SPELL_FX.has(id):
 			track["targets"]=victims.filter(func(v):return v!=i)
 			var ls=game.state.get("last_spell",{})
@@ -592,8 +595,13 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		# si sposta con una clip che non cammina (es. Concentrarsi): prima cammina fino alla cella, poi la esegue lì
 		var walk=t.duplicate();walk.clip="Camminata";walk.split=true;walk.move="advance";walk.strike=false
 		for k in ["hit","arrow","targets","bow"]:walk.erase(k)
+		if t.get("move","")=="rise":   # da terra: prima si rialza sul posto, poi si sposta
+			var up=t.duplicate();up.split=true;up.to=t.from;up.erase("path")
+			var d0=_run_track(up,info,fluid)
+			walk.from=t.from;walk.delay=t.delay+d0
+			return d0+_run_track(walk,info,fluid,forced)
 		var d1=_run_track(walk,info,fluid,forced)
-		var act=t.duplicate();act.split=true;act.from=t.to;act.delay=t.delay+d1
+		var act=t.duplicate();act.split=true;act.from=t.to;act.delay=t.delay+d1;act.erase("path")
 		return d1+_run_track(act,info,fluid)
 	var anim: Animation=pl.anim;var length: float=pl.length;var turn: float=pl.turn
 	var dist: float=pl.dist;var m: Dictionary=pl.m;var mode: String=pl.mode;var loops: int=pl.loops
@@ -638,11 +646,18 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 	else:
 		root.position=t.from
 		var from: Vector3=t.from;var to: Vector3=t.to
+		var pts: Array=[from]+t.get("path",[to])   # tappe del percorso: niente scorciatoie attraverso gli altri
 		if mode=="profilo":
 			var clip_len=anim.length
 			tw.tween_method(func(x: float):
 				var k=floorf(x/clip_len);var p=(k+_progress(m,x-k*clip_len))/loops
-				root.position=from.lerp(to,minf(p,1.0)),0.0,natural,length)
+				root.position=_along(pts,minf(p,1.0)),0.0,natural,length)
+		elif pts.size()>2:   # percorso con curve: si gira lungo il tragitto e alla fine riprende l'orientamento scelto
+			tw.tween_method(func(f: float):
+				var a=_along(pts,f);var b=_along(pts,minf(f+.04,1.0));root.position=a
+				var dv=b-a
+				if dv.length()>.01:pivot.rotation.y=lerp_angle(pivot.rotation.y,atan2(dv.x,dv.z),.25),0.0,1.0,length)
+			tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),.2)
 		else:
 			tw.tween_property(root,"position",to,length)
 		if mode=="profilo" and anim and not t.clip in ["Carica"]:
@@ -655,6 +670,17 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if rate!=1.0 and ap:tw.tween_callback(func():ap.speed_scale=1.0)
 	return turn+length
 
+func _along(pts: Array,f: float) -> Vector3:
+	# punto alla frazione f della spezzata pts (tappe esagono per esagono)
+	var total=0.0
+	for k in pts.size()-1:total+=(pts[k+1]-pts[k]).length()
+	if total<=.0001:return pts.back()
+	var d=f*total
+	for k in pts.size()-1:
+		var seg=(pts[k+1]-pts[k]).length()
+		if d<=seg:return pts[k].lerp(pts[k+1],d/maxf(seg,.0001))
+		d-=seg
+	return pts.back()
 # --- Arcieri: arco o spada in mano, freccia in volo ---------------------------------
 # Il modello contiene i nodi Arco (mano sinistra), ArcoSchiena, Spada e FrecciaIncoccata.
 # In modalità arco l'arco è in mano (con la freccia incoccata se carico); in mischia la

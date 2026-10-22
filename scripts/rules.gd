@@ -91,6 +91,9 @@ func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int
 		var p={"character":cfg.character,"name":cfg.get("name",d.name),"team":int(cfg.get("team",i%2)),"controller":cfg.get("controller","ai"),"seat":int(cfg.get("seat",i)),"cell":"","facing":0,"hp":int(d.hp),"max_hp":int(d.hp),"fatigue":0,"permanent":0,"magic":(5+die() if magic<0 else magic) if d.mage else 0,"current":"float" if d.kind=="ziggy" else "guard","previous":"","done":false,"alive":true,"lost":[],"unbalanced":false,"down":false,"frog":false,"pieces":false,"guarding":false,"loaded":false,"bow":false,"meditated":false,"burning":false,"plague":-1,"controller_by":-1,"sprint_mod":0,"owner":-1}
 		if d.kind=="ziggy":p.hp=die()*3;p.max_hp=p.hp
 		if d.kind=="skeleton":p.current="guard"
+		# regola modificata: le frecce sono contate, 5 + un dado per arciere
+		p.arrows=(5+die()) if house_rules and d.moves.has("shoot") else -1
+		if p.arrows>0:note("%s ha %d frecce nella faretra." % [p.name,p.arrows])
 		state.fighters.append(p)
 	note("Blood Master · schieramento nell’arena")
 	state.active=0
@@ -161,6 +164,7 @@ func legal_moves(i: int) -> Array:
 		if m.get("spell",false) and (p.down or p.magic<m.cost) and not (m.id=="summon" and not p.down and own_golem(i)>=0):continue
 		if m.fatigue>0 and m.attack!=null and (p.unbalanced or (prev.get("attack")!=null and prev.get("fatigue",0)>0)):continue
 		if id=="shoot" and not p.loaded:continue
+		if id=="load" and int(p.get("arrows",-1))==0:continue   # faretra vuota
 		if p.bow and m.attack!=null and id!="shoot":continue
 		if p.bow and not m.blue.is_empty():continue
 		if not state.war and (m.attack!=null or m.get("spell",false) and m.target=="enemy"):continue
@@ -355,6 +359,7 @@ func act(command: Dictionary) -> bool:
 			# The player can choose a cell along the declared route on a failed balance roll.
 			state.pending={"kind":"stumble","actor":i,"path":path,"facing":facing,"move":m.id}
 			state.phase="stumble";note(p.name+" perde l’equilibrio durante lo sprint.");return true
+		p.path=path.duplicate()   # per la mappa 3D: il percorso esagono per esagono (mai attraverso gli altri)
 		for step in path:
 			p.cell=step;_cross_effects(i)
 			if not p.alive:break
@@ -424,6 +429,8 @@ func _attack_pending() -> void:
 		effect=effect or state.get("spin",{}).get("effect",false)
 	if m.id=="shoot":
 		p.loaded=false
+		if int(p.get("arrows",-1))>0:
+			p.arrows-=1;note("%s: %s." % [p.name,"faretra vuota" if p.arrows==0 else "restano %d frecce" % p.arrows])
 		state.shots=int(state.get("shots",0))+1                 # per la mappa 3D: la freccia vola verso il bersaglio
 		state.last_shot={"actor":i,"victim":int(pending.victim)}
 	_finish_action(i,m,effect,int(pending.facing))

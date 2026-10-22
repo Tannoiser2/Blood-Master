@@ -196,7 +196,7 @@ func _show_menu() -> void:
 	top.add_child(spacer());top.add_child(label("Regole",14,MUTED))
 	for option in [[false,"Originali"],[true,"Modificate"]]:
 		var rb=button(option[1],func():house_rules=option[0];_save_settings();_show_menu())
-		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde, tridente e il bastone di Zenyo l'affondo e la carica colpiscono fino a due esagoni davanti." if option[0] else "Il regolamento originale di Blood Master."
+		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde, tridente e il bastone di Zenyo l'affondo e la carica colpiscono fino a due esagoni davanti; gli arcieri hanno 5 + un dado di frecce." if option[0] else "Il regolamento originale di Blood Master."
 		if house_rules==option[0]:rb.add_theme_color_override("font_color",GOLD)
 		top.add_child(rb)
 	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))
@@ -471,7 +471,8 @@ func _refresh_portraits() -> void:
 				info.add_child(_meter(float(hp)/maxf(1,float(p.max_hp)),Color("5fd068"),"%d ferite"%hp,bw))
 				info.add_child(_meter(clampf(float(fat)/10.0,0,1),Color("b48cff"),"%d fatica"%fat,bw))
 				if mage:info.add_child(_meter(clampf(float(p.magic)/15.0,0,1),Color("6fa8ff"),"%d punti magia"%int(p.magic),bw))
-			var nums=label("%d ferite · %d fatica%s"%[hp,fat," · %d magia"%int(p.magic) if mage else ""],10,MUTED);nums.clip_text=true;nums.custom_minimum_size.x=bw;info.add_child(nums)
+			var arrows=int(p.get("arrows",-1))
+			var nums=label("%d ferite · %d fatica%s%s"%[hp,fat," · %d magia"%int(p.magic) if mage else ""," · %d frecce"%arrows if arrows>=0 else ""],10,MUTED);nums.clip_text=true;nums.custom_minimum_size.x=bw;info.add_child(nums)
 			# la pedina giocata (piccola) e la formula col dado; grande e in evidenza mentre agisce
 			var nt=notes.get(i,{});var mv_def=game.move(p) if p.alive else {}
 			if mv_def.is_empty() or (str(nt.get("move",""))=="" and not on) or (tiny and not on):continue
