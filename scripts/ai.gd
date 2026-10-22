@@ -130,6 +130,8 @@ static func _move_score(game: BloodRules,i: int,k: String,m: Dictionary) -> floa
 	# valore di una cella di arrivo
 	var p=game.state.fighters[i];var trouble=_trouble(game,i);var s=0.0
 	var focus=_focus(game,i)
+	if game.pickup(k)!="" and p.character!="golem":   # zona di ristoro: vale quanto le ferite e la fatica da recuperare
+		s+=minf(float(p.max_hp-p.hp),3.5)*2.2+float(p.fatigue)*1.5+(trouble*6.0)
 	var archer=game.definition(p).moves.has("shoot") and bool(p.get("bow",false))
 	var mage=bool(game.definition(p).get("mage",false))
 	if trouble>TROUBLE_RETREAT or archer or (mage and MAGES_KEEP_DISTANCE):

@@ -86,6 +86,34 @@ func _place_scenery() -> void:
 		state.obstacles.append({"cell":k,"kind":kind,"turn":rng.randi_range(0,5)})
 		if not _arena_connected():state.obstacles.pop_back()   # le due squadre devono potersi raggiungere
 	if not state.obstacles.is_empty():note("Elementi di scena nell'arena: %d (regola modificata)." % state.obstacles.size())
+# --- zone di ristoro (regola modificata) -------------------------------------------------------
+# pozioni e esagoni di mana luccicanti: chi ci entra recupera un dado di ferite e tutta la fatica.
+# La pozione sparisce; il mana si spegne e alla fine del turno si riaccende altrove.
+func pickup(k: String) -> String:
+	for o in state.get("pickups",[]):
+		if str(o.cell)==k:return str(o.kind)
+	return ""
+func _free_pickup_cell() -> String:
+	var keep={}
+	for t in 2:
+		for k in start_cells(t)+entry_cells(t):keep[k]=true
+	var free=cells.keys().filter(func(k):return not keep.has(k) and obstacle(k)=="" and pickup(k)=="" and at(k)==-1 and hazard(k).is_empty())
+	return "" if free.is_empty() else str(free[rng.randi_range(0,free.size()-1)])
+func _place_pickups() -> void:
+	var potions=2 if die()<=3 else 3;var mana=1 if die()<=4 else 2
+	for n in potions+mana:
+		var k=_free_pickup_cell()
+		if k!="":state.pickups.append({"cell":k,"kind":"potion" if n<potions else "mana"})
+	if not state.pickups.is_empty():note("Zone di ristoro nell'arena: %d pozioni e %d esagoni di mana (regola modificata)." % [potions,mana])
+func _take_pickup(i: int) -> void:
+	var p=state.fighters[i];var kind=pickup(str(p.cell))
+	if kind=="" or not p.alive:return
+	if definition(p).kind=="golem":return   # il Golem non beve e non assorbe mana
+	state.pickups=state.pickups.filter(func(o):return str(o.cell)!=str(p.cell))
+	var d=die();var before=int(p.hp);p.hp=mini(int(p.max_hp),before+d);var tired=int(p.fatigue);p.fatigue=0
+	note("%s %s: dado %d, recupera %d ferite%s." % [p.name,"beve una pozione" if kind=="potion" else "assorbe il mana luccicante",d,int(p.hp)-before,(" e tutta la fatica (%d)" % tired) if tired>0 else ""])
+	state.last_pickup={"fighter":i,"cell":str(p.cell),"kind":kind,"turn":int(state.get("turn",0))}
+	if kind=="mana":state.mana_later=int(state.get("mana_later",0))+1
 func _arena_connected() -> bool:
 	var a=start_cells(0);var b=start_cells(1)
 	if a.is_empty() or b.is_empty():return true
@@ -143,8 +171,8 @@ static func _restore_numbers(value):
 #  arrows: frecce contate, 5 + un dado per arciere
 #  zoc: zone di controllo (ci si ferma accanto al nemico, sganciarsi costa un colpo)
 #  scenery: elementi di scena a caso nell'arena
-const HOUSE_RULES=["fall","push","reach","arrows","zoc","scenery","golem"]
-var house: Dictionary={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true,"golem":true}
+const HOUSE_RULES=["fall","push","reach","arrows","zoc","scenery","golem","restore"]
+var house: Dictionary={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true,"golem":true,"restore":true}
 var house_rules:=true:   # compatibilità: tutte accese o tutte spente
 	set(v):
 		house_rules=v
@@ -170,6 +198,8 @@ func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int
 		state.fighters.append(p)
 	state.obstacles=[]
 	if bool(house.get("scenery",false)):_place_scenery()
+	state.pickups=[];state.mana_later=0
+	if bool(house.get("restore",false)):_place_pickups()
 	note("Blood Master · schieramento nell’arena")
 	state.active=0
 
@@ -466,6 +496,7 @@ func act(command: Dictionary) -> bool:
 			if _zoc_strikes(i,p.cell,step):struck=true;break   # colpito mentre si sganciava: si ferma lì
 			p.cell=step;walked.append(step);_cross_effects(i)
 			if not p.alive:break
+			_take_pickup(i)
 		p.path=walked   # per la mappa 3D: il percorso esagono per esagono (mai attraverso gli altri)
 		# fermato durante il movimento (colpo di ZOC, fuoco...): l'azione finisce lì.
 		# Chi era già a terra o sbilanciato e non è stato colpito prosegue (Rialzarsi lo rimette in piedi)
@@ -775,6 +806,13 @@ func _frog_turn(p: Dictionary) -> void:
 	p.done=true
 func finish_turn() -> void:
 	if state.phase in ["finished","round_result","campaign_finished"]:return
+	for i in state.fighters.size():   # spinto, teletrasportato o scivolato su una zona di ristoro: la usa ora
+		var q=state.fighters[i]
+		if q.alive and str(q.cell)!="" and pickup(str(q.cell))!="" and q.character!="golem":_take_pickup(i)
+	for n in int(state.get("mana_later",0)):   # il mana consumato si riaccende in un altro punto dell'arena
+		var k=_free_pickup_cell()
+		if k!="":state.pickups.append({"cell":k,"kind":"mana"});note("Il mana torna a luccicare in un altro punto dell'arena.")
+	state.mana_later=0
 	# End-of-turn recovery is determined by the piece that remains on the board.
 	for i in state.fighters.size():
 		var p=state.fighters[i]

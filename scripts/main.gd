@@ -40,14 +40,15 @@ var board_grid=false
 var blood_on=false
 var sound_on=true
 var labels_on=true
-var house={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true,"golem":true}   # regole modificate, una per una
+var house={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true,"golem":true,"restore":true}   # regole modificate, una per una
 const HOUSE_INFO=[["fall","Cadute col dado","La pedina «a terra» fa cadere solo con 1-2 sul dado; con 6 ci si rimette in guardia."],
 	["push","Arretramento sicuro","Chi viene sbilanciato arretra sempre di almeno un esagono: scontri più mobili."],
 	["reach","Armi lunghe","Lance, alabarde, tridente e il bastone di Zenyo: affondo e carica colpiscono anche il secondo esagono davanti."],
 	["arrows","Frecce contate","Ogni arciere ha 5 + un dado di frecce; finite quelle si torna alla spada."],
 	["zoc","Zone di controllo","Entrando accanto a un nemico ci si ferma; chi si sgancia da un nemico che non ha ancora agito subisce un suo colpo."],
 	["scenery","Scenografia","Colonne, massi, alberi, pozze e macerie a caso nell'arena: invalicabili; colonne, massi e alberi coprono dai tiri."],
-	["golem","Golem più resistente","Il Golem non viene sbilanciato e non va in polvere: crolla solo a 40 ferite o se il mago che l'ha evocato è fuori combattimento; non serve rigiocare Evocazione per tenerlo in campo."]]
+	["golem","Golem più resistente","Il Golem non viene sbilanciato e non va in polvere: crolla solo a 40 ferite o se il mago che l'ha evocato è fuori combattimento; non serve rigiocare Evocazione per tenerlo in campo."],
+	["restore","Zone di ristoro","Pozioni ed esagoni di mana luccicanti sparsi nell'arena: chi ci entra recupera un dado di ferite e tutta la fatica. La pozione sparisce, il mana si riaccende altrove a fine turno."]]
 var clear_plates=false
 var _last_hp={}
 var showing_game=false

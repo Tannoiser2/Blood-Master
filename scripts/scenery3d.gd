@@ -11,7 +11,70 @@ static func build(kind: String,seed_n: int) -> Node3D:
 		"tree":_tree(n,seed_n)
 		"water":_water(n,seed_n)
 		"rubble":_rubble(n,seed_n)
+		"potion":_potion(n,seed_n)
+		"mana":_mana(n,seed_n)
 	return n
+
+# --- zone di ristoro (regola modificata) --------------------------------------------------------
+static func _glow_shader(col: Color,alpha: float,ring: bool) -> ShaderMaterial:
+	var sh=Shader.new();sh.code="""
+shader_type spatial;
+render_mode blend_add,unshaded,cull_disabled,depth_draw_never;
+uniform vec4 col;
+uniform float alpha;
+uniform bool ring;
+void fragment(){
+	float pulse=.65+.35*sin(TIME*2.6);
+	float a=alpha*pulse;
+	if(ring){
+		float r=length(UV-vec2(.5))*2.0;
+		float waves=.5+.5*sin(r*18.0-TIME*4.0);
+		a*=clamp(1.15-r,0.0,1.0)*(.45+.55*waves);
+	}
+	ALBEDO=col.rgb;ALPHA=clamp(a,0.0,1.0);
+}"""
+	var m=ShaderMaterial.new();m.shader=sh;m.set_shader_parameter("col",col);m.set_shader_parameter("alpha",alpha);m.set_shader_parameter("ring",ring)
+	return m
+static func _sparks(n: Node3D,col: Color,amount: int,spread: float,height: float) -> void:
+	var p=CPUParticles3D.new();p.amount=amount;p.lifetime=1.6;p.emission_shape=CPUParticles3D.EMISSION_SHAPE_SPHERE;p.emission_sphere_radius=spread
+	p.direction=Vector3.UP;p.spread=12;p.initial_velocity_min=height*.25;p.initial_velocity_max=height*.55;p.gravity=Vector3.ZERO;p.scale_amount_min=.5;p.scale_amount_max=1.2
+	var q=QuadMesh.new();q.size=Vector2(.03,.03);var m=StandardMaterial3D.new();m.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;m.albedo_color=col;m.billboard_mode=BaseMaterial3D.BILLBOARD_ENABLED
+	m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;m.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;q.material=m;p.mesh=q
+	var g=Gradient.new();g.set_color(0,Color(col,1));g.set_color(1,Color(col,0));p.color_ramp=g
+	p.position.y=.08;n.add_child(p)
+static func _potion(n: Node3D,seed_n: int) -> void:
+	# boccetta di vetro col liquido rosso che brilla, su un cuscinetto di sassi
+	var stone=_mat(Color(.5,.45,.4),Color(.33,.3,.27),.1,seed_n,.9)
+	for k in 5:
+		var a=k*TAU/5.0;_mesh(n,_rock(.05,seed_n+k,.6,.5),stone,Vector3(cos(a)*.13,0,sin(a)*.13))
+	var bottle=Node3D.new();bottle.name="Bottiglia";bottle.position.y=.03;bottle.scale=Vector3.ONE*2.0;n.add_child(bottle)
+	var liquid=StandardMaterial3D.new();liquid.albedo_color=Color(.85,.08,.12);liquid.emission_enabled=true;liquid.emission=Color(1,.15,.2);liquid.emission_energy_multiplier=3.5
+	var body=SphereMesh.new();body.radius=.075;body.height=.15;_mesh(bottle,body,liquid,Vector3(0,.09,0))
+	var glass=StandardMaterial3D.new();glass.albedo_color=Color(.8,.9,1,.28);glass.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;glass.roughness=.05;glass.metallic=.2
+	var shell=SphereMesh.new();shell.radius=.085;shell.height=.17;_mesh(bottle,shell,glass,Vector3(0,.09,0))
+	var neck=CylinderMesh.new();neck.top_radius=.022;neck.bottom_radius=.03;neck.height=.08;_mesh(bottle,neck,glass,Vector3(0,.2,0))
+	var cork=CylinderMesh.new();cork.top_radius=.026;cork.bottom_radius=.022;cork.height=.035
+	var cm=StandardMaterial3D.new();cm.albedo_color=Color(.55,.38,.22);cm.roughness=.9;_mesh(bottle,cork,cm,Vector3(0,.25,0))
+	var halo=QuadMesh.new();halo.size=Vector2(.9,.9);var hm=_glow_shader(Color(1,.2,.25),.9,true)
+	_mesh(n,halo,hm,Vector3(0,.012,0),Vector3(-PI/2,0,0))
+	var l=OmniLight3D.new();l.light_color=Color(1,.3,.3);l.light_energy=2.2;l.omni_range=1.2;l.position.y=.35;n.add_child(l)
+	_sparks(n,Color(1,.45,.45),16,.12,.6)
+static func _mana(n: Node3D,seed_n: int) -> void:
+	# esagono di mana: lastra di luce azzurra che pulsa, cristalli e scintille che salgono
+	var plate=CylinderMesh.new();plate.top_radius=.48;plate.bottom_radius=.48;plate.height=.005;plate.radial_segments=6
+	_mesh(n,plate,_glow_shader(Color(.2,.65,1),1.0,true),Vector3(0,.015,0),Vector3(0,PI/6,0))
+	var beam=CylinderMesh.new();beam.top_radius=.3;beam.bottom_radius=.42;beam.height=.9;beam.radial_segments=6;beam.cap_top=false;beam.cap_bottom=false
+	var bm=_glow_shader(Color(.3,.7,1),.22,false);_mesh(n,beam,bm,Vector3(0,.45,0),Vector3(0,PI/6,0))   # colonna di luce
+	var rim=TorusMesh.new();rim.inner_radius=.44;rim.outer_radius=.47;rim.rings=6;rim.ring_segments=4
+	var rm=StandardMaterial3D.new();rm.albedo_color=Color(.3,.75,1);rm.emission_enabled=true;rm.emission=Color(.35,.8,1);rm.emission_energy_multiplier=2.5
+	_mesh(n,rim,rm,Vector3(0,.02,0),Vector3(0,PI/6,0))
+	var cm=StandardMaterial3D.new();cm.albedo_color=Color(.55,.85,1,.75);cm.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;cm.emission_enabled=true;cm.emission=Color(.3,.7,1);cm.emission_energy_multiplier=1.6;cm.roughness=.1
+	for k in 3:   # cristalli
+		var c=CylinderMesh.new();c.top_radius=0;c.bottom_radius=.05;c.height=.26+.07*k;c.radial_segments=6
+		var a=k*TAU/3.0+float(seed_n%7)
+		_mesh(n,c,cm,Vector3(cos(a)*.3,c.height*.5,sin(a)*.3),Vector3(.15*cos(a),0,.15*sin(a)))
+	var l=OmniLight3D.new();l.light_color=Color(.4,.75,1);l.light_energy=1.4;l.omni_range=1.1;l.position.y=.25;n.add_child(l)
+	_sparks(n,Color(.5,.85,1),18,.35,.6)
 
 static func _noise_tex(c1: Color,c2: Color,freq: float,seed_n: int,normal:=false) -> NoiseTexture2D:
 	var t=NoiseTexture2D.new();var f=FastNoiseLite.new();f.seed=seed_n;f.frequency=freq;f.fractal_octaves=4;t.noise=f;t.seamless=true;t.width=256;t.height=256

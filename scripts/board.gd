@@ -67,6 +67,13 @@ func _draw() -> void:
 			"water":draw_circle(c,r*.85,Color(.2,.45,.75,.85));draw_arc(c,r*.5,0,TAU,24,Color(.7,.85,1,.7),2.0*scale_factor)
 			"rubble":
 				for q in 6:draw_circle(c+Vector2.from_angle(q*1.05)*r*.45,r*.22,Color(.5,.44,.38))
+	for o in game.state.get("pickups",[]):   # zone di ristoro: pozione rossa, esagono di mana azzurro
+		if not game.cells.has(str(o.cell)):continue
+		var c=screen(world(str(o.cell)));var r=60*scale_factor
+		if str(o.kind)=="potion":
+			draw_circle(c,r*.75,Color(1,.3,.3,.18));draw_circle(c+Vector2(0,r*.12),r*.32,Color(.85,.1,.15));draw_rect(Rect2(c+Vector2(-r*.1,-r*.5),Vector2(r*.2,r*.3)),Color(.8,.9,1,.8))
+		else:
+			draw_colored_polygon(hexagon(c,r*.9),Color(.3,.7,1,.35));draw_polyline(hexagon(c,r*.9),Color(.5,.85,1),2.5*scale_factor,true)
 	for e in game.state.effects:
 		var path="res://assets/tokens/effect_"+("fire" if e.kind=="livingfire" else e.kind)+".webp"
 		var tex=texture(path)

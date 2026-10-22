@@ -362,6 +362,30 @@ func copy_from(b) -> void:
 	sync()
 
 var scenery_root: Node3D;var scenery_key=""
+var pickup_nodes={}          # zone di ristoro in scena: "cella|tipo" -> nodo
+var initial_pickups=null     # come erano a inizio partita (per il replay)
+# pozioni e mana (regola modificata): compaiono, e quando vengono presi esplodono in scintille e spariscono
+func _show_pickups(list) -> void:
+	if list==null:list=[]
+	var want={}
+	for o in list:
+		if game.cells.has(str(o.cell)):want[str(o.cell)+"|"+str(o.kind)]=o
+	for key in pickup_nodes.keys():
+		if want.has(key):continue
+		var n=pickup_nodes[key];pickup_nodes.erase(key)
+		if not is_instance_valid(n):continue
+		var col=Color(1,.35,.35) if key.ends_with("potion") else Color(.45,.8,1)
+		_burst(n.global_position+Vector3(0,.2,0),col,70,.45);_sfx("heal",n.global_position,0.0,-4.0)
+		var tw=create_tween();tw.tween_property(n,"scale",Vector3(1.4,.05,1.4),.35);tw.tween_callback(n.queue_free)
+	for key in want:
+		if pickup_nodes.has(key) and is_instance_valid(pickup_nodes[key]):continue
+		var o=want[key];var n=Scenery3D.build(str(o.kind),str(o.cell).hash())
+		n.position=cell_pos(str(o.cell));viewport.add_child(n);pickup_nodes[key]=n
+		n.scale=Vector3.ONE*.05;create_tween().tween_property(n,"scale",Vector3.ONE,.5).set_trans(Tween.TRANS_BACK)
+		var b=n.get_node_or_null("Bottiglia")
+		if b:   # la boccetta galleggia e gira piano
+			var bt=b.create_tween().set_loops();bt.tween_property(b,"position:y",.07,1.2).set_trans(Tween.TRANS_SINE);bt.tween_property(b,"position:y",.03,1.2).set_trans(Tween.TRANS_SINE)
+			var rt=b.create_tween().set_loops();rt.tween_property(b,"rotation:y",TAU,6.0).from(0.0)
 func _ensure_scenery() -> void:
 	# gli elementi di scena (regola modificata) non cambiano durante la partita: si costruiscono una volta
 	var obs: Array=game.state.get("obstacles",[]) if game!=null and not game.state.is_empty() else []
@@ -378,6 +402,7 @@ func _ensure_scenery() -> void:
 func sync() -> void:
 	if game==null or game.state.is_empty():return
 	_ensure_scenery()
+	if initial_pickups==null and int(game.state.get("turn",0))<=1:initial_pickups=game.state.get("pickups",[]).duplicate(true)
 	if replaying:return
 	_ui_events()
 	var step=[]   # tracce del passo: {i, clip, from, to, yaw, delay}
@@ -473,13 +498,14 @@ func sync() -> void:
 			var q=game.state.fighters[i]
 			states[i]={"burning":bool(q.get("burning",false)) and q.alive,"shield":bool(q.get("shield",false)) and q.alive,"plague":int(q.get("plague",-1))>=0 and q.alive,
 				"control":int(q.get("controller_by",-1))>=0 and q.alive,"frog":bool(q.get("frog",false))}
-		step.append({"labels":labels,"turn":int(game.state.get("turn",0)),"effects":game.state.effects.duplicate(true),"states":states})
+		step.append({"labels":labels,"turn":int(game.state.get("turn",0)),"effects":game.state.effects.duplicate(true),"states":states,"pickups":game.state.get("pickups",[]).duplicate(true)})
 		for tr in step:   # chi muore resta visibile finché la sua animazione non è finita
 			if tr.get("dead",false) and minis.has(int(tr.get("i",-1))):minis[int(tr.i)]["dying"]=true
 		if is_visible_in_tree():
 			queue.append(step)
 			if not playing:_play_queue()
 		else:history.append(step)   # mappa 3D nascosta: registro per il replay, senza animare
+	elif not playing:_show_pickups(game.state.get("pickups",[]))
 	_draw_overlay()
 	_refresh_tokens()
 
@@ -611,6 +637,7 @@ func _play_step(step: Array,fluid: bool) -> void:
 	for t in step:
 		if t.has("labels"):
 			if t.has("effects"):_show_effects(t.effects)
+			if t.has("pickups"):_show_pickups(t.pickups)
 			if t.has("states"):_apply_states(t.states)
 			if fluid:
 				for i in t.labels:
@@ -1559,6 +1586,9 @@ func replay() -> void:
 		if minis[i].get("model")!=null and not minis[i].has("frog_node"):minis[i].model.visible=true
 		minis[i].erase("buried");minis[i].erase("dying")
 	clear_blood();clear_arrows();_show_effects([]);_apply_states({})
+	for key in pickup_nodes:
+		if is_instance_valid(pickup_nodes[key]):pickup_nodes[key].queue_free()
+	pickup_nodes={};_show_pickups(initial_pickups)
 	await get_tree().create_timer(.6).timeout
 	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
 	# (ognuno alla sua velocità), poi attacchi e difese; il turno dopo parte subito.
@@ -1606,6 +1636,7 @@ func _play_turn(group: Array) -> void:
 	for step in group:
 		for t in step:
 			if t.has("effects"):_show_effects(t.effects)
+			if t.has("pickups"):_show_pickups(t.pickups)
 			if t.has("states"):_apply_states(t.states)
 	for i in labels:
 		if minis.has(i):_set_status(i,labels[i][0],labels[i][1],labels[i][2],labels[i][3] if labels[i].size()>3 else -1)
