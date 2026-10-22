@@ -105,9 +105,9 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO)
 		var sc=view*center
 		var bar=Rect2(sc+Vector2(-radius,radius+9),Vector2(radius*2,5))
-		draw_rect(bar,Color("131d20"));bar.size.x*=clampf(float(p.hp)/maxf(1,p.max_hp),0,1);draw_rect(bar,color)
+		draw_rect(bar,Color("1a110b"));bar.size.x*=clampf(float(p.hp)/maxf(1,p.max_hp),0,1);draw_rect(bar,color)
 		var tired=Rect2(sc+Vector2(-radius,radius+16),Vector2(radius*2,4))   # fatica, piena a 10 punti
-		draw_rect(tired,Color("131d20"));tired.size.x*=clampf(float(int(p.fatigue)+int(p.permanent))/10.0,0,1);draw_rect(tired,Color("b48cff"))
+		draw_rect(tired,Color("1a110b"));tired.size.x*=clampf(float(int(p.fatigue)+int(p.permanent))/10.0,0,1);draw_rect(tired,Color("b48cff"))
 		draw_set_transform_matrix(view)
 		if p.burning:draw_circle(center+Vector2(radius,-radius),5,Color("f5a34b"))
 		if p.fatigue>0:draw_circle(center+Vector2(-radius,-radius),4,Color("a38bdd"))
@@ -117,7 +117,7 @@ func hexagon(center: Vector2,radius: float) -> PackedVector2Array:
 	for i in 7:poly.append(center+Vector2(cos(i*PI/3-PI/2),sin(i*PI/3-PI/2))*radius)
 	return poly
 func _background() -> StyleBoxFlat:
-	var s=StyleBoxFlat.new();s.bg_color=Color("101b1c");s.set_corner_radius_all(16);return s
+	var s=StyleBoxFlat.new();s.bg_color=Color("140e0a");s.set_corner_radius_all(8);s.set_border_width_all(2);s.border_color=Color("8a6a35");return s
 func _gui_input(event: InputEvent) -> void:
 	if game==null:return
 	if event is InputEventMouseButton:

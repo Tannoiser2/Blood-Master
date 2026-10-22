@@ -78,7 +78,7 @@ func _ready() -> void:
 	viewport=SubViewport.new();viewport.own_world_3d=true;viewport.audio_listener_enable_3d=true;   # senza questo i suoni 3D del viewport non si sentono
 	viewport.msaa_3d=Viewport.MSAA_2X;add_child(viewport)
 	var env=WorldEnvironment.new();env.environment=Environment.new()
-	env.environment.background_mode=Environment.BG_COLOR;env.environment.background_color=Color("101b1c")
+	env.environment.background_mode=Environment.BG_COLOR;env.environment.background_color=Color("140e0a")
 	env.environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;env.environment.ambient_light_color=Color("c4d6dc");env.environment.ambient_light_energy=.7
 	env.environment.tonemap_mode=Environment.TONE_MAPPER_FILMIC;viewport.add_child(env)
 	for cfg in [[Vector3(-4,9,6),Color("fff0d0"),2.2,true],[Vector3(6,5,-3),Color("a8dce8"),1.0,false]]:

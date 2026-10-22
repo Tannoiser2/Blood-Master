@@ -1,10 +1,14 @@
 extends Control
 
-const BG=Color("0b1215")
-const PANEL=Color("152024")
-const GOLD=Color("dfbd7f")
-const INK=Color("e9e5da")
-const MUTED=Color("9eafad")
+const BG=Color("100b08")
+const PANEL=Color("211812")
+const GOLD=Color("e6bf6c")
+const INK=Color("f0e4c8")
+const MUTED=Color("b8a27c")
+const DARK_INK=Color("2a1a0e")   # testo scuro su oro e pergamena
+const UI="res://assets/ui/fantasy/"
+# tema fantasy in stile Reborn: Cinzel Decorative per i titoli, Cinzel per intestazioni e pulsanti, Alegreya per il testo
+var font_body: Font;var font_head: Font;var font_title: Font
 var game=BloodRules.new()
 var board: ArenaBoard
 var board3d: ArenaBoard3D
@@ -71,37 +75,55 @@ func _ready() -> void:
 		roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
 		_start_local();return
 	_show_splash()
+func _font(path: String,weight: int) -> Font:
+	var f=FontVariation.new();f.base_font=load(path);f.variation_opentype={TextServerManager.get_primary_interface().name_to_tag("wght"):weight};return f
+func tex_box(file: String,margin: int,cl:=14,ct:=9) -> StyleBoxTexture:
+	var b=StyleBoxTexture.new();b.texture=load(UI+file)
+	b.texture_margin_left=margin;b.texture_margin_right=margin;b.texture_margin_top=margin;b.texture_margin_bottom=margin
+	b.content_margin_left=cl;b.content_margin_right=cl;b.content_margin_top=ct;b.content_margin_bottom=ct;return b
 func _build_theme() -> void:
-	var t=Theme.new();t.default_font_size=17
+	font_body=_font("res://assets/fonts/Alegreya.ttf",500);font_head=_font("res://assets/fonts/Cinzel.ttf",700);font_title=load("res://assets/fonts/CinzelDecorative-Bold.ttf")
+	var t=Theme.new();t.default_font_size=17;t.default_font=font_body
 	t.set_color("font_color","Label",INK);t.set_color("font_color","Button",INK)
 	t.set_color("font_color","RichTextLabel",INK)
 	for typ in ["Button","OptionButton"]:
+		t.set_font("font",typ,font_head)
 		for state in ["normal","hover","pressed","disabled","focus"]:
-			var b=box(Color("233234") if state=="normal" else (Color("40534c") if state in ["hover","focus"] else Color("172125")),8)
-			b.content_margin_left=15;b.content_margin_right=15;b.content_margin_top=10;b.content_margin_bottom=10
-			if state=="focus":b.set_border_width_all(2);b.border_color=GOLD
+			var b=tex_box({"normal":"btn.png","hover":"btn_hover.png","pressed":"btn_pressed.png","disabled":"btn.png","focus":"btn_hover.png"}[state],10,16,10)
+			if state=="disabled":b.modulate_color=Color(.6,.6,.6)
+			if state=="focus":b.modulate_color=Color(1,1,1,0)
 			t.set_stylebox(state,typ,b)
-		t.set_color("font_disabled_color",typ,Color("65736e"))
-	t.set_stylebox("normal","LineEdit",box(Color("0c171a"),6))
-	t.set_stylebox("panel","PanelContainer",box(PANEL,12))
+		t.set_color("font_hover_color",typ,GOLD.lightened(.3));t.set_color("font_pressed_color",typ,GOLD)
+		t.set_color("font_disabled_color",typ,Color("7d6a52"))
+	for st in ["normal","hover","pressed","hover_pressed","focus","disabled"]:t.set_stylebox(st,"CheckBox",StyleBoxEmpty.new())
+	t.set_font("font","CheckBox",font_body);t.set_color("font_color","CheckBox",INK);t.set_color("font_hover_color","CheckBox",GOLD.lightened(.3));t.set_color("font_pressed_color","CheckBox",INK)
+	t.set_stylebox("normal","LineEdit",box(Color("120c08"),4))
+	t.set_stylebox("panel","PanelContainer",tex_box("panel.png",22,12,12))
+	t.set_stylebox("panel","TooltipPanel",tex_box("panel_light.png",22,12,10))
+	t.set_color("font_color","TooltipLabel",INK);t.set_font("font","TooltipLabel",font_body)
 	t.set_constant("separation","VBoxContainer",10);t.set_constant("separation","HBoxContainer",10)
 	t.set_color("font_color","OptionButton",INK)
-	t.set_stylebox("background","ProgressBar",box(Color("0a1518"),4))
-	t.set_stylebox("fill","ProgressBar",box(Color("65bfb0"),4))
+	t.set_stylebox("background","ProgressBar",box(Color("140d09"),4))
+	t.set_stylebox("fill","ProgressBar",box(Color("c9a24e"),4))
 	theme=t
 	var bg=ColorRect.new();bg.color=BG;bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);bg.mouse_filter=Control.MOUSE_FILTER_IGNORE;add_child(bg)
+	var bgt=TextureRect.new();bgt.texture=load(UI+"bg.webp");bgt.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;bgt.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bgt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);bgt.mouse_filter=Control.MOUSE_FILTER_IGNORE;add_child(bgt)
 	var margin=MarginContainer.new();margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left","right","top","bottom"]:margin.add_theme_constant_override("margin_"+side,20)
 	add_child(margin);page=VBoxContainer.new();margin.add_child(page)
 func box(color: Color,radius: int=8) -> StyleBoxFlat:
 	var b=StyleBoxFlat.new();b.bg_color=color;b.set_corner_radius_all(radius);return b
 func label(text: String,font_size: int=17,color: Color=INK) -> Label:
-	var l=Label.new();l.text=text;l.add_theme_font_size_override("font_size",font_size);l.add_theme_color_override("font_color",color);return l
+	var l=Label.new();l.text=text;l.add_theme_font_size_override("font_size",font_size);l.add_theme_color_override("font_color",color)
+	if font_head and (color==GOLD or font_size>=20):l.add_theme_font_override("font",font_head)   # intestazioni e titoli in Cinzel
+	return l
 func button(text: String,callback: Callable,primary: bool=false) -> Button:
 	var b=Button.new();b.text=text;b.pressed.connect(func():if board3d!=null and is_instance_valid(board3d):board3d.ui_sfx("click",-14.0));b.pressed.connect(callback);b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	if primary:
-		var s=box(GOLD);s.content_margin_left=20;s.content_margin_right=20;s.content_margin_top=13;s.content_margin_bottom=13
-		b.add_theme_stylebox_override("normal",s);b.add_theme_color_override("font_color",Color("151b19"))
+		b.add_theme_stylebox_override("normal",tex_box("btn_gold.png",10,22,13));b.add_theme_stylebox_override("hover",tex_box("btn_gold_hover.png",10,22,13))
+		b.add_theme_stylebox_override("pressed",tex_box("btn_on.png",10,22,13))
+		for c in ["font_color","font_hover_color","font_pressed_color","font_focus_color"]:b.add_theme_color_override(c,DARK_INK)
 	return b
 func clear(node: Node) -> void:
 	for c in node.get_children():node.remove_child(c);c.queue_free()
@@ -201,14 +223,15 @@ func _show_splash() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);bg.modulate=Color(.38,.34,.32);layer.add_child(bg)
 	var center=CenterContainer.new();center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);layer.add_child(center)
 	var v=VBoxContainer.new();v.alignment=BoxContainer.ALIGNMENT_CENTER;v.add_theme_constant_override("separation",14);center.add_child(v)
-	var t=label("BLOOD MASTER",86,GOLD);t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;t.add_theme_constant_override("outline_size",10);t.add_theme_color_override("font_outline_color",Color(0,0,0,.8));v.add_child(t)
-	var st=label("EDIZIONE DELUXE · GLADIATORI, MAGHI E SCHELETRI NELL'ARENA",15,INK);st.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(st)
+	var t=label("BLOOD MASTER",86,GOLD);t.add_theme_font_override("font",font_title);t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;t.add_theme_constant_override("outline_size",10);t.add_theme_color_override("font_outline_color",Color(0,0,0,.8));v.add_child(t)
+	var st=label("EDIZIONE DELUXE · GLADIATORI E MAGHI NELL'ARENA",16,GOLD.lightened(.15));st.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(st)
 	var faces=HBoxContainer.new();faces.alignment=BoxContainer.ALIGNMENT_CENTER;faces.add_theme_constant_override("separation",6);v.add_child(faces)
 	for id in ["gascor","zenyo","kylvia","ut","shannon","gandy","ziggy","thorn","sanguinaria","ramok","nuchra","zak","shaara","anteos"]:
 		var f=TextureRect.new();var fp="res://assets/ui/faces/%s.webp"%id
 		if not ResourceLoader.exists(fp):continue
 		f.texture=load(fp);f.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;f.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;f.custom_minimum_size=Vector2(58,58)
-		f.tooltip_text=game.catalog[id].name+" · "+game.catalog[id].title;faces.add_child(f)
+		f.tooltip_text=game.catalog[id].name+" · "+game.catalog[id].title
+		var fr=PanelContainer.new();var fs=box(Color(0,0,0,.4),4);fs.set_border_width_all(2);fs.border_color=GOLD.darkened(.2);fr.add_theme_stylebox_override("panel",fs);fr.add_child(f);faces.add_child(fr)
 	v.add_child(Control.new())
 	var col=VBoxContainer.new();col.add_theme_constant_override("separation",10);col.custom_minimum_size.x=340;v.add_child(col)
 	for item in [["Nuovo scontro",_show_menu,true],["Riprendi la partita salvata",_load_game,false],["Regolamento",_open_manual,false],["Crediti",_credits,false]]:
@@ -271,14 +294,15 @@ func _show_menu() -> void:
 	# due colonne da 7: a sinistra la Lama e due maghi, a destra l'Ombra e gli altri due maghi
 	var vh=get_viewport().get_visible_rect().size.y
 	var avail_w=maxf(520.0,vw-2*side_w-120);var avail_h=maxf(420.0,vh-band_h-230)
+	# ogni Ordine su due colonne (4 + 3): le carte, larghe e basse, vengono più grandi
 	var ratio=2.05
-	var ch=minf((avail_h-6*6-42)/7.0,(avail_w-40)/2.0/ratio);var cw=clampf(ch*ratio,120.0,420.0)
-	var two=HBoxContainer.new();two.alignment=BoxContainer.ALIGNMENT_CENTER;two.add_theme_constant_override("separation",36)
+	var ch=minf((avail_h-3*8-24)/4.0,(avail_w-40-3*8-12)/4.0/ratio);var cw=clampf(ch*ratio,120.0,420.0)
+	var two=HBoxContainer.new();two.alignment=BoxContainer.ALIGNMENT_CENTER;two.add_theme_constant_override("separation",40)
 	var cc=CenterContainer.new();cc.size_flags_vertical=Control.SIZE_EXPAND_FILL;cc.add_child(two);pool.add_child(cc)
 	var order=_pool_order()
 	for half in 2:
-		var col=VBoxContainer.new();col.add_theme_constant_override("separation",6);two.add_child(col)
-		for id in order.slice(half*7,half*7+7):col.add_child(_pool_card(id,cw))
+		var g=GridContainer.new();g.columns=2;g.add_theme_constant_override("h_separation",8);g.add_theme_constant_override("v_separation",8);two.add_child(g)
+		for id in order.slice(half*7,half*7+7):g.add_child(_pool_card(id,cw))
 	var right=panel_content(cols,10);right.get_parent().get_parent().custom_minimum_size.x=side_w;_team_column(right,1)
 	status=label(message,13,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;status.custom_minimum_size.x=side_w-24;right.add_child(status)
 	if mode=="online":
@@ -320,7 +344,7 @@ func _pool_card(id: String,width: float) -> Control:
 		var st=box(TEAM_COLOR[team].darkened(.15),8);st.set_border_width_all(2);st.border_color=Color(1,1,1,.55)
 		var sth=box(TEAM_COLOR[team].lightened(.15),8);sth.set_border_width_all(2);sth.border_color=Color.WHITE
 		ar.add_theme_stylebox_override("normal",st);ar.add_theme_stylebox_override("hover",sth);ar.add_theme_stylebox_override("pressed",sth)
-		ar.add_theme_color_override("font_color",Color("151b19"));ar.add_theme_color_override("font_hover_color",Color("151b19"))
+		ar.add_theme_color_override("font_color",DARK_INK);ar.add_theme_color_override("font_hover_color",DARK_INK)
 		ar.custom_minimum_size=Vector2(aw,ah);ar.size=Vector2(aw,ah);ar.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 		ar.position=Vector2(0.0 if team==0 else ch.x-aw,(ch.y-ah)*.5)
 		ar.pressed.connect(func():
@@ -328,7 +352,7 @@ func _pool_card(id: String,width: float) -> Control:
 			else:_add_to_team(id,team))
 		card.add_child(ar)
 	if picked>=0:
-		var tag=label(("LAMA" if int(roster[picked].team)==0 else "OMBRA"),11,Color("151b19"))
+		var tag=label(("LAMA" if int(roster[picked].team)==0 else "OMBRA"),11,DARK_INK)
 		var tp=PanelContainer.new();tp.add_theme_stylebox_override("panel",box(TEAM_COLOR[int(roster[picked].team)],4));tp.add_child(tag);card.add_child(tp);tp.position=Vector2(4,4)
 		var x=Button.new();x.text="✕";x.tooltip_text="Togli dalla squadra";x.add_theme_font_size_override("font_size",12);x.custom_minimum_size=Vector2(22,22)
 		x.pressed.connect(func():_remove_from_team(picked));card.add_child(x);x.position=Vector2(ch.x-30,3)
@@ -425,21 +449,20 @@ var action_panel: PanelContainer
 var journal_panel: PanelContainer
 var hint_label: Label
 func _bar_button(text: String,cb: Callable,tip:="") -> Button:
-	var b=button(text,cb);b.add_theme_font_size_override("font_size",14);b.tooltip_text=tip
+	var b=button(text,cb);b.add_theme_font_size_override("font_size",13);b.tooltip_text=tip
 	for st in ["normal","hover","pressed","focus"]:
-		var sb=b.get_theme_stylebox(st).duplicate() if b.has_theme_stylebox(st) else box(Color("233234"),8)
-		if sb is StyleBoxFlat:sb.content_margin_left=10;sb.content_margin_right=10;sb.content_margin_top=6;sb.content_margin_bottom=6
-		b.add_theme_stylebox_override(st,sb)
+		b.add_theme_stylebox_override(st,tex_box({"normal":"btn.png","hover":"btn_hover.png","pressed":"btn_pressed.png","focus":"btn_hover.png"}[st],8,11,6))
 	return b
 func _bar_check(text: String,on: bool,cb: Callable,tip:="") -> Button:
 	# pulsante attivo/non attivo (niente interruttore): acceso è dorato
 	var c=_bar_button(text,func():pass,tip);c.toggle_mode=true;c.button_pressed=on;c.toggled.connect(cb)
-	var lit=box(GOLD,8);lit.content_margin_left=10;lit.content_margin_right=10;lit.content_margin_top=6;lit.content_margin_bottom=6
-	c.add_theme_stylebox_override("pressed",lit);c.add_theme_color_override("font_pressed_color",Color("151b19"))
-	c.add_theme_color_override("font_hover_pressed_color",Color("151b19"));c.add_theme_stylebox_override("hover_pressed",lit)
+	var lit=tex_box("btn_on.png",8,11,6)
+	c.add_theme_stylebox_override("pressed",lit);c.add_theme_color_override("font_pressed_color",DARK_INK)
+	c.add_theme_color_override("font_hover_pressed_color",DARK_INK);c.add_theme_stylebox_override("hover_pressed",lit)
 	return c
 func _overlay_panel(alpha:=.86) -> PanelContainer:
-	var p=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,alpha),12);sb.content_margin_left=14;sb.content_margin_right=14;sb.content_margin_top=10;sb.content_margin_bottom=10
+	var p=PanelContainer.new();var sb=box(Color(PANEL.r,PANEL.g,PANEL.b,alpha),6);sb.content_margin_left=14;sb.content_margin_right=14;sb.content_margin_top=10;sb.content_margin_bottom=10
+	sb.set_border_width_all(2);sb.border_color=Color(GOLD.darkened(.35),alpha)   # cornice d'oro brunito
 	p.add_theme_stylebox_override("panel",sb);return p
 func _build_game() -> void:
 	showing_game=true;clear(page)
@@ -548,7 +571,7 @@ func _refresh_portraits() -> void:
 			var v=VBoxContainer.new();v.add_theme_constant_override("separation",3);v.mouse_filter=Control.MOUSE_FILTER_IGNORE;card.add_child(v)
 			var head=HBoxContainer.new();head.add_theme_constant_override("separation",6);head.mouse_filter=Control.MOUSE_FILTER_IGNORE;v.add_child(head)
 			if on and waiting_click:
-				var go=label("Clicca qui per continuare",11,Color("151b19"));go.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+				var go=label("Clicca qui per continuare",11,DARK_INK);go.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 				var gp=PanelContainer.new();gp.add_theme_stylebox_override("panel",box(GOLD,6));gp.mouse_filter=Control.MOUSE_FILTER_IGNORE;go.mouse_filter=Control.MOUSE_FILTER_IGNORE;gp.add_child(go);v.add_child(gp)
 			var fs=28.0 if tiny else 44.0
 			var face=TextureRect.new();face.custom_minimum_size=Vector2(fs,fs);face.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;face.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;face.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -626,7 +649,7 @@ func _fighter_notes() -> Dictionary:
 		if "dado" in rest:out[who].lines.append(rest.trim_prefix(",").trim_prefix(":").strip_edges().trim_suffix("."))
 	return out
 func _meter(f: float,col: Color,tip: String,w:=96.0) -> Control:
-	var back=ColorRect.new();back.color=Color("131d20");back.custom_minimum_size=Vector2(w,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
+	var back=ColorRect.new();back.color=Color("1a110b");back.custom_minimum_size=Vector2(w,6);back.tooltip_text=tip;back.mouse_filter=Control.MOUSE_FILTER_PASS
 	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(w*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
 	return back
 var _dice_re: RegEx
@@ -997,7 +1020,7 @@ func _manual_content() -> void:
 	var row=HBoxContainer.new();v.add_child(row);row.add_child(button("‹ Indietro",func():manual_page=posmod(manual_page-1,12);_manual_content()));row.add_child(label("Pagina %d / 12"%(manual_page+1)));row.add_child(button("Avanti ›",func():manual_page=posmod(manual_page+1,12);_manual_content()));row.add_child(button("Chiudi",manual_window.queue_free))
 	var l=label("Chiarimento dell’autore: Disperdi magia consuma la mossa solo se riesce.",14,GOLD);v.add_child(l)
 func _credits() -> void:
-	var w=AcceptDialog.new();w.title="Blood Master Deluxe";w.dialog_text="Ideazione e sviluppo: Stefano Ancillai e Marco Ramadori\nDisegni: Luigi Filipponi\nEdizione originale: Devil’s Den\n\nVersione digitale realizzata dalle scansioni dell’autore.\nMotore Godot 4.7 · Partite online con Firebase\nEffetti sonori: registrazioni CC0 (OpenGameArt, Freesound e altri; elenco in docs/audio_fonti_licenze.csv)\n\nLe illustrazioni e il regolamento appartengono ai rispettivi autori.";add_child(w);w.confirmed.connect(w.queue_free);w.popup_centered()
+	var w=AcceptDialog.new();w.title="Blood Master Deluxe";w.dialog_text="Ideazione e sviluppo: Stefano Ancillai e Marco Ramadori\nDisegni: Luigi Filipponi\nEdizione originale: Devil’s Den\n\nVersione digitale realizzata dalle scansioni dell’autore.\nMotore Godot 4.7 · Partite online con Firebase\nEffetti sonori: registrazioni CC0 (OpenGameArt, Freesound e altri; elenco in docs/audio_fonti_licenze.csv)\nCaratteri: Cinzel, Cinzel Decorative (Natanael Gama) e Alegreya (Huerta Tipográfica), SIL Open Font License\n\nLe illustrazioni e il regolamento appartengono ai rispettivi autori.";add_child(w);w.confirmed.connect(w.queue_free);w.popup_centered()
 func _online_menu(parent: VBoxContainer) -> void:
 	parent.add_child(label("Multiplayer · stanza privata",18,GOLD))
 	var name=LineEdit.new();name.placeholder_text="Il tuo nome";name.text="Giocatore";parent.add_child(name)
