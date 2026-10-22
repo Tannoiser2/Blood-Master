@@ -1158,7 +1158,21 @@ func _apply_states(states) -> void:
 			for k in 4:tw.tween_property(l,"light_energy",randf_range(.9,2.2),.09)
 			return n)
 		_state_node(info,"shield",st.get("shield",false),func():
-			var b=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.55;sm.height=1.3;b.mesh=sm;var m=_fx_mat(Color(.45,.7,1,.18),1.5);m.cull_mode=BaseMaterial3D.CULL_DISABLED;b.material_override=m;b.position.y=.6;return b)
+			# scudo di energia: bolla luminosa che pulsa, tre anelli d'energia che girano, scintille e luce azzurra
+			var n=Node3D.new();n.position.y=.62
+			var b=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.6;sm.height=1.35;b.mesh=sm
+			var m=_fx_mat(Color(.4,.75,1,.32),2.2);m.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;m.cull_mode=BaseMaterial3D.CULL_DISABLED;b.material_override=m;n.add_child(b)
+			var pulse=b.create_tween().set_loops();pulse.tween_property(m,"albedo_color:a",.5,.55).set_trans(Tween.TRANS_SINE);pulse.tween_property(m,"albedo_color:a",.22,.55).set_trans(Tween.TRANS_SINE)
+			for k in 3:
+				var r=MeshInstance3D.new();var tm=TorusMesh.new();tm.inner_radius=.6;tm.outer_radius=.64;tm.rings=48;r.mesh=tm
+				var rm=_fx_mat(Color(.55,.9,1,.95),4.0);rm.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;r.material_override=rm
+				r.rotation=Vector3([0.0,1.2,-1.2][k],0,[0.0,.5,-.5][k]);r.scale=Vector3(1,1.1,1);n.add_child(r)
+				var tw=r.create_tween().set_loops();tw.tween_property(r,"rotation:y",TAU*(1 if k%2==0 else -1),2.0+k*.5).as_relative()
+			var sp=_sprite_particles(26,true);sp.lifetime=1.2;sp.emission_shape=CPUParticles3D.EMISSION_SHAPE_SPHERE;sp.emission_sphere_radius=.6;sp.direction=Vector3.UP;sp.spread=20
+			sp.initial_velocity_min=.05;sp.initial_velocity_max=.2;sp.gravity=Vector3(0,.3,0);sp.local_coords=true;(sp.mesh as QuadMesh).size=Vector2(.05,.05)
+			sp.color_ramp=_ramp([[0,Color(.6,.9,1,0)],[.3,Color(.7,.95,1,1)],[1,Color(.3,.6,1,0)]]);n.add_child(sp);sp.emitting=true
+			var lt=OmniLight3D.new();lt.light_color=Color(.45,.75,1);lt.light_energy=1.2;lt.omni_range=1.8;n.add_child(lt)
+			return n)
 		_state_node(info,"plague",st.get("plague",false),func():
 			var g=_glow(Color(.5,.8,.15,.6),30,.35);g.one_shot=false;g.explosiveness=0;g.lifetime=1.6;g.gravity=Vector3(0,.15,0);g.initial_velocity_max=.2;g.position.y=.4;g.emitting=true;return g)
 		_state_node(info,"control",st.get("control",false),func():
