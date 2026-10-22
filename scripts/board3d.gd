@@ -361,8 +361,24 @@ func copy_from(b) -> void:
 	highlights=b.highlights;selected=b.selected;focus_fighter=b.focus_fighter;preview_facing=b.preview_facing;show_grid=b.show_grid
 	sync()
 
+var scenery_root: Node3D;var scenery_key=""
+func _ensure_scenery() -> void:
+	# gli elementi di scena (regola modificata) non cambiano durante la partita: si costruiscono una volta
+	var obs: Array=game.state.get("obstacles",[]) if game!=null and not game.state.is_empty() else []
+	var k=JSON.stringify(obs)
+	if k==scenery_key:return
+	scenery_key=k
+	if scenery_root!=null and is_instance_valid(scenery_root):scenery_root.queue_free()
+	scenery_root=Node3D.new();viewport.add_child(scenery_root)
+	for o in obs:
+		if not game.cells.has(str(o.cell)):continue
+		var piece=Scenery3D.build(str(o.kind),str(o.cell).hash())
+		piece.position=cell_pos(str(o.cell));piece.rotation.y=int(o.get("turn",0))*PI/3.0
+		scenery_root.add_child(piece)
 func sync() -> void:
-	if game==null or game.state.is_empty() or replaying:return
+	if game==null or game.state.is_empty():return
+	_ensure_scenery()
+	if replaying:return
 	_ui_events()
 	var step=[]   # tracce del passo: {i, clip, from, to, yaw, delay}
 	var actors=[];var victims=[]

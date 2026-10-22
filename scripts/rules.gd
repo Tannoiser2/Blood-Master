@@ -56,7 +56,61 @@ func hazard(k: String,kind: String="") -> Dictionary:
 		if e.cell==k and (kind=="" or e.kind==kind): return e
 	return {}
 func blocked(k: String,except: int=-1) -> bool:
-	return not cells.has(k) or at(k,except)!=-1 or not hazard(k,"vortex").is_empty() or bones_at(k,except)
+	return not cells.has(k) or at(k,except)!=-1 or not hazard(k,"vortex").is_empty() or bones_at(k,except) or obstacle(k)!=""
+# --- elementi di scena (regola modificata) ---------------------------------------------------
+# colonne, massi e alberi: invalicabili e coprono la linea di tiro; acqua e macerie: invalicabili ma non coprono
+const SCENERY=["column","boulder","tree","water","rubble"]
+const COVER=["column","boulder","tree"]
+func obstacle(k: String) -> String:
+	for o in state.get("obstacles",[]):
+		if str(o.cell)==k:return str(o.kind)
+	return ""
+func _place_scenery() -> void:
+	var keep={}   # zone di partenza e i loro vicini restano libere
+	for t in 2:
+		for k in start_cells(t):
+			keep[k]=true
+			for d in 6:keep[neighbor(k,d)]=true
+	var free=cells.keys().filter(func(k):return not keep.has(k))
+	var wanted=5+die();var tries=0
+	while state.obstacles.size()<wanted and tries<200 and not free.is_empty():
+		tries+=1
+		var k=str(free[rng.randi_range(0,free.size()-1)])
+		if obstacle(k)!="":continue
+		var near=0
+		for d in 6:
+			if obstacle(neighbor(k,d))!="":near+=1
+		if near>1:continue   # niente muri lunghi: al massimo coppie
+		var roll=rng.randi_range(1,20)
+		var kind="column" if roll<=5 else ("boulder" if roll<=10 else ("tree" if roll<=14 else ("water" if roll<=17 else "rubble")))
+		state.obstacles.append({"cell":k,"kind":kind,"turn":rng.randi_range(0,5)})
+		if not _arena_connected():state.obstacles.pop_back()   # le due squadre devono potersi raggiungere
+	if not state.obstacles.is_empty():note("Elementi di scena nell'arena: %d (regola modificata)." % state.obstacles.size())
+func _arena_connected() -> bool:
+	var a=start_cells(0);var b=start_cells(1)
+	if a.is_empty() or b.is_empty():return true
+	var seen={a[0]:true};var queue=[a[0]]
+	while not queue.is_empty():
+		var here=queue.pop_front()
+		if here==b[0]:return true
+		for d in 6:
+			var n=neighbor(here,d)
+			if cells.has(n) and not seen.has(n) and obstacle(n)=="":seen[n]=true;queue.append(n)
+	return false
+# linea di tiro libera da colonne, massi e alberi (esagoni attraversati dalla retta tra i due centri)
+func clear_shot(a: String,b: String) -> bool:
+	if state.get("obstacles",[]).is_empty():return true
+	var n=distance(a,b);var A=coord(a);var B=coord(b)
+	for step in range(1,n):
+		var t=float(step)/float(n)
+		for eps in [.001,-.001]:   # sul bordo tra due esagoni conta quello coperto da uno qualunque dei due lati
+			var q=lerpf(A.x+eps,B.x,t);var r=lerpf(A.y+eps*.5,B.y,t);var s3=-q-r
+			var rq=roundi(q);var rr=roundi(r);var rs=roundi(s3)
+			var dq=absf(rq-q);var dr=absf(rr-r);var ds=absf(rs-s3)
+			if dq>dr and dq>ds:rq=-rr-rs
+			elif dr>ds:rr=-rq-rs
+			if obstacle(key(rq,rr)) in COVER:return false
+	return true
 # lo scheletro in pezzi resta sull'esagono: le ossa sono un ostacolo (così potrà rialzarsi lì)
 func bones_at(k: String,except: int=-1) -> bool:
 	for i in state.fighters.size():
@@ -82,6 +136,7 @@ static func _restore_numbers(value):
 	if value is float and value==floor(value):return int(value)
 	return value
 
+var scenery:=true   # regola modificata: elementi di scena (colonne, massi, alberi, acqua, macerie) a caso nell'arena
 var house_rules:=true   # regole modificate: cadute col dado e più arretramenti (vedi draw_next e _combat)
 func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int=-1) -> void:
 	rng.seed=seed_n
@@ -95,6 +150,8 @@ func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int
 		p.arrows=(5+die()) if house_rules and d.moves.has("shoot") else -1
 		if p.arrows>0:note("%s ha %d frecce nella faretra." % [p.name,p.arrows])
 		state.fighters.append(p)
+	state.obstacles=[]
+	if house_rules and scenery:_place_scenery()
 	note("Blood Master · schieramento nell’arena")
 	state.active=0
 
@@ -303,7 +360,7 @@ func targets(i: int,id: String="") -> Array:
 			var t=state.fighters[j]
 			if not living(t) or int(t.team)==team or t.pieces or not hazard(t.cell,"vortex").is_empty():continue
 			if m.id=="shoot":
-				if in_view(p,t.cell):out.append(t.cell)
+				if in_view(p,t.cell) and clear_shot(p.cell,t.cell):out.append(t.cell)
 			elif distance(p.cell,t.cell)==1 and posmod(direction(p.cell,t.cell)-int(p.facing),6) in m.red:out.append(t.cell)
 			elif spear_reach(p,m) and t.cell==neighbor(neighbor(p.cell,int(p.facing)),int(p.facing)):out.append(t.cell)
 		return out

@@ -41,6 +41,7 @@ var blood_on=false
 var sound_on=true
 var labels_on=true
 var house_rules=true
+var scenery_on=true   # regola modificata: elementi di scena a caso nell'arena
 var clear_plates=false
 var _last_hp={}
 var showing_game=false
@@ -127,10 +128,10 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));step_pause=bool(d.get("pause",false));house_rules=bool(d.get("house",true));clear_plates=bool(d.get("clear_plates",false))
+	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));step_pause=bool(d.get("pause",false));house_rules=bool(d.get("house",true));scenery_on=bool(d.get("scenery",true));clear_plates=bool(d.get("clear_plates",false))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house":house_rules,"clear_plates":clear_plates,"pause":step_pause}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house":house_rules,"clear_plates":clear_plates,"pause":step_pause,"scenery":scenery_on}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -199,6 +200,11 @@ func _show_menu() -> void:
 		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde, tridente e il bastone di Zenyo l'affondo e la carica colpiscono fino a due esagoni davanti; gli arcieri hanno 5 + un dado di frecce; zone di controllo: entrando accanto a un nemico ci si ferma, e chi si sgancia da un nemico che non ha ancora agito subisce un suo colpo." if option[0] else "Il regolamento originale di Blood Master."
 		if house_rules==option[0]:rb.add_theme_color_override("font_color",GOLD)
 		top.add_child(rb)
+	if house_rules:
+		var sc=button("Scenografia: "+("sì" if scenery_on else "no"),func():scenery_on=not scenery_on;_save_settings();_show_menu())
+		sc.tooltip_text="Colonne, massi, alberi, pozze d'acqua e macerie messi a caso nell'arena: non si attraversano; colonne, massi e alberi coprono anche dai tiri d'arco."
+		if scenery_on:sc.add_theme_color_override("font_color",GOLD)
+		top.add_child(sc)
 	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))
 	for option in [["classica","Classica"],["reborn","Reborn"]]:
 		var b=button(option[1],func():art=option[0];_save_settings();_show_menu())
@@ -317,7 +323,7 @@ func _start_local() -> void:
 		if not r.team in teams:teams.append(r.team)
 	if teams.size()<2:message="Assegna almeno un personaggio a ciascun Ordine.";_show_menu();return
 	room_code="";net_host=false
-	game.house_rules=house_rules
+	game.house_rules=house_rules;game.scenery=scenery_on
 	if scenario=="bloodmaster":
 		if roster.size()<3:message="Lo scenario Blood Master richiede almeno tre giocatori.";_show_menu();return
 		game.start_campaign(roster,int(Time.get_unix_time_from_system()))

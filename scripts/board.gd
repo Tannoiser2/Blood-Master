@@ -57,6 +57,16 @@ func _draw() -> void:
 	if game.state.is_empty():return
 	for b in blood:   # il sangue resta sull'esagono
 		if game.cells.has(b[0]):draw_circle(screen(world(b[0])+b[1]),b[2]*scale_factor,Color(.38+b[3]*.12,0,.02,.82))
+	for o in game.state.get("obstacles",[]):   # elementi di scena: un simbolo colorato sull'esagono
+		if not game.cells.has(o.cell):continue
+		var c=screen(world(o.cell));var r=60*scale_factor
+		match str(o.kind):
+			"column":draw_circle(c,r*.55,Color(.82,.78,.7));draw_arc(c,r*.55,0,TAU,24,Color(.45,.4,.35),3.0*scale_factor);draw_circle(c,r*.3,Color(.7,.66,.58))
+			"boulder":draw_colored_polygon(PackedVector2Array([c+Vector2(-r*.7,r*.3),c+Vector2(-r*.4,-r*.5),c+Vector2(r*.3,-r*.6),c+Vector2(r*.75,0),c+Vector2(r*.4,r*.55),c+Vector2(-r*.3,r*.6)]),Color(.45,.42,.4))
+			"tree":draw_circle(c,r*.75,Color(.2,.45,.18));draw_circle(c+Vector2(-r*.2,-r*.2),r*.4,Color(.3,.58,.25))
+			"water":draw_circle(c,r*.85,Color(.2,.45,.75,.85));draw_arc(c,r*.5,0,TAU,24,Color(.7,.85,1,.7),2.0*scale_factor)
+			"rubble":
+				for q in 6:draw_circle(c+Vector2.from_angle(q*1.05)*r*.45,r*.22,Color(.5,.44,.38))
 	for e in game.state.effects:
 		var path="res://assets/tokens/effect_"+("fire" if e.kind=="livingfire" else e.kind)+".webp"
 		var tex=texture(path)
