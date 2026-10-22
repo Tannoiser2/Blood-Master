@@ -396,7 +396,8 @@ func sync() -> void:
 		var was=prev[i]
 		if now.done and not was.done and now.alive:actors.append(i)
 		elif now.cell!=was.cell or now.facing!=was.facing:actors.append(i)
-		if now.hp<was.hp or (now.unbalanced and not was.unbalanced) or (now.down and not was.down) or (now.pieces and not was.get("pieces",false)) or (was.alive and not now.alive):victims.append(i)
+		var got_up=was.down and not now.down and now.alive   # si è rialzato da solo (con passi resta sbilanciato): non è un colpo subito
+		if now.hp<was.hp or (now.unbalanced and not was.unbalanced and not got_up) or (now.down and not was.down) or (now.pieces and not was.get("pieces",false)) or (was.alive and not now.alive):victims.append(i)
 		elif was.down and not now.down and not i in actors:actors.append(i)
 	for i in game.state.fighters.size():
 		if prev.has(i) and prev[i].get("pieces",false) and not game.state.fighters[i].get("pieces",false) and minis.has(i) and game.state.fighters[i].cell!="":
@@ -404,8 +405,11 @@ func sync() -> void:
 			actors.erase(i)
 	for i in actors:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
+		if was.down and not p.down and p.alive:id="rise"   # Rialzarsi (anche quando la regola lo lascia sbilanciato)
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
 		var track={"i":i,"clip":_clip_for(i,id,bool(p.get("bow",false))),"bow":bool(p.get("bow",false)),"loaded":bool(p.get("loaded",false)) or id=="shoot","from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		if id=="roll" and p.down:   # rotola restando a terra: disteso, scivola fino alla nuova cella senza rialzarsi
+			track.clip="A terra";track["lying"]=true;track["split"]=true;track["stay"]=true
 		var route: Array=p.get("path",[])
 		if route.size()>1 and str(route.back())==str(p.cell) and BloodRules.distance(str(was.cell),str(route[0]))==1:
 			track["path"]=route.map(func(c):return _spot(i,str(c)))   # segue il percorso vero, esagono per esagono
@@ -613,7 +617,7 @@ func _play_step(step: Array,fluid: bool) -> void:
 					if minis.has(i):_set_status(i,t.labels[i][0],t.labels[i][1],t.labels[i][2])
 			continue
 		var info=minis.get(t.i)
-		if info and info.ap and not t.get("stay",false) and not t.clip in ["A terra","Morte"]:_rest_pose(t.i,.25)
+		if info and info.ap and not t.get("stay",false) and not t.clip in ["A terra","Morte"]:_end_pose(t.i)
 
 func _plan(t: Dictionary,info: Dictionary) -> Dictionary:
 	# come verrà animata la traccia: modalità, durata naturale, ripetizioni
@@ -673,6 +677,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
 			ap.play(t.clip,.12 if fluid else .18);ap.speed_scale=rate*(1.0-.3*float(info.get("fatigue_lvl",0.0)))   # stanco: più lento
+			if t.get("lying",false):ap.seek(ap.get_animation(t.clip).length-.05,true)   # già disteso: niente caduta
 		if t.has("bow"):_set_gear(t.i,t.bow,t.get("loaded",false))
 		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
 		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
@@ -746,6 +751,12 @@ func _gear(info: Dictionary,name: String) -> Node3D:
 	if not info.has(key):info[key]=info.model.find_child(name,true,false)
 	return info[key]
 # Posa d'attesa: in guardia; l'arciere con la freccia incoccata resta in mira, arco teso
+# fine della traccia: chi è ancora a terra (es. ha rotolato) resta disteso, non si rimette in guardia
+func _end_pose(i: int) -> void:
+	var p=game.state.fighters[i];var ap: AnimationPlayer=minis.get(i,{}).get("ap")
+	if ap and p.alive and p.down and ap.has_animation("A terra"):
+		ap.play("A terra",.25);ap.seek(ap.get_animation("A terra").length-.05,true);return
+	_rest_pose(i,.25)
 func _rest_pose(i: int,blend:=.25) -> void:
 	var info=minis.get(i,{});var ap: AnimationPlayer=info.get("ap")
 	if ap==null:return
@@ -1600,7 +1611,7 @@ func _play_turn(group: Array) -> void:
 		if minis.has(i):_set_status(i,labels[i][0],labels[i][1],labels[i][2],labels[i][3] if labels[i].size()>3 else -1)
 	for t in moves.values()+acts:
 		var info=minis.get(t.i)
-		if info and info.ap and not t.get("stay",false) and not t.clip in ["A terra","Morte"]:_rest_pose(t.i,.25)
+		if info and info.ap and not t.get("stay",false) and not t.clip in ["A terra","Morte"]:_end_pose(t.i)
 
 # ---------------------------------------------------------------- celle evidenziate
 func _draw_overlay() -> void:

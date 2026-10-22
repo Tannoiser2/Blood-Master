@@ -461,13 +461,16 @@ func act(command: Dictionary) -> bool:
 			# The player can choose a cell along the declared route on a failed balance roll.
 			state.pending={"kind":"stumble","actor":i,"path":path,"facing":facing,"move":m.id}
 			state.phase="stumble";note(p.name+" perde l’equilibrio durante lo sprint.");return true
-		var walked=[]
+		var walked=[];var struck=false;var was_down=bool(p.down);var was_unb=bool(p.unbalanced)
 		for step in path:
-			if _zoc_strikes(i,p.cell,step):break   # colpito mentre si sganciava: si ferma lì
+			if _zoc_strikes(i,p.cell,step):struck=true;break   # colpito mentre si sganciava: si ferma lì
 			p.cell=step;walked.append(step);_cross_effects(i)
 			if not p.alive:break
 		p.path=walked   # per la mappa 3D: il percorso esagono per esagono (mai attraverso gli altri)
-		if p.unbalanced or p.down or not p.alive:_finish_action(i,m,false,int(p.facing));return true
+		# fermato durante il movimento (colpo di ZOC, fuoco...): l'azione finisce lì.
+		# Chi era già a terra o sbilanciato e non è stato colpito prosegue (Rialzarsi lo rimette in piedi)
+		var knocked=(p.down and not was_down) or (p.unbalanced and not was_unb) or (struck and (p.down or p.unbalanced))
+		if knocked or not p.alive:_finish_action(i,m,false,int(p.facing));return true
 		if m.id=="rise":
 			p.down=false;p.unbalanced=steps>0
 			if steps>0:p.current="unbalanced"
