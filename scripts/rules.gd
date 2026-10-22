@@ -787,7 +787,8 @@ func _magic_hit(i: int,j: int,power: int) -> bool:
 func _effect(i: int,k: String,kind: String,limit: int) -> void:
 	var existing=state.effects.filter(func(e):return e.kind==kind)
 	if existing.size()>=limit:return
-	state.effects.append({"kind":kind,"cell":k,"owner":i,"facing":int(state.fighters[i].facing),"created":int(state.turn)})
+	state.effect_seq=int(state.get("effect_seq",0))+1   # identità fissa: la mappa 3D lo riconosce e lo fa scivolare quando si sposta
+	state.effects.append({"kind":kind,"cell":k,"owner":i,"facing":int(state.fighters[i].facing),"created":int(state.turn),"id":"e%d"%state.effect_seq})
 func _cross_effects(i: int) -> void:
 	var p=state.fighters[i]
 	for e in state.effects.duplicate():
@@ -870,11 +871,11 @@ func advance_effect(facing: int) -> bool:
 	for idx in state.upkeep:
 		if int(idx)>=0 and int(idx)<state.effects.size():pending.append(state.effects[int(idx)])
 	if pending.is_empty():state.upkeep=[];begin_turn();_check_end();return true
-	var e=pending.pop_front();e.facing=posmod(facing,6)
+	var e=pending.pop_front();e.facing=posmod(facing,6);e.path=[str(e.cell)]
 	for step in die():
 		var next=neighbor(e.cell,e.facing)
 		if not cells.has(next):break
-		e.cell=next
+		e.cell=next;e.path.append(next)   # tragitto esagono per esagono, per l'animazione
 		var victim=at(next)
 		if victim!=-1:
 			if e.kind=="vortex":_knock(victim,true)
