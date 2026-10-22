@@ -72,7 +72,7 @@ func _place_scenery() -> void:
 			keep[k]=true
 			for d in 6:keep[neighbor(k,d)]=true
 	var free=cells.keys().filter(func(k):return not keep.has(k))
-	var wanted=5+die();var tries=0
+	var wanted=3+ceili(die()/2.0);var tries=0   # 4-6 elementi: abbastanza per ripararsi, non tanti da bloccare cariche e scontri
 	while state.obstacles.size()<wanted and tries<200 and not free.is_empty():
 		tries+=1
 		var k=str(free[rng.randi_range(0,free.size()-1)])
@@ -114,6 +114,23 @@ func _take_pickup(i: int) -> void:
 	note("%s %s: dado %d, recupera %d ferite%s." % [p.name,"beve una pozione" if kind=="potion" else "assorbe il mana luccicante",d,int(p.hp)-before,(" e tutta la fatica (%d)" % tired) if tired>0 else ""])
 	state.last_pickup={"fighter":i,"cell":str(p.cell),"kind":kind,"turn":int(state.get("turn",0))}
 	if kind=="mana":state.mana_later=int(state.get("mana_later",0))+1
+# distanza "a piedi": aggira colonne, massi, alberi, acqua e macerie (non i personaggi, che si spostano).
+# Senza scenografia coincide con la distanza in linea d'aria. Le mappe si calcolano una volta per cella.
+var _walk_cache={};var _walk_key=""
+func walk_distance(a: String,b: String) -> int:
+	var obs: Array=state.get("obstacles",[])
+	if obs.is_empty() or a=="" or b=="":return distance(a,b)
+	var key=JSON.stringify(obs)
+	if key!=_walk_key:_walk_key=key;_walk_cache={}
+	if not _walk_cache.has(b):
+		var dist={b:0};var queue=[b]
+		while not queue.is_empty():
+			var here=queue.pop_front()
+			for d in 6:
+				var n=neighbor(here,d)
+				if cells.has(n) and not dist.has(n) and obstacle(n)=="":dist[n]=dist[here]+1;queue.append(n)
+		_walk_cache[b]=dist
+	return int(_walk_cache[b].get(a,distance(a,b)+12))
 func _arena_connected() -> bool:
 	var a=start_cells(0);var b=start_cells(1)
 	if a.is_empty() or b.is_empty():return true

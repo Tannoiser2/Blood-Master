@@ -119,7 +119,7 @@ static func _focus(game: BloodRules,i: int) -> int:
 	# il nemico da puntare: vicino, ferito, esposto, o addosso a un amico in difficoltà
 	var p=game.state.fighters[i];var best=-INF;var out=-1
 	for j in _enemies(game,i):
-		var b=game.state.fighters[j];var d=float(BloodRules.distance(p.cell,b.cell))
+		var b=game.state.fighters[j];var d=float(game.walk_distance(p.cell,b.cell))   # a piedi, aggirando la scenografia
 		var v=-d*1.6+(1.0-_health(b))*6.0+(3.0 if b.unbalanced or b.down else 0.0)
 		for k in _allies(game,i):
 			var al=game.state.fighters[k]
@@ -141,7 +141,7 @@ static func _move_score(game: BloodRules,i: int,k: String,m: Dictionary) -> floa
 			var d=BloodRules.distance(k,game.state.fighters[focus].cell)
 			s+=3.0 if d in [2,3,4] else (-2.0 if d<=1 else -float(d-4))
 	elif focus!=-1:
-		var b=game.state.fighters[focus];var d=BloodRules.distance(k,b.cell)
+		var b=game.state.fighters[focus];var d=game.walk_distance(k,b.cell)   # a piedi: niente stalli dietro colonne e massi
 		s+=-float(d)*2.0
 		if d==1:   # arrivare sul fianco o alle spalle del bersaglio
 			var side=posmod(BloodRules.direction(b.cell,k)-int(b.facing),6)
@@ -245,11 +245,11 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 	var trouble=_trouble(game,i)
 	var adjacent=0;var nearest=99
 	for j in _enemies(game,i):
-		var d=BloodRules.distance(p.cell,game.state.fighters[j].cell);nearest=mini(nearest,d)
+		var d=game.walk_distance(p.cell,game.state.fighters[j].cell);nearest=mini(nearest,d)   # a piedi: una colonna in mezzo allontana
 		if d==1:adjacent+=1
 	var within2=0
 	for j in _enemies(game,i):
-		if BloodRules.distance(p.cell,game.state.fighters[j].cell)<=2:within2+=1
+		if game.walk_distance(p.cell,game.state.fighters[j].cell)<=2:within2+=1
 	var exposure=float(adjacent)*EXPOSE_ADJ+float(within2-adjacent)*EXPOSE_NEAR
 	if p.character=="golem" and legal.has("guard") and legal.has("advance"):   # il Golem può solo avanzare o colpire
 		if not game.targets(i,"guard").is_empty() or adjacent>0:return "guard"
@@ -343,7 +343,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 		if id=="guard" and within2>0:   # in guardia si colpisce per primi chi si avvicina
 			var gbest=0.0
 			for j in _enemies(game,i):
-				if BloodRules.distance(p.cell,game.state.fighters[j].cell)<=2:gbest=maxf(gbest,_target_value(game,i,j,_expected_wounds(game,i,j,m,p.cell)))
+				if game.walk_distance(p.cell,game.state.fighters[j].cell)<=2:gbest=maxf(gbest,_target_value(game,i,j,_expected_wounds(game,i,j,m,p.cell)))
 			score=maxf(score,gbest*.7+3.0)
 		if id=="guard" and adjacent>0:
 			var now_risk=_back_risk(game,i,p.cell,int(p.facing));var turned=_back_risk(game,i,p.cell,_best_facing(game,i,p.cell,int(p.facing)))
