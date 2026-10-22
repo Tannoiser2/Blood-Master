@@ -196,7 +196,7 @@ func _show_menu() -> void:
 	top.add_child(spacer());top.add_child(label("Regole",14,MUTED))
 	for option in [[false,"Originali"],[true,"Modificate"]]:
 		var rb=button(option[1],func():house_rules=option[0];_save_settings();_show_menu())
-		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde, tridente e il bastone di Zenyo l'affondo e la carica colpiscono fino a due esagoni davanti; gli arcieri hanno 5 + un dado di frecce." if option[0] else "Il regolamento originale di Blood Master."
+		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde, tridente e il bastone di Zenyo l'affondo e la carica colpiscono fino a due esagoni davanti; gli arcieri hanno 5 + un dado di frecce; zone di controllo: entrando accanto a un nemico ci si ferma, e chi si sgancia da un nemico che non ha ancora agito subisce un suo colpo." if option[0] else "Il regolamento originale di Blood Master."
 		if house_rules==option[0]:rb.add_theme_color_override("font_color",GOLD)
 		top.add_child(rb)
 	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))

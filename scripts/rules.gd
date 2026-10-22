@@ -222,9 +222,11 @@ func draw_next() -> void:
 
 func reachable(i: int,max_steps: int,dirs: Array=[]) -> Dictionary:
 	var p=state.fighters[i];var paths={p.cell:[]};var queue=[p.cell]
+	var zoc=bool(state.get("house",false)) and definition(p).kind!="ziggy"
 	while not queue.is_empty():
 		var here=queue.pop_front();var path=paths[here]
 		if path.size()>=max_steps:continue
+		if zoc and here!=p.cell and enemy_adjacent(i,here):continue   # regola modificata (ZOC): accanto a un nemico ci si ferma
 		for d in (DIRS.size() if dirs.is_empty() else 0):
 			var next=neighbor(here,d)
 			if paths.has(next) or blocked(next,i):continue
@@ -234,6 +236,31 @@ func reachable(i: int,max_steps: int,dirs: Array=[]) -> Dictionary:
 			if paths.has(next) or blocked(next,i):continue
 			paths[next]=path+[next];queue.append(next)
 	return paths
+# un avversario (vivo, non in pezzi) adiacente alla cella k
+func enemy_adjacent(i: int,k: String) -> bool:
+	var team=acting_team(state.fighters[i])
+	for j in state.fighters.size():
+		var e=state.fighters[j]
+		if j!=i and living(e) and not e.get("pieces",false) and int(e.team)!=team and e.cell!="" and distance(e.cell,k)==1:return true
+	return false
+# regola modificata (ZOC): chi si sgancia da un avversario che non ha ancora agito e mostra una pedina
+# d'attacco col lato rosso verso di lui subisce un colpo; l'avversario usa così la sua azione del turno.
+# Restituisce true se chi si muove deve fermarsi (sbilanciato, a terra o fuori combattimento).
+func _zoc_strikes(i: int,from: String,to: String) -> bool:
+	if not bool(state.get("house",false)):return false
+	var p=state.fighters[i];var team=acting_team(p)
+	for j in state.fighters.size():
+		var e=state.fighters[j]
+		if j==i or not living(e) or e.get("pieces",false) or e.done or e.down or e.unbalanced or int(e.team)==team:continue
+		if distance(e.cell,from)!=1 or distance(e.cell,to)==1:continue
+		var m=move(e)
+		if m.get("attack")==null or m.get("spell",false) or m.id=="shoot" or e.get("bow",false):continue
+		if not posmod(direction(e.cell,from)-int(e.facing),6) in m.red:continue
+		e.done=true;e.guarding=false
+		note("%s si sgancia da %s, che tenta un colpo (regola modificata)." % [p.name,e.name])
+		_combat(j,i,m)
+		if not living(p) or p.unbalanced or p.down:return true
+	return false
 func in_view(p: Dictionary,k: String) -> bool:
 	if definition(p).kind=="ziggy" or k==p.cell:return true
 	var delta=coord(k)-coord(p.cell)
@@ -359,10 +386,13 @@ func act(command: Dictionary) -> bool:
 			# The player can choose a cell along the declared route on a failed balance roll.
 			state.pending={"kind":"stumble","actor":i,"path":path,"facing":facing,"move":m.id}
 			state.phase="stumble";note(p.name+" perde l’equilibrio durante lo sprint.");return true
-		p.path=path.duplicate()   # per la mappa 3D: il percorso esagono per esagono (mai attraverso gli altri)
+		var walked=[]
 		for step in path:
-			p.cell=step;_cross_effects(i)
+			if _zoc_strikes(i,p.cell,step):break   # colpito mentre si sganciava: si ferma lì
+			p.cell=step;walked.append(step);_cross_effects(i)
 			if not p.alive:break
+		p.path=walked   # per la mappa 3D: il percorso esagono per esagono (mai attraverso gli altri)
+		if p.unbalanced or p.down or not p.alive:_finish_action(i,m,false,int(p.facing));return true
 		if m.id=="rise":
 			p.down=false;p.unbalanced=steps>0
 			if steps>0:p.current="unbalanced"

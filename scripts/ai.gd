@@ -149,6 +149,13 @@ static func _move_score(game: BloodRules,i: int,k: String,m: Dictionary) -> floa
 		var face=BloodRules.direction(k,game.state.fighters[focus].cell)
 		s-=_back_risk(game,i,k,face)*BACK_W
 	if not game.hazard(k).is_empty():s-=25.0
+	if bool(game.state.get("house",false)) and k!=p.cell:   # ZOC: sganciarsi da chi può ancora colpire costa un colpo
+		for j in _enemies(game,i):
+			var e=game.state.fighters[j]
+			if e.done or e.down or e.unbalanced or BloodRules.distance(e.cell,p.cell)!=1 or BloodRules.distance(e.cell,k)==1:continue
+			var em=game.move(e)
+			if em.get("attack")==null or em.get("spell",false) or e.get("bow",false):continue
+			if posmod(BloodRules.direction(e.cell,p.cell)-int(e.facing),6) in em.red:s-=4.0+float(em.attack)*.5
 	if m.id=="charge":
 		var front=game.at(BloodRules.neighbor(k,int(p.facing)))
 		if front!=-1 and game.state.fighters[front].team!=_team(game,i):

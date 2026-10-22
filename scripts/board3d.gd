@@ -521,6 +521,7 @@ func _refresh_tokens() -> void:
 		if not replaying:
 			_set_status(i,int(p.hp),int(p.max_hp),p.alive)
 			if not playing:_set_rim(i,p.current)
+			_tired(i,int(p.fatigue)+int(p.permanent))
 		# i caduti escono dall'arena (come la miniatura tolta dal tabellone): nessuno resta sopra un corpo
 		var gone=not p.alive and (info.get("buried",false) or (not info.get("dying",false) and not replaying))
 		info.root.visible=p.cell!="" and not gone and not (p.character=="golem" and not p.alive)   # il golem sbriciolato non torna
@@ -536,6 +537,25 @@ func _refresh_tokens() -> void:
 			if i==focus_fighter and preview_facing>=0:f=preview_facing
 			info.pivot.rotation.y=lerp_angle(info.pivot.rotation.y,facing_yaw(f),1.0)
 
+# Fatica visibile senza modelli nuovi: il personaggio stanco si curva in avanti, si muove più
+# lentamente e ha il respiro affannoso (il busto si alza e si abbassa). Pieno effetto da 8 di fatica.
+func _tired(i: int,fat: int) -> void:
+	var info=minis.get(i,{});var mdl: Node3D=info.get("model")
+	if mdl==null or str(game.state.fighters[i].character) in ["ziggy","golem","skelos","sketos"]:return
+	var lvl=clampf(float(fat)/8.0,0.0,1.0)
+	if is_equal_approx(float(info.get("fatigue_lvl",-1.0)),lvl):return
+	info["fatigue_lvl"]=lvl
+	if not info.has("base_scale"):info["base_scale"]=mdl.scale
+	var base: Vector3=info.base_scale
+	var tw=create_tween();tw.tween_property(mdl,"rotation:x",deg_to_rad(18.0*lvl),.6)
+	if info.get("breath")!=null and is_instance_valid(info.breath):info.breath.kill()
+	mdl.scale=base
+	if lvl>=.25:
+		var amp=.012+.02*lvl;var per=1.1-.45*lvl
+		var br=create_tween().set_loops();br.bind_node(mdl)
+		br.tween_property(mdl,"scale",Vector3(base.x,base.y*(1.0+amp),base.z*(1.0+amp*.5)),per*.45).set_trans(Tween.TRANS_SINE)
+		br.tween_property(mdl,"scale",base,per*.55).set_trans(Tween.TRANS_SINE)
+		info["breath"]=br
 # ---------------------------------------------------------------- riproduzione
 func _play_queue() -> void:
 	playing=true
@@ -636,7 +656,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		_set_rim(t.i,t.move,t.get("facing",-1))
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
-			ap.play(t.clip,.12 if fluid else .18);ap.speed_scale=rate
+			ap.play(t.clip,.12 if fluid else .18);ap.speed_scale=rate*(1.0-.3*float(info.get("fatigue_lvl",0.0)))   # stanco: più lento
 		if t.has("bow"):_set_gear(t.i,t.bow,t.get("loaded",false))
 		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
 		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
