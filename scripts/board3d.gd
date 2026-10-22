@@ -423,7 +423,7 @@ func sync() -> void:
 			track["arrow"]={"victim":v,"hit":v>=0 and v in victims and int(game.state.fighters[v].hp)<int(prev.get(v,{}).get("hp",0))}
 		step.append(track)
 		# lancia: colpo a due esagoni (regola modificata), con la casella in mezzo libera
-		if track.strike and bool(game.state.get("house",false)) and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
+		if track.strike and game.hr("reach") and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
 			var mid=BloodRules.neighbor(p.cell,int(p.facing));var far=BloodRules.neighbor(mid,int(p.facing))
 			if game.at(mid,i)==-1 and game.at(far,i)!=-1 and game.cells.has(far):track["reach"]=cell_pos(far)
 		# il difensore di fronte mostra la sua pedina difensiva mentre arriva il colpo

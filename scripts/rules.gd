@@ -136,22 +136,40 @@ static func _restore_numbers(value):
 	if value is float and value==floor(value):return int(value)
 	return value
 
-var scenery:=true   # regola modificata: elementi di scena (colonne, massi, alberi, acqua, macerie) a caso nell'arena
-var house_rules:=true   # regole modificate: cadute col dado e più arretramenti (vedi draw_next e _combat)
+# Regole modificate, attivabili una per una (tutte spente = regolamento originale):
+#  fall: la pedina "a terra" fa cadere solo con 1-2 (6: di nuovo in guardia)
+#  push: chi viene sbilanciato arretra sempre di almeno un esagono
+#  reach: armi lunghe, affondo e carica arrivano al secondo esagono davanti
+#  arrows: frecce contate, 5 + un dado per arciere
+#  zoc: zone di controllo (ci si ferma accanto al nemico, sganciarsi costa un colpo)
+#  scenery: elementi di scena a caso nell'arena
+const HOUSE_RULES=["fall","push","reach","arrows","zoc","scenery"]
+var house: Dictionary={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true}
+var house_rules:=true:   # compatibilità: tutte accese o tutte spente
+	set(v):
+		house_rules=v
+		for k in HOUSE_RULES:house[k]=v
+var scenery:=true:
+	set(v):scenery=v;house["scenery"]=v
+func hr(name: String) -> bool:
+	# la regola modificata è attiva in questa partita? (vecchi salvataggi: un solo interruttore per tutte)
+	var h=state.get("house",false)
+	if h is Dictionary:return bool(h.get(name,false))
+	return bool(h)
 func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int=-1) -> void:
 	rng.seed=seed_n
-	state={"version":VERSION,"turn":0,"phase":"deploy","fighters":[],"plans":{},"bag":[],"active":-1,"effects":[],"log":[],"pending":{},"scenario":scenario,"war":scenario!="frontale","peace_left":4,"winner":-2,"seed":seed_n,"revision":0,"magic_start":magic,"round":1,"campaign":{},"interrupt_stack":[],"spin":{},"house":house_rules}
+	state={"version":VERSION,"turn":0,"phase":"deploy","fighters":[],"plans":{},"bag":[],"active":-1,"effects":[],"log":[],"pending":{},"scenario":scenario,"war":scenario!="frontale","peace_left":4,"winner":-2,"seed":seed_n,"revision":0,"magic_start":magic,"round":1,"campaign":{},"interrupt_stack":[],"spin":{},"house":house.duplicate()}
 	for i in roster.size():
 		var cfg=roster[i];var d=catalog[cfg.character]
 		var p={"character":cfg.character,"name":cfg.get("name",d.name),"team":int(cfg.get("team",i%2)),"controller":cfg.get("controller","ai"),"seat":int(cfg.get("seat",i)),"cell":"","facing":0,"hp":int(d.hp),"max_hp":int(d.hp),"fatigue":0,"permanent":0,"magic":(5+die() if magic<0 else magic) if d.mage else 0,"current":"float" if d.kind=="ziggy" else "guard","previous":"","done":false,"alive":true,"lost":[],"unbalanced":false,"down":false,"frog":false,"pieces":false,"guarding":false,"loaded":false,"bow":false,"meditated":false,"burning":false,"plague":-1,"controller_by":-1,"sprint_mod":0,"owner":-1}
 		if d.kind=="ziggy":p.hp=die()*3;p.max_hp=p.hp
 		if d.kind=="skeleton":p.current="guard"
 		# regola modificata: le frecce sono contate, 5 + un dado per arciere
-		p.arrows=(5+die()) if house_rules and d.moves.has("shoot") else -1
+		p.arrows=(5+die()) if bool(house.get("arrows",false)) and d.moves.has("shoot") else -1
 		if p.arrows>0:note("%s ha %d frecce nella faretra." % [p.name,p.arrows])
 		state.fighters.append(p)
 	state.obstacles=[]
-	if house_rules and scenery:_place_scenery()
+	if bool(house.get("scenery",false)):_place_scenery()
 	note("Blood Master · schieramento nell’arena")
 	state.active=0
 
@@ -251,7 +269,7 @@ func draw_next() -> void:
 		var b=state.bag.pop_front();var p=state.fighters[b.fighter]
 		if not living(p) or p.done or p.pieces:continue
 		if b.move=="fall":
-			if not state.get("house",false):_knock(int(b.fighter),true);p.done=true;note(p.name+" cade a terra prima di agire.");continue
+			if not hr("fall"):_knock(int(b.fighter),true);p.done=true;note(p.name+" cade a terra prima di agire.");continue
 			# regola modificata: esce "a terra" ma si tira un dado: 1-2 si cade, 6 ci si rimette in guardia
 			var fd=die()
 			if fd<=2:_knock(int(b.fighter),true);p.done=true;note("%s, pedina a terra: dado %d, cade a terra prima di agire." % [p.name,fd])
@@ -279,7 +297,7 @@ func draw_next() -> void:
 
 func reachable(i: int,max_steps: int,dirs: Array=[]) -> Dictionary:
 	var p=state.fighters[i];var paths={p.cell:[]};var queue=[p.cell]
-	var zoc=bool(state.get("house",false)) and definition(p).kind!="ziggy"
+	var zoc=hr("zoc") and definition(p).kind!="ziggy"
 	while not queue.is_empty():
 		var here=queue.pop_front();var path=paths[here]
 		if path.size()>=max_steps:continue
@@ -304,7 +322,7 @@ func enemy_adjacent(i: int,k: String) -> bool:
 # d'attacco col lato rosso verso di lui subisce un colpo; l'avversario usa così la sua azione del turno.
 # Restituisce true se chi si muove deve fermarsi (sbilanciato, a terra o fuori combattimento).
 func _zoc_strikes(i: int,from: String,to: String) -> bool:
-	if not bool(state.get("house",false)):return false
+	if not hr("zoc"):return false
 	var p=state.fighters[i];var team=acting_team(p)
 	for j in state.fighters.size():
 		var e=state.fighters[j]
@@ -327,7 +345,7 @@ func in_view(p: Dictionary,k: String) -> bool:
 const SPEARS=["shannon","ramok","skelos","sketos","sanguinaria","zenyo"]   # armi lunghe: lance, alabarde, tridente e il bastone di Zenyo
 func spear_reach(p: Dictionary,m: Dictionary) -> bool:
 	# regola modificata: con un'arma lunga l'affondo e la carica arrivano a due esagoni davanti
-	return bool(state.get("house",false)) and str(p.character) in SPEARS and str(m.get("id","")) in ["thrust","charge"]
+	return hr("reach") and str(p.character) in SPEARS and str(m.get("id","")) in ["thrust","charge"]
 func acting_team(p: Dictionary) -> int:
 	# sotto controllo mentale si combatte per la squadra del mago che controlla
 	var c=int(p.get("controller_by",-1))
@@ -567,7 +585,7 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 	if m.get("imbalance")!=null and result.wounds>0 and b.alive and not b.pieces:
 		var bd=die();var value=bd+int(definition(a).size)+int(m.imbalance)+charge_imbalance
 		var push=balance_table(value,int(definition(b).size))
-		if push>=0 and state.get("house",false):push+=1   # regola modificata: chi viene sbilanciato arretra sempre almeno di un esagono
+		if push>=0 and hr("push"):push+=1   # regola modificata: chi viene sbilanciato arretra sempre almeno di un esagono
 		note("Sbilanciamento: dado %d + stazza %d + modificatore %d%s = %d contro stazza %d: %s." % [bd,int(definition(a).size),int(m.imbalance)," + carica %d"%charge_imbalance if charge_imbalance else "",value,int(definition(b).size),"nessun effetto" if push<0 else ("sbilanciato" if push==0 else "sbilanciato, arretra di %d" % push)])
 		if push>=0:
 			if not knocked:_knock(j,false,true)

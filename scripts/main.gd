@@ -40,8 +40,13 @@ var board_grid=false
 var blood_on=false
 var sound_on=true
 var labels_on=true
-var house_rules=true
-var scenery_on=true   # regola modificata: elementi di scena a caso nell'arena
+var house={"fall":true,"push":true,"reach":true,"arrows":true,"zoc":true,"scenery":true}   # regole modificate, una per una
+const HOUSE_INFO=[["fall","Cadute col dado","La pedina «a terra» fa cadere solo con 1-2 sul dado; con 6 ci si rimette in guardia."],
+	["push","Arretramento sicuro","Chi viene sbilanciato arretra sempre di almeno un esagono: scontri più mobili."],
+	["reach","Armi lunghe","Lance, alabarde, tridente e il bastone di Zenyo: affondo e carica colpiscono anche il secondo esagono davanti."],
+	["arrows","Frecce contate","Ogni arciere ha 5 + un dado di frecce; finite quelle si torna alla spada."],
+	["zoc","Zone di controllo","Entrando accanto a un nemico ci si ferma; chi si sgancia da un nemico che non ha ancora agito subisce un suo colpo."],
+	["scenery","Scenografia","Colonne, massi, alberi, pozze e macerie a caso nell'arena: invalicabili; colonne, massi e alberi coprono dai tiri."]]
 var clear_plates=false
 var _last_hp={}
 var showing_game=false
@@ -63,7 +68,7 @@ func _ready() -> void:
 	if OS.get_environment("BM_SMOKE")=="1":
 		roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
 		_start_local();return
-	_show_menu()
+	_show_splash()
 func _build_theme() -> void:
 	var t=Theme.new();t.default_font_size=17
 	t.set_color("font_color","Label",INK);t.set_color("font_color","Button",INK)
@@ -128,10 +133,17 @@ var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
 	var d=JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
-	if d is Dictionary:art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true));step_pause=bool(d.get("pause",false));house_rules=bool(d.get("house",true));scenery_on=bool(d.get("scenery",true));clear_plates=bool(d.get("clear_plates",false))
+	if not d is Dictionary:return
+	art=str(d.get("art","classica"));blood_on=bool(d.get("blood",false));sound_on=bool(d.get("sound",true));labels_on=bool(d.get("labels",true))
+	step_pause=bool(d.get("pause",false));clear_plates=bool(d.get("clear_plates",false))
+	var hs=d.get("house_rules",null)
+	if hs is Dictionary:
+		for k in house:house[k]=bool(hs.get(k,house[k]))
+	elif d.has("house"):   # vecchie impostazioni: un solo interruttore per tutte le regole modificate
+		for k in house:house[k]=bool(d.house) and (k!="scenery" or bool(d.get("scenery",true)))
 func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
-	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house":house_rules,"clear_plates":clear_plates,"pause":step_pause,"scenery":scenery_on}))
+	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house_rules":house,"clear_plates":clear_plates,"pause":step_pause}))
 func card_path(id: String) -> String:
 	var r="res://assets/reborn/cards/%s.webp"%id
 	if art=="reborn" and ResourceLoader.exists(r):return r
@@ -178,100 +190,137 @@ func _set_scenario(n: int) -> void:
 	for r in roster:
 		if _locked(r.character):r.team=int(game.catalog[r.character].team)    # chi era nella squadra sbagliata torna nel suo Ordine
 	_show_menu()
+func _show_splash() -> void:
+	# schermata iniziale: l'arena in penombra, il titolo, i volti dei combattenti e le scelte principali
+	showing_game=false;clear(page)
+	if not has_meta("settings_loaded"):_load_settings();set_meta("settings_loaded",true)
+	var layer=Control.new();layer.size_flags_vertical=Control.SIZE_EXPAND_FILL;layer.size_flags_horizontal=Control.SIZE_EXPAND_FILL;page.add_child(layer)
+	var bg=TextureRect.new();bg.texture=load("res://assets/arena/arena.webp");bg.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;bg.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);bg.modulate=Color(.38,.34,.32);layer.add_child(bg)
+	var center=CenterContainer.new();center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);layer.add_child(center)
+	var v=VBoxContainer.new();v.alignment=BoxContainer.ALIGNMENT_CENTER;v.add_theme_constant_override("separation",14);center.add_child(v)
+	var t=label("BLOOD MASTER",86,GOLD);t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;t.add_theme_constant_override("outline_size",10);t.add_theme_color_override("font_outline_color",Color(0,0,0,.8));v.add_child(t)
+	var st=label("EDIZIONE DELUXE · GLADIATORI, MAGHI E SCHELETRI NELL'ARENA",15,INK);st.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(st)
+	var faces=HBoxContainer.new();faces.alignment=BoxContainer.ALIGNMENT_CENTER;faces.add_theme_constant_override("separation",6);v.add_child(faces)
+	for id in ["gascor","zenyo","kylvia","ut","shannon","gandy","ziggy","thorn","sanguinaria","ramok","nuchra","zak","shaara","anteos"]:
+		var f=TextureRect.new();var fp="res://assets/ui/faces/%s.webp"%id
+		if not ResourceLoader.exists(fp):continue
+		f.texture=load(fp);f.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;f.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;f.custom_minimum_size=Vector2(58,58)
+		f.tooltip_text=game.catalog[id].name+" · "+game.catalog[id].title;faces.add_child(f)
+	v.add_child(Control.new())
+	var col=VBoxContainer.new();col.add_theme_constant_override("separation",10);col.custom_minimum_size.x=340;v.add_child(col)
+	for item in [["Nuovo scontro",_show_menu,true],["Riprendi la partita salvata",_load_game,false],["Regolamento",_open_manual,false],["Crediti",_credits,false]]:
+		if item[0].begins_with("Riprendi") and not FileAccess.file_exists("user://battle.json"):continue
+		var b=button(item[0],item[1],item[2]);b.add_theme_font_size_override("font_size",20);col.add_child(b)
+	var note=label("Ideazione di Stefano Ancillai e Marco Ramadori · disegni di Luigi Filipponi",12,MUTED);note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(note)
+func _section(parent: Node,title: String) -> VBoxContainer:
+	var v=VBoxContainer.new();v.add_theme_constant_override("separation",5);parent.add_child(v)
+	v.add_child(label(title,13,GOLD));return v
+func _choice(parent: Node,text: String,on: bool,cb: Callable,tip:="") -> Button:
+	var b=_bar_check(text,on,func(_v):cb.call(),tip);b.size_flags_horizontal=Control.SIZE_EXPAND_FILL;parent.add_child(b);return b
 func _show_menu() -> void:
+	# preparazione: a sinistra modalità, scenario e regole; al centro tutti i personaggi (carte piccole,
+	# senza scorrere); a destra le due squadre e il tasto per entrare nell'arena
 	showing_game=false;clear(page);menu_options=[]
 	if not has_meta("settings_loaded"):_load_settings();set_meta("settings_loaded",true)
-	_header("EDIZIONE DELUXE · VERSIONE IN SVILUPPO")
 	if roster.is_empty() and not has_meta("roster_default"):
 		set_meta("roster_default",true)
 		roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
-	var top=HBoxContainer.new();page.add_child(top)
-	for option in [["solo","Contro IA"],["local","Stesso schermo"],["online","Online"]]:
-		var b=button(option[1],func():mode=option[0];_show_menu())
-		if mode==option[0]:b.add_theme_color_override("font_color",GOLD)
-		top.add_child(b)
-	top.add_child(spacer())
-	top.add_child(label("SCENARIO",13,GOLD))
-	var scene_choice=OptionButton.new();scene_choice.add_item("Scontro frontale · squadre e pace/guerra");scene_choice.add_item("Scontro libero · squadre a scelta");scene_choice.add_item("Blood Master · asta e 3 round")
-	scene_choice.select(["frontale","libero","bloodmaster"].find(scenario));scene_choice.item_selected.connect(_set_scenario);top.add_child(scene_choice)
-	top.add_child(spacer());top.add_child(label("Regole",14,MUTED))
-	for option in [[false,"Originali"],[true,"Modificate"]]:
-		var rb=button(option[1],func():house_rules=option[0];_save_settings();_show_menu())
-		rb.tooltip_text="Modificate: la pedina \"a terra\" fa cadere solo con 1-2 sul dado (con 6 ci si rimette in guardia) chi viene sbilanciato arretra sempre di almeno un esagono, e con lance, alabarde, tridente e il bastone di Zenyo l'affondo e la carica colpiscono fino a due esagoni davanti; gli arcieri hanno 5 + un dado di frecce; zone di controllo: entrando accanto a un nemico ci si ferma, e chi si sgancia da un nemico che non ha ancora agito subisce un suo colpo." if option[0] else "Il regolamento originale di Blood Master."
-		if house_rules==option[0]:rb.add_theme_color_override("font_color",GOLD)
-		top.add_child(rb)
-	if house_rules:
-		var sc=button("Scenografia: "+("sì" if scenery_on else "no"),func():scenery_on=not scenery_on;_save_settings();_show_menu())
-		sc.tooltip_text="Colonne, massi, alberi, pozze d'acqua e macerie messi a caso nell'arena: non si attraversano; colonne, massi e alberi coprono anche dai tiri d'arco."
-		if scenery_on:sc.add_theme_color_override("font_color",GOLD)
-		top.add_child(sc)
-	top.add_child(spacer());top.add_child(label("Grafica",14,MUTED))
+	var head=HBoxContainer.new();page.add_child(head)
+	head.add_child(button("‹ Indietro",_show_splash))
+	var tt=label("BLOOD MASTER · PREPARA LO SCONTRO",22,GOLD);head.add_child(tt)
+	head.add_child(spacer());head.add_child(button("Regolamento",_open_manual));head.add_child(button("Crediti",_credits))
+	var cols=HBoxContainer.new();cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;cols.add_theme_constant_override("separation",12);page.add_child(cols)
+	# --- opzioni
+	var opt=panel_content(cols,12);opt.get_parent().get_parent().custom_minimum_size.x=280;opt.add_theme_constant_override("separation",12)
+	var sc_opt=ScrollContainer.new();sc_opt.size_flags_vertical=Control.SIZE_EXPAND_FILL;sc_opt.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;opt.add_child(sc_opt)
+	var ov=VBoxContainer.new();ov.size_flags_horizontal=Control.SIZE_EXPAND_FILL;ov.add_theme_constant_override("separation",14);sc_opt.add_child(ov)
+	var m=_section(ov,"MODALITÀ")
+	for option in [["solo","Contro l'IA"],["local","Stesso schermo"],["online","Online"]]:
+		_choice(m,option[1],mode==option[0],func():mode=option[0];_show_menu())
+	var sv=_section(ov,"SCENARIO")
+	for option in [["frontale","Scontro frontale","Blu contro Rossi; si comincia in pace, poi è guerra."],["libero","Scontro libero","Squadre a scelta: ogni personaggio può stare con chiunque."],["bloodmaster","Blood Master","Asta dei personaggi e tre round, da almeno tre giocatori."]]:
+		_choice(sv,option[1],scenario==option[0],func():_set_scenario(["frontale","libero","bloodmaster"].find(option[0])),option[2])
+	var sd=label(["Blu contro Rossi; si comincia in pace, poi è guerra.","Squadre a scelta: ogni personaggio può stare con chiunque.","Asta dei personaggi e tre round, da almeno tre giocatori."][["frontale","libero","bloodmaster"].find(scenario)],11,MUTED)
+	sd.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;sd.custom_minimum_size.x=250;sv.add_child(sd)
+	var hv=_section(ov,"REGOLE MODIFICATE")
+	var all_row=HBoxContainer.new();hv.add_child(all_row)
+	all_row.add_child(_bar_button("Tutte",func():
+		for k in house:house[k]=true
+		_save_settings();_show_menu(),"Attiva tutte le regole modificate"))
+	all_row.add_child(_bar_button("Nessuna · originali",func():
+		for k in house:house[k]=false
+		_save_settings();_show_menu(),"Regolamento originale di Blood Master"))
+	for info in HOUSE_INFO:
+		var cb=CheckBox.new();cb.text=info[1];cb.button_pressed=bool(house[info[0]]);cb.tooltip_text=info[2]
+		cb.add_theme_font_size_override("font_size",14)
+		cb.toggled.connect(func(v):house[info[0]]=v;_save_settings());hv.add_child(cb)
+	var hl=label("Passa sopra una regola per leggerla.",11,MUTED);hv.add_child(hl)
+	var gv=_section(ov,"GRAFICA DELLE SCHEDE")
+	var grow=HBoxContainer.new();gv.add_child(grow)
 	for option in [["classica","Classica"],["reborn","Reborn"]]:
-		var b=button(option[1],func():art=option[0];_save_settings();_show_menu())
-		if art==option[0]:b.add_theme_color_override("font_color",GOLD)
-		top.add_child(b)
-	var cols=HBoxContainer.new();cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;cols.add_theme_constant_override("separation",14);page.add_child(cols)
-	_team_column(cols,0)
+		var b=_bar_check(option[1],art==option[0],func(_v):art=option[0];_save_settings();_show_menu());grow.add_child(b)
+	# --- personaggi
 	var pool=panel_content(cols,12);pool.get_parent().get_parent().size_flags_horizontal=Control.SIZE_EXPAND_FILL
-	var hint="Clic sulla metà sinistra della scheda: Blu · sulla metà destra: Rossi" if scenario=="libero" else "Clic su una scheda: va nel suo Ordine · maghi e scheletri: metà sinistra Blu, metà destra Rossi"
-	var h=label(hint,13,MUTED);h.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;pool.add_child(h)
-	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;pool.add_child(scroll)
-	var inner=VBoxContainer.new();inner.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(inner)
-	var taken=roster.map(func(r):return r.character)
+	var hint="Clic sulla metà sinistra di una scheda: Blu · metà destra: Rossi · clic su una scheda già scelta: la togli" if scenario=="libero" else "Clic su una scheda: entra nel suo Ordine · maghi e scheletri: metà sinistra Blu, metà destra Rossi · clic di nuovo: la togli"
+	var h=label(hint,12,MUTED);h.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;pool.add_child(h)
+	var avail_w=maxf(480.0,get_viewport().get_visible_rect().size.x-280-280-150)   # colonne laterali, margini e bordi
+	var cw=clampf((avail_w-3*10)/4.0,110.0,230.0)
 	for group in [["COMBATTENTI",false],["MAGHI E SCHELETRI",true]]:
-		var t=label(group[0],13,GOLD);t.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;inner.add_child(t)
-		var center=CenterContainer.new();inner.add_child(center)
-		var grid=GridContainer.new();grid.columns=3;grid.add_theme_constant_override("h_separation",12);grid.add_theme_constant_override("v_separation",8);center.add_child(grid)
+		pool.add_child(label(group[0],12,GOLD))
+		var grid=GridContainer.new();grid.columns=4;grid.add_theme_constant_override("h_separation",10);grid.add_theme_constant_override("v_separation",8);pool.add_child(grid)
 		for id in _selectable():
-			if _free_agent(id)!=group[1] or id in taken:continue
-			grid.add_child(_pool_card(id))
-	_team_column(cols,1)
-	var bottom=HBoxContainer.new();page.add_child(bottom)
+			if _free_agent(id)!=group[1]:continue
+			grid.add_child(_pool_card(id,cw))
+	# --- squadre e avvio
+	var right=panel_content(cols,12);right.get_parent().get_parent().custom_minimum_size.x=280
+	for team in 2:_team_column(right,team)
+	right.add_child(spacer())
+	var fill=Control.new();fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
 	if mode=="online":
-		var online=VBoxContainer.new();online.size_flags_horizontal=Control.SIZE_EXPAND_FILL;bottom.add_child(online);_online_menu(online)
+		var online=VBoxContainer.new();right.add_child(online);_online_menu(online)
 	else:
-		bottom.add_child(button("Entra nell’arena",_start_local,true))
-	if FileAccess.file_exists("user://battle.json"):bottom.add_child(button("Riprendi la partita salvata",_load_game))
-	status=label(message,14,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;status.size_flags_horizontal=Control.SIZE_EXPAND_FILL;bottom.add_child(status)
-func _pool_card(id: String) -> Control:
-	var v=VBoxContainer.new();v.add_theme_constant_override("separation",2)
+		var go=button("Entra nell’arena",_start_local,true);go.add_theme_font_size_override("font_size",20);right.add_child(go)
+	status=label(message,13,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;status.custom_minimum_size.x=240;right.add_child(status)
+func _pool_card(id: String,width: float) -> Control:
+	# scheda piccola: già scelta = bordo del colore della squadra e clic per toglierla; "i" per le tessere
+	var box_c=PanelContainer.new();var picked=-1
+	for i in roster.size():
+		if roster[i].character==id:picked=i
+	var sb=box(Color(0,0,0,0),6);sb.set_border_width_all(3);sb.border_color=TEAM_COLOR[int(roster[picked].team)] if picked>=0 else Color(0,0,0,0)
+	box_c.add_theme_stylebox_override("panel",sb)
 	var locked=_locked(id);var own=int(game.catalog[id].team)
-	v.add_child(_card_widget(id,262,func(x):_add_to_team(id,own if locked else (0 if x<.5 else 1)),true))
-	var row=HBoxContainer.new();row.add_theme_constant_override("separation",4);v.add_child(row)
-	if locked:
-		row.add_child(label("◀ solo Blu" if own==0 else "",12,TEAM_COLOR[0]))
-	else:
-		row.add_child(label("◀ Blu",12,TEAM_COLOR[0]))
-	row.add_child(spacer())
-	var info=Button.new();info.text="Mosse";info.tooltip_text="Scheda e tessere";info.add_theme_font_size_override("font_size",12)
-	for st in ["normal","hover","pressed","focus"]:
-		var sb=box(Color("233234") if st!="hover" else Color("40534c"),6);sb.content_margin_left=8;sb.content_margin_right=8;sb.content_margin_top=2;sb.content_margin_bottom=2;info.add_theme_stylebox_override(st,sb)
-	info.pressed.connect(func():_show_detail(id));row.add_child(info)
-	row.add_child(spacer())
-	if locked:
-		row.add_child(label("solo Rossi ▶" if own==1 else "",12,TEAM_COLOR[1]))
-	else:
-		row.add_child(label("Rossi ▶",12,TEAM_COLOR[1]))
-	return v
+	var card=_card_widget(id,width,func(x):
+		if picked>=0:_remove_from_team(picked)
+		else:_add_to_team(id,own if locked else (0 if x<.5 else 1)),picked<0)
+	if picked>=0:card.modulate=Color(1,1,1,.55)
+	box_c.add_child(card)
+	var info=Button.new();info.text="i";info.tooltip_text="Scheda e tessere";info.add_theme_font_size_override("font_size",12)
+	info.custom_minimum_size=Vector2(22,22);info.pressed.connect(func():_show_detail(id))
+	card.add_child(info);info.position=Vector2(card.custom_minimum_size.x-26,card.custom_minimum_size.y-26)   # angolo in basso a destra
+	if picked>=0:
+		var tag=label(("BLU" if int(roster[picked].team)==0 else "ROSSI")+(" · persona" if roster[picked].controller=="human" else " · IA"),11,Color("151b19"))
+		var tp=PanelContainer.new();tp.add_theme_stylebox_override("panel",box(TEAM_COLOR[int(roster[picked].team)],4));tp.add_child(tag);card.add_child(tp);tp.position=Vector2(4,4)
+	return box_c
 func _team_column(parent: Node,team: int) -> void:
-	var v=panel_content(parent,12);v.get_parent().get_parent().custom_minimum_size.x=250
 	var members=[]
 	for i in roster.size():
 		if int(roster[i].team)==team:members.append(i)
-	v.add_child(label(TEAM_NAME[team],13,TEAM_COLOR[team]))
-	v.add_child(label("%d personaggi"%members.size() if members.size()!=1 else "1 personaggio",12,MUTED))
-	var scroll=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;v.add_child(scroll)
-	var list=VBoxContainer.new();list.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(list)
+	var head=HBoxContainer.new();parent.add_child(head)
+	head.add_child(label(TEAM_NAME[team],12,TEAM_COLOR[team]));head.add_child(spacer());head.add_child(label(str(members.size()),12,MUTED))
 	if members.is_empty():
-		var l=label("Clicca una scheda al centro per aggiungere un personaggio.",13,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=210;list.add_child(l)
+		var l=label("Nessuno: scegli una scheda al centro.",12,MUTED);l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=240;parent.add_child(l)
 	for i in members:
 		var id: String=roster[i].character
-		list.add_child(_card_widget(id,218,func(_x):_show_detail(id)))
-		var row=HBoxContainer.new();row.add_theme_constant_override("separation",6);list.add_child(row)
-		var who=Button.new();who.text="Persona" if roster[i].controller=="human" else "IA";who.tooltip_text="Chi muove questo personaggio"
-		who.pressed.connect(func():roster[i].controller="ai" if roster[i].controller=="human" else "human";_show_menu());row.add_child(who)
-		row.add_child(spacer())
-		var out=Button.new();out.text="✕";out.tooltip_text="Rimetti al centro";out.pressed.connect(func():_remove_from_team(i));row.add_child(out)
+		var row=HBoxContainer.new();row.add_theme_constant_override("separation",6);parent.add_child(row)
+		var f=TextureRect.new();var fp="res://assets/ui/faces/%s.webp"%id
+		if ResourceLoader.exists(fp):f.texture=load(fp)
+		f.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;f.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;f.custom_minimum_size=Vector2(34,34);row.add_child(f)
+		var nm=label(game.catalog[id].name,14,INK);nm.size_flags_horizontal=Control.SIZE_EXPAND_FILL;nm.clip_text=true;row.add_child(nm)
+		var who=_bar_button("Persona" if roster[i].controller=="human" else "IA",func():roster[i].controller="ai" if roster[i].controller=="human" else "human";_show_menu(),"Chi muove questo personaggio")
+		row.add_child(who)
+		row.add_child(_bar_button("✕",func():_remove_from_team(i),"Togli dalla squadra"))
+	parent.add_child(HSeparator.new())
 func _show_detail(id: String) -> void:
 	# finestra sopra il menu con scheda e tessere; si chiude cliccando fuori o su Chiudi
 	detail_id=id
@@ -323,7 +372,7 @@ func _start_local() -> void:
 		if not r.team in teams:teams.append(r.team)
 	if teams.size()<2:message="Assegna almeno un personaggio a ciascun Ordine.";_show_menu();return
 	room_code="";net_host=false
-	game.house_rules=house_rules;game.scenery=scenery_on
+	game.house=house.duplicate()
 	if scenario=="bloodmaster":
 		if roster.size()<3:message="Lo scenario Blood Master richiede almeno tre giocatori.";_show_menu();return
 		game.start_campaign(roster,int(Time.get_unix_time_from_system()))
@@ -754,7 +803,7 @@ func _tile(path: String,width: int) -> void:
 	var t=TextureRect.new();t.texture=load(path);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;t.custom_minimum_size=Vector2(width,width*.866);sidebar.add_child(t)
 func _reach_tip(p: Dictionary,id: String) -> String:
 	# regola modificata delle lance: affondo e carica arrivano al secondo esagono davanti
-	if bool(game.state.get("house",false)) and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
+	if game.hr("reach") and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
 		return "\nArma lunga: colpisce anche il secondo esagono davanti (regola modificata)"
 	return ""
 func _move_tip(m: Dictionary) -> String:
