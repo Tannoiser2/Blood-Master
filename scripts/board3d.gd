@@ -40,7 +40,10 @@ const REPLAY_PACE=.8
 const OWN_CLIP={"thrust":"Calcio volante","right":"Pugno Dx","left":"Pugno Sx","sweep":"Spazzata","meditate":"Meditazione"}
 # gradi di torsione del modello per clip (positivo = verso la sinistra del personaggio)
 # (le clip "Taglio" di Meshy colpiscono dal lato opposto al nome: "Taglio Dx" chiude a sinistra, quindi fa il taglio sinistro)
-const TWIST={"Taglio Dx":32.0,"Taglio Sx":-32.0,"Parata Sx":38.0,"Parata Dx":-38.0,"Pugno Sx":25.0,"Pugno Dx":-25.0}
+const TWIST={"Taglio Dx":58.0,"Taglio Sx":-58.0,"Parata Sx":60.0,"Parata Dx":-60.0,"Pugno Sx":35.0,"Pugno Dx":-35.0}
+# lato dei gesti laterali (+1 = sinistra del personaggio, -1 = destra) e tipo: arco di luce che lo rende evidente
+# (le clip "Taglio" di Meshy hanno i nomi scambiati: "Taglio Dx" è il taglio sinistro del gioco)
+const SIDE_FX={"Taglio Dx":[1.0,"colpo"],"Taglio Sx":[-1.0,"colpo"],"Parata Sx":[1.0,"parata"],"Parata Dx":[-1.0,"parata"],"Pugno Sx":[1.0,"colpo"],"Pugno Dx":[-1.0,"colpo"]}
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","dodge","guard"]
@@ -192,9 +195,12 @@ func _mini(i: int) -> Dictionary:
 			# torsione del corpo: i colpi e le parate a sinistra si girano a sinistra, quelli a destra a destra,
 			# così le due versioni si distinguono anche dall'alto; gli arcieri finiscono Incoccare in posa di tiro (vedi _rest_pose)
 			var mdl: Node3D=model
+			var apx: AnimationPlayer=info.ap
 			info.ap.animation_started.connect(func(n):
 				var yaw=TWIST.get(n,0.0)
-				var tw=create_tween();tw.tween_property(mdl,"rotation:y",deg_to_rad(yaw),.18 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE))
+				var tw=create_tween();tw.tween_property(mdl,"rotation:y",deg_to_rad(yaw),.18 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE)
+				var lean=create_tween();lean.tween_property(mdl,"rotation:z",deg_to_rad(-yaw*.14),.2 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE)   # si piega verso il lato
+				if SIDE_FX.has(n) and apx.has_animation(n):_side_fx(pivot,float(SIDE_FX[n][0]),SIDE_FX[n][1]=="parata",apx.get_animation(n).length/maxf(absf(apx.speed_scale),.1)))
 		if p.character=="ziggy":   # lo spirito fluttua sopra la basetta
 			model.position.y=.14
 			var bob=create_tween().set_loops();bob.bind_node(model)
@@ -293,6 +299,7 @@ func _set_rim(i: int,move_id: String,facing:=-1) -> void:
 # l'intera miniatura seguendo quel profilo, oppure, per camminata e corsa (clip sul
 # posto), alla velocità reale dei piedi misurata in Blender.
 const ROOT_MOTION=["Carica","Rotolare"]   # clip che avanzano davvero: la miniatura segue il loro tragitto
+const WALK_CLIPS=["Avanzare","Camminata","Correre","Avanzare arco","Camminata arco","Correre arco"]   # clip che camminano davvero
 const STEP_SPEED={"Avanzare":.72,"Camminata":1.50,"Correre":3.49}   # velocità dei piedi / altezza del bacino (1/s)
 var _motion={}             # id dell'Animation -> {"net": Vector3, "times": PackedFloat32Array, "prog": PackedFloat32Array}
 func _find_skeleton(n: Node) -> Skeleton3D:
@@ -493,7 +500,7 @@ func sync() -> void:
 			if front!=-1 and not front in victims and minis.has(front):
 				var fq=game.state.fighters[front];var defensive=fq.current in DEFENSIVE
 				var hit_at=minis[i].ap.get_animation(track.clip).length*.45 if minis[i].ap and minis[i].ap.has_animation(track.clip) else .5
-				var word="SCHIVATA!" if fq.current in ["dodge","roll"] else ("PARATA!" if defensive else "MANCATO")
+				var word="SCHIVATA!" if fq.current in ["dodge","roll"] else ({"parry_r":"PARATA DESTRA!","parry_l":"PARATA SINISTRA!"}.get(fq.current,"PARATA!") if defensive else "MANCATO")
 				step.append({"i":front,"clip":CLIP[fq.current] if defensive and CLIP.has(fq.current) else _clip_for(front,"parry_r" if minis[front].ap and minis[front].ap.has_animation("Parata Dx") else "guard",bool(fq.get("bow",false))),
 					"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":maxf(.05,hit_at-.35),"move":fq.current,"strike":false,"parried":i,"parry_word":word})
 	var strike_delay=0.0
@@ -801,6 +808,20 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if t.has("arrow"):t["impact_at"]=t.delay+turn+clip_len*.55+_arrow_flight(t,info)      # rilascio + volo della freccia
 		elif SPELL_FX.has(str(t.get("move",""))):t["impact_at"]=t.delay+turn+clip_len*.45+_spell_travel(t,info)   # lancio + viaggio della magia
 		else:t["impact_at"]=t.delay+turn+((length*.85) if mode in ["passi","profilo"] else clip_len*.45)   # a metà clip; in fondo alla corsa per le cariche
+	# passi nella direzione del movimento: verso un esagono davanti (o diagonale davanti) si gira e cammina,
+	# verso uno dietro (o diagonale dietro) resta rivolto in avanti e cammina all'indietro; alla fine prende
+	# l'orientamento scelto. Così il corpo non si gira mai più di un lato rispetto a dove guardava.
+	var walking=mode in ["passi","lineare"] and dist>.05 and t.clip in WALK_CLIPS and not t.get("pushed",false) and not info.get("spirit",false)
+	var segs=[]
+	if walking:
+		var face0=pivot.rotation.y;var pts0: Array=[t.from]+t.get("path",[t.to])
+		for k in pts0.size()-1:
+			var dv: Vector3=pts0[k+1]-pts0[k]
+			if dv.length()<.01:continue
+			var sy=atan2(dv.x,dv.z);var back=absf(angle_difference(face0,sy))>deg_to_rad(100.0)
+			segs.append({"a":pts0[k],"b":pts0[k+1],"yaw":sy+PI if back else sy,"back":back,"len":dv.length()})
+		if segs.is_empty():walking=false
+		else:turn=0.0
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
 	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
@@ -846,6 +867,20 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 			tw.tween_method(func(x: float):
 				var k=floorf(x/clip_len);var p=(k+_progress(m,x-k*clip_len))/loops
 				root.position=_along(pts,minf(p,1.0)),0.0,natural,length)
+		elif walking:   # tappa per tappa: girato verso la tappa o all'indietro, poi l'orientamento finale
+			var total=0.0
+			for sg in segs:total+=sg.len
+			for sg in segs:
+				var dur=length*sg.len/maxf(total,.001)
+				var back: bool=sg.back
+				tw.tween_callback(func():
+					if ap:ap.speed_scale=-absf(ap.speed_scale) if back else absf(ap.speed_scale))   # all'indietro: passi a ritroso
+				var y0=sg.yaw;var a: Vector3=sg.a;var b: Vector3=sg.b
+				tw.tween_method(func(f: float):
+					root.position=a.lerp(b,f);pivot.rotation.y=lerp_angle(pivot.rotation.y,y0,.22),0.0,1.0,dur)
+			tw.tween_callback(func():
+				if ap:ap.speed_scale=absf(ap.speed_scale))
+			tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),.2)
 		elif pts.size()>2:   # percorso con curve: si gira lungo il tragitto e alla fine riprende l'orientamento scelto
 			tw.tween_method(func(f: float):
 				var a=_along(pts,f);var b=_along(pts,minf(f+.04,1.0));root.position=a
@@ -864,6 +899,33 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		if rate!=1.0 and ap:tw.tween_callback(func():ap.speed_scale=1.0)
 	return turn+length
 
+# arco di luce sul lato del gesto: per i colpi una scia rosso-arancio che spazza dal fianco verso il
+# davanti, per le parate un arco-scudo azzurro fermo sul lato coperto. Figlio del pivot: gira con il fronte.
+func _side_fx(pivot: Node3D,sx: float,parry: bool,clip_time: float) -> void:
+	var col=Color(.45,.8,1.0) if parry else Color(1.0,.45,.15)
+	var mi=MeshInstance3D.new();var im=ImmediateMesh.new();mi.mesh=im
+	var mat=_fx_mat(col,3.0);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+	mat.blend_mode=BaseMaterial3D.BLEND_MODE_MIX;mat.albedo_color=Color(col,.0);mi.material_override=mat;pivot.add_child(mi)   # pieno, non additivo: si vede anche sul pavimento chiaro
+	var r=.62;var h=.62;var w=.16 if parry else .07
+	var a_side=deg_to_rad(105.0)*sx;var a_front=deg_to_rad(10.0)*sx
+	var draw=func(f: float):   # f: quanto dell'arco è disegnato (0..1)
+		im.clear_surfaces();im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+		var n=18
+		for k in n+1:
+			var u=float(k)/n*f
+			var a=lerpf(a_side,a_front,u) if not parry else lerpf(deg_to_rad(5.0)*sx,deg_to_rad(95.0)*sx,u)
+			var y=h+(sin(u*PI)*.18 if not parry else 0.0)
+			var p=Vector3(sin(a)*r,y,cos(a)*r)
+			im.surface_add_vertex(p+Vector3(0,-w*(1.0-.6*absf(u-.5)),0));im.surface_add_vertex(p+Vector3(0,w*(1.0-.6*absf(u-.5)),0))
+		im.surface_end()
+	var start=clip_time*(.15 if parry else .3)
+	var tw=mi.create_tween()
+	tw.tween_interval(start)
+	tw.tween_callback(func():mat.albedo_color=Color(col,.92))
+	tw.tween_method(draw,0.0,1.0,.18 if not parry else .12)
+	tw.tween_interval(.12 if not parry else clip_time*.45)
+	tw.tween_property(mat,"albedo_color:a",0.0,.3)
+	tw.tween_callback(mi.queue_free)
 func _along(pts: Array,f: float) -> Vector3:
 	# punto alla frazione f della spezzata pts (tappe esagono per esagono)
 	var total=0.0
@@ -1759,10 +1821,10 @@ func _play_turn(group: Array) -> void:
 				if moves.has(t.i):moves[t.i].to=t.to;moves[t.i].yaw=t.yaw;moves[t.i].facing=t.get("facing",-1)   # più spostamenti nello stesso turno: un solo tragitto
 				else:moves[t.i]=t.duplicate();moves[t.i].delay=0.0
 			else:t["_step"]=sn;acts.append(t)
-	var span=0.0
-	for i in moves:span=maxf(span,_plan(moves[i],minis[i]).length)
+	# tutti partono insieme, ognuno alla sua velocità naturale (prima si allungavano tutti sul tragitto più
+	# lungo del turno: chi faceva un esagono andava al rallentatore mentre chi correva sembrava velocissimo)
 	var longest=0.0
-	for i in moves:longest=maxf(longest,_run_track(moves[i],minis[i],true,span))
+	for i in moves:longest=maxf(longest,_run_track(moves[i],minis[i],true))
 	if longest>0:await get_tree().create_timer(longest).timeout
 	# poi gli scontri, un passo alla volta con la stessa sequenza della partita (colpi uno dopo l'altro)
 	for k in range(1,sn+1):
