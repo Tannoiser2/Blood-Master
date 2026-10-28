@@ -415,7 +415,9 @@ func targets(i: int,id: String="") -> Array:
 			if m.target=="enemy" and (occupant==-1 or int(state.fighters[occupant].team)==team):continue
 			out.append(k)
 		return out
-	if m.id in ["run","charge","float"]:return reachable(i,int(definition(p).sprint)).keys()
+	# corsa e carica passano solo dai lati verdi della pedina (davanti e diagonali davanti), come avanzare
+	if m.id in ["run","charge"]:return reachable(i,int(definition(p).sprint),m.green).keys()
+	if m.id=="float":return reachable(i,int(definition(p).sprint)).keys()
 	if m.id in ["advance","dodge","load","concentrate","roll","rise"]:
 		var dirs=m.green
 		if m.id in ["concentrate","load","rise","roll"]:dirs=[]
@@ -452,7 +454,8 @@ func reaction_options(i: int,spell_value: int=0) -> Array:
 # di quanti lati può ruotare chi agisce con la pedina attuale (0 = orientamento fisso)
 func max_rotation(i: int,wait:=false) -> int:
 	var m=move(state.fighters[i])
-	if m.id.begins_with("parry") or m.id in ["dematerialize","weapon","roll"]:return 0
+	if m.id in ["dematerialize","weapon","roll","charge"]:return 0   # la carica colpisce dritto davanti a sé
+	# le parate possono girarsi di un lato: si porta il lato blu verso chi minaccia
 	if m.id in ["rise","meditate","teleport","float"] or (m.id=="guard" and wait):return 3
 	return 1
 func act(command: Dictionary) -> bool:
@@ -487,7 +490,7 @@ func act(command: Dictionary) -> bool:
 		var max_step=1
 		if m.id in ["run","charge","float"]:max_step=int(definition(p).sprint)
 		if m.id=="roll":max_step=2
-		paths=reachable(i,max_step,[] if m.id in ["run","charge","float","load","concentrate","roll","rise"] else m.green)
+		paths=reachable(i,max_step,[] if m.id in ["float","load","concentrate","roll","rise"] else m.green)
 		var path: Array=command.get("path",paths.get(k,[]))
 		if path.size()>max_step:return false
 		var here=p.cell

@@ -590,7 +590,7 @@ func busy() -> bool:return playing or not queue.is_empty()
 
 func _token(i: int) -> void:
 	var info=minis[i]
-	if info.token:info.token.texture=load(game.move(game.state.fighters[i]).get("texture","res://assets/tokens/effect_wall.webp"))
+	if info.token:info.token.texture=load(Art.token(str(game.move(game.state.fighters[i]).get("texture","res://assets/tokens/effect_wall.webp"))))
 func _refresh_tokens() -> void:
 	for i in minis:
 		var p=game.state.fighters[i];var info=minis[i]

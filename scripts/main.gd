@@ -158,7 +158,8 @@ func _header(subtitle: String) -> void:
 # scheda su cui clicchi decide la squadra.
 const TEAM_COLOR=[Color("69cec1"),Color("e68078")]
 const TEAM_NAME=["BLU · ORDINE DELLA LAMA","ROSSI · ORDINE DELL’OMBRA"]
-var art="classica"          # grafica delle schede: "classica" o "reborn"
+var art="classica":         # grafica delle schede e delle pedine: "classica" o "reborn"
+	set(v):art=v;Art.reborn=(v=="reborn")
 var detail_id=""            # personaggio mostrato nel pannello di sinistra
 func _load_settings() -> void:
 	if not FileAccess.file_exists("user://settings.json"):return
@@ -427,7 +428,7 @@ func _honeycomb(d: Dictionary,info: Label) -> Control:
 	var k=0
 	for id in d.moves:
 		var m=d.moves[id];var col=k%cols;var row=k/cols
-		var t=TextureRect.new();t.texture=load(m.texture);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var t=TextureRect.new();t.texture=load(Art.token(m.texture));t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		t.custom_minimum_size=Vector2(w,h);t.size=Vector2(w,h);t.position=Vector2(col*(w*.75+gap),row*(h+gap)+((h+gap)*.5 if col%2==1 else 0.0))
 		t.tooltip_text=_move_tip(m);t.mouse_filter=Control.MOUSE_FILTER_STOP
 		var tip=_move_tip(m).replace("\n"," · ")
@@ -605,7 +606,7 @@ func _refresh_portraits() -> void:
 			if mv_def.is_empty() or (str(nt.get("move",""))=="" and not on) or (tiny and not on):continue
 			var row=HBoxContainer.new();row.add_theme_constant_override("separation",5);row.mouse_filter=Control.MOUSE_FILTER_IGNORE;v.add_child(row)
 			var ts=(58.0 if on else (22.0 if compact else 30.0))
-			var tk=TextureRect.new();tk.texture=load(str(mv_def.get("texture","")));tk.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;tk.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			var tk=TextureRect.new();tk.texture=load(Art.token(str(mv_def.get("texture",""))));tk.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;tk.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			tk.custom_minimum_size=Vector2(ts,ts);tk.tooltip_text=_move_tip(mv_def);tk.mouse_filter=Control.MOUSE_FILTER_PASS;row.add_child(tk)
 			var lines=nt.get("lines",[])
 			if compact and not on:
@@ -779,7 +780,7 @@ func _move_honeycomb(ids: Array,p: Dictionary,info: Label,on_pick: Callable) -> 
 	var k=0
 	for id in ids:
 		var m=game.move(p,id);var col=k%cols;var row=k/cols
-		var t=TextureButton.new();t.texture_normal=load(m.texture);t.ignore_texture_size=true;t.stretch_mode=TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		var t=TextureButton.new();t.texture_normal=load(Art.token(m.texture));t.ignore_texture_size=true;t.stretch_mode=TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 		t.custom_minimum_size=Vector2(w,h);t.size=Vector2(w,h);t.position=Vector2(col*(w*.75+gap),row*(h+gap)+((h+gap)*.5 if col%2==1 else 0.0))
 		var full=_move_tip(m)+_reach_tip(p,id)
 		t.tooltip_text=full;t.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND

@@ -367,6 +367,12 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 		elif m.get("attack")!=null and m.id!="charge" and occupant!=-1:
 			score=_target_value(game,i,occupant,_expected_wounds(game,i,occupant,m,p.cell))
 		else:score=_move_score(game,i,k,m)
+		if m.id in ["advance","run"] and m.get("attack")==null:
+			# la pedina di movimento non va sprecata: a parità di valore ci si sposta, verso il nemico più vicino a piedi
+			var near=99
+			for j in _enemies(game,i):near=mini(near,game.walk_distance(k,game.state.fighters[j].cell))
+			score-=float(near)*.05+(.6 if k==p.cell else 0.0)
+			if p.character=="golem":score=-float(near)*3.0   # il Golem va dritto addosso al nemico più vicino
 		if score>best:best=score;selected=k
 	var focus=_focus(game,i)
 	if focus!=-1:
@@ -375,7 +381,8 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 		if m.id=="guard" and targets.is_empty():desired=_best_facing(game,i,p.cell,desired)
 		if m.id in ["rise","meditate","teleport","float"] or (m.id=="guard" and targets.is_empty()):facing=desired
 		elif desired!=facing:facing=posmod(facing+(1 if posmod(desired-facing,6)<=3 else -1),6)
-	if m.id.begins_with("parry") or m.id in ["dematerialize","weapon","roll"]:facing=int(p.facing)
+	if m.id in ["dematerialize","weapon","roll","charge"]:facing=int(p.facing)   # la carica non ruota: colpisce davanti
+	if m.id.begins_with("parry"):facing=_parry_facing(game,i,m)   # gira il lato blu verso chi minaccia
 	if targets.is_empty():
 		if m.id=="guard":return {"wait":true,"facing":facing}
 		return {"pass":true,"facing":int(p.facing)}
@@ -384,6 +391,21 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 	elif m.id in ["fireball","lightning"]:extra=clampi(int(p.magic)-int(m.cost)-3,0,3)
 	return {"target":selected,"facing":facing,"extra":extra}
 
+# parata: tra il fronte attuale e un lato in più a destra o a sinistra, quello che mette sotto i lati blu
+# i nemici adiacenti più pericolosi e non lascia scoperti fianchi e spalle
+static func _parry_facing(game: BloodRules,i: int,m: Dictionary) -> int:
+	var p=game.state.fighters[i];var best=int(p.facing);var best_s=-INF
+	for f in [int(p.facing),posmod(int(p.facing)+1,6),posmod(int(p.facing)-1,6)]:
+		var s=(.2 if f==int(p.facing) else 0.0)
+		for j in _enemies(game,i):
+			var e=game.state.fighters[j]
+			if BloodRules.distance(p.cell,e.cell)!=1 or e.down:continue
+			var w=1.0+(float(game.move(e).get("attack",0)) if game.move(e).get("attack")!=null else 0.0)*.15
+			var side=posmod(BloodRules.direction(p.cell,e.cell)-f,6)
+			if side in m.blue:s+=3.0*w
+			elif side in [2,3,4]:s-=2.0*w   # fianco o spalle verso un nemico
+		if s>best_s:best_s=s;best=f
+	return best
 static func reaction(game: BloodRules,i: int) -> String:
 	var s=game.state.pending;var v=int(game.move(game.state.fighters[s.actor]).get("value",0)) if s.kind=="spell" else 0
 	var opts=game.reaction_options(i,v)

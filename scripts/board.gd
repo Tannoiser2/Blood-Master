@@ -87,7 +87,7 @@ func _draw() -> void:
 		for j in i:
 			if game.state.fighters[j].cell==p.cell:count+=1
 		center+=Vector2(count*8,-count*8)
-		var m=game.move(p);var path=m.get("texture","")
+		var m=game.move(p);var path=Art.token(str(m.get("texture","")))
 		if p.frog:path="res://assets/tokens/effect_frog.webp"
 		var tex=texture(path);var radius=109*scale_factor
 		var color=TEAL if p.team==0 else RED

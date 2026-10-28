@@ -7,7 +7,10 @@ func run() -> void:
 	var ids=OS.get_environment("IDS").split(",")
 	scene.roster=[]
 	for k in ids.size():scene.roster.append({"character":ids[k],"team":k%2,"controller":"human" if k==int(OS.get_environment("HUMAN")) else "ai","seat":0})
-	scene.minis_3d=true;scene.speed=.05
+	if OS.get_environment("ART")!="":scene.art=OS.get_environment("ART")
+	if OS.get_environment("NO3D")!="":scene.minis_3d=false
+	else:scene.minis_3d=true
+	scene.speed=.05
 	scene._start_local()
 	var t=0.0
 	while t<90.0 and scene.game.state.phase!="acting" or (scene.game.state.phase=="acting" and int(scene.game.state.active)!=int(OS.get_environment("HUMAN")) and t<90.0):
