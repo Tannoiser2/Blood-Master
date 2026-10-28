@@ -180,6 +180,9 @@ func _mini(i: int) -> Dictionary:
 	if path!="":
 		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;pivot.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
 		info.ap=_find_animation(model)
+		var skel=model.find_children("*","Skeleton3D",true,false)
+		if info.ap and not skel.is_empty() and not p.character in ["golem","ziggy"]:   # a terra: braccia aperte, arma in una mano
+			var ga=GroundArms.new();ga.ap=info.ap;skel[0].add_child(ga)
 		var grip_rest=model.find_child("Arma",true,false);var grip_act=model.find_child("ArmaAzione",true,false)
 		if info.ap and grip_rest and grip_act:   # bastone/tridente: dritto a riposo, testa in avanti negli incantesimi e nei colpi
 			var sync_grip=func(n):

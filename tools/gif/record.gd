@@ -33,6 +33,7 @@ func run():
 		if cid=="ziggy":await _ziggy(m,cam,out);m.queue_free();await process_frame;print("FATTO ",cid);continue
 		if ap==null:m.queue_free();continue
 		var hips=sk.find_bone("Hips") if sk else -1
+		if sk and cid!="golem":var ga=GroundArms.new();ga.ap=ap;sk.add_child(ga)   # a terra: braccia aperte, come nel gioco
 		var tall=2.4 if cid=="golem" else 1.9
 		DirAccess.make_dir_recursive_absolute(out+"/"+cid)
 		for clip in ap.get_animation_list():
