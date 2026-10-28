@@ -238,6 +238,7 @@ func token_color(m: Dictionary) -> Color:
 	return Color("8f9a9e")
 const SIDE_COLORS=[["red",Color("ff4a3d")],["green",Color("3ddc6a")],["blue",Color("3d8bff")]]
 var _shots_seen=0
+var _attacks_seen=0   # ultimo colpo del registro già animato
 var _spells_seen=0
 var _dir3=[]               # direzione 3D verso la cella vicina in ciascuna delle 6 direzioni delle regole
 func _directions() -> Array:
@@ -428,11 +429,25 @@ func sync() -> void:
 		if prev.has(i) and prev[i].get("pieces",false) and not game.state.fighters[i].get("pieces",false) and minis.has(i) and game.state.fighters[i].cell!="":
 			step.append({"i":i,"clip":"Rialzarsi","from":cell_pos(game.state.fighters[i].cell),"to":cell_pos(game.state.fighters[i].cell),"yaw":facing_yaw(int(game.state.fighters[i].facing)),"facing":int(game.state.fighters[i].facing),"delay":.6,"move":"rise","strike":false,"rebuild":true})
 			actors.erase(i)
+	var struck_now={}   # chi ha portato un colpo vero in questo passo (guardia compresa)
+	for a in game.state.get("attack_log",[]):
+		if int(a.get("seq",0))>_attacks_seen:struck_now[int(a.actor)]=true
+	_attacks_seen=int(game.state.get("attack_seq",_attacks_seen))
 	for i in actors:
 		var p=game.state.fighters[i];var was=prev[i];var id=p.current
 		if was.down and not p.down and p.alive:id="rise"   # Rialzarsi (anche quando la regola lo lascia sbilanciato)
 		if i in victims and game.move(p).get("attack")==null and not id in MOVING:continue
 		var track={"i":i,"clip":_clip_for(i,id,bool(p.get("bow",false))),"bow":bool(p.get("bow",false)),"loaded":bool(p.get("loaded",false)) or id=="shoot","from":_spot(i,was.cell),"to":_spot(i,p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":id,"strike":game.move(p).get("attack")!=null}
+		if id=="guard":
+			# in guardia: colpisce solo se ha davvero colpito qualcuno (chi gli è arrivato addosso); allora un affondo vero
+			track.strike=struck_now.has(i)
+			if track.strike and track.clip=="In guardia":track.clip=_clip_for(i,"thrust",bool(p.get("bow",false)))
+			elif not track.strike and track.clip=="Schianto":track.clip="In guardia"   # il Golem in guardia senza nemici resta fermo
+		if id in ["parry_l","parry_r","dodge"] and not track.strike:
+			# parata e schivata si vedono solo quando c'è davvero un colpo da cui difendersi (traccia "parried"
+			# all'istante dell'impatto); quando tocca a lui e nessuno lo attacca resta in guardia, o cammina se si sposta
+			if str(was.cell)==str(p.cell):continue
+			track.clip=_clip_for(i,"advance",bool(p.get("bow",false)));track.move="advance"
 		if id=="roll" and p.down:   # rotola restando a terra: disteso, scivola fino alla nuova cella senza rialzarsi
 			track.clip="A terra";track["lying"]=true;track["split"]=true;track["stay"]=true
 		var route: Array=p.get("path",[])
@@ -452,7 +467,7 @@ func sync() -> void:
 			track["arrow"]={"victim":v,"hit":v>=0 and v in victims and int(game.state.fighters[v].hp)<int(prev.get(v,{}).get("hp",0))}
 		# chi viene colpito da questa traccia: serve per far reagire ognuno al SUO colpo, uno dopo l'altro
 		if track.has("arrow") and int(track.arrow.victim)>=0:track["hits"]=[int(track.arrow.victim)]
-		elif SPELL_FX.has(id) and not track.get("targets",[]).is_empty():track["hits"]=track.targets.duplicate()
+		elif SPELL_FX.has(id) and id!="summon" and not track.get("targets",[]).is_empty():track["hits"]=track.targets.duplicate()
 		elif track.strike:
 			var hs=[];var la0=game.state.get("last_attack",{})
 			if int(la0.get("actor",-1))==i and int(la0.get("victim",-1))>=0:hs.append(int(la0.victim))

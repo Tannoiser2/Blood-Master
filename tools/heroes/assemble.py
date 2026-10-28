@@ -22,7 +22,7 @@ CID = sys.argv[-1]
 CFG = {
     'ut':      dict(name='Ut', kind='sword', length=1.50, grip=.235, shaft=(-.20, -.12), heavy=True),
     'shannon': dict(name='Shannon', kind='pole', length=2.05, grip=.15, shaft=(-.85, -.25), heavy=False),
-    'nuchra':  dict(name='Nuchra', kind='pole', length=1.30, grip=.40, shaft=(-.48, -.18), heavy=True, sep=-.17, gshift=(0, .08, 0)),
+    'nuchra':  dict(name='Nuchra', kind='pole', length=1.30, grip=.40, shaft=(-.48, -.18), heavy=True, sep=-.17, gshift=(0, .08, 0), fist=True),
     'zenyo':   dict(name='Zenyo', kind='pole', length=1.80, grip=.28, shaft=(-.85, -.25), heavy=False),
     'shaara':  dict(name='Shaara', weapon=False, heavy=False),
     'ramok':   dict(name='Ramok', kind='pole', length=2.05, grip=.15, shaft=(-.85, -.25), heavy=True),
@@ -179,6 +179,50 @@ for name, fname in EXTRA.items():
         bpy.data.objects.remove(o)
 rest(arm); bpy.context.view_layer.update()
 
+# --- Mani chiuse (fist): alcuni modelli Meshy hanno le mani scolpite aperte e lo scheletro non ha
+# le ossa delle dita, così l'arma passava accanto al palmo. Qui le dita vengono piegate nella mesh
+# stessa (posa di riposo), arrotolandole attorno alle nocche verso il palmo: le mani stringono l'asta.
+FIST = {}
+def close_hands(curl_deg=100.0):
+    rest(arm); bpy.context.view_layer.update()
+    me = body.data; BW = body.matrix_world; BWi = BW.inverted()
+    for side in ('Right', 'Left'):
+        g = body.vertex_groups.get(side + 'Hand')
+        if g is None:
+            continue
+        idx = []
+        for v in me.vertices:
+            for ge in v.groups:
+                if ge.group == g.index and ge.weight > .5:
+                    idx.append(v.index)
+        if len(idx) < 30:
+            continue
+        wrist = arm.matrix_world @ arm.data.bones[side + 'Hand'].head_local
+        P = [BW @ me.vertices[i].co for i in idx]
+        far = sorted(P, key=lambda q: (q - wrist).length)[-max(5, len(P) // 12):]
+        d = (sum(far, Vector()) / len(far) - wrist).normalized()          # dal polso alla punta delle dita
+        ts = [(q - wrist).dot(d) for q in P]; tmax = max(ts); tk = tmax * .42   # nocche a poco meno di metà mano
+        # il palmo guarda dove le dita "possono" chiudersi: in T-pose verso il basso
+        n = Vector((0, 0, -1)); n = (n - d * n.dot(d)).normalized()
+        axis = d.cross(n).normalized(); pivot = wrist + d * tk
+        for i, q, t in zip(idx, P, ts):
+            if t <= tk:
+                continue
+            k = min(1.0, (t - tk) / max(tmax - tk, 1e-4))
+            R = Matrix.Rotation(math.radians(curl_deg) * k, 4, axis)
+            q2 = pivot + (R @ (q - pivot).to_4d()).to_3d()
+            me.vertices[i].co = BWi @ q2
+        # il pugno: centro del cerchio delle dita, asse lungo le nocche verso il lato del pollice
+        L = tmax - tk; Rr = L / max(math.radians(curl_deg), .5)
+        ss = [(q - wrist).dot(axis) for q in P]
+        thumb = axis if max(ss) > -min(ss) else -axis
+        FIST[side] = (pivot + n * Rr * .9, thumb, d)
+        print('MANO CHIUSA', side, len(idx), flush=True)
+    me.update()
+
+if CFG.get('fist'):
+    close_hands(CFG.get('curl', 100.0))
+
 WEAPON = CFG.get('weapon', True)       # Shaara combatte a mani nude
 w = None
 if WEAPON:
@@ -211,6 +255,14 @@ if WEAPON:
     w.parent = arm; w.parent_type = 'BONE'; w.parent_bone = 'RightHand'
     bpy.context.view_layer.update()
     w.matrix_world = bone_frame(arm, 'RightHand') @ Matrix.Translation(REL_SWORD.translation) @ rot.to_4x4() @ Matrix.Scale(REL_SWORD.to_scale()[0], 4)
+    if 'Right' in FIST:
+        # mano chiusa: l'asta passa nel centro del pugno, lungo le nocche; la testa esce dal lato del
+        # pollice e il filo guarda dove guardavano le dita (come una vera presa a martello)
+        fc, ah, fd = FIST['Right']; fd = (fd - ah * fd.dot(ah)).normalized()
+        Bs = Matrix((Vector(u), sG, Vector(u).cross(sG))).transposed()
+        Bd = Matrix((ah, fd, ah.cross(fd))).transposed()
+        sc = (bone_frame(arm, 'RightHand') @ Matrix.Scale(REL_SWORD.to_scale()[0], 4)).to_scale()[0]   # stessa scala di prima
+        w.matrix_world = Matrix.Translation(fc) @ (Bd @ Bs.transposed()).to_4x4() @ Matrix.Scale(sc, 4)
     w.name = 'Arma'
     bpy.context.view_layer.update()
 
@@ -311,9 +363,18 @@ if WEAPON:
             out.append((min(t, 1), p))
         return out
     def body_frame():
+        # Le pose dell'arma sono pensate per un busto dritto. Se il personaggio è curvo (la guardia
+        # bassa dei pesanti: Nuchra, Ut) riferirle al busto inclinato faceva finire l'arma orizzontale
+        # in avanti, all'altezza della pancia. Finché il busto è più su che giù conta solo la direzione
+        # in cui guarda, con il "su" del terreno; a terra (cadute, rotolate) si segue il busto.
         c = (hw('LeftArm') + hw('RightArm')) / 2
         left = (hw('LeftArm') - hw('RightArm')).normalized()
         up = (hw('neck') - hw('Spine')); up = (up - left * up.dot(left)).normalized()
+        world_up = Vector((0, 0, 1))                       # il su del mondo (Blender: asse Z)
+        if up.dot(world_up) > .35:
+            lv = left - world_up * left.dot(world_up)
+            if lv.length > .3:
+                left = lv.normalized(); up = world_up
         return c, left.cross(up), left, up                 # centro, avanti, sinistra, su
     def pose_at(sched, x):
         for (t0, p0), (t1, p1) in zip(sched, sched[1:]):
@@ -338,6 +399,13 @@ if WEAPON:
             prev = loc
         return best[1]
     BONES = ('RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand')
+    LFIST = None
+    if 'Left' in FIST:   # pugno sinistro nello spazio della mano: centro, asse del pollice, direzione delle nocche
+        Hr = arm.data.bones['LeftHand'].matrix_local; Hri = Hr.inverted(); A3 = AWi.to_3x3()
+        fc, th, fd = FIST['Left']
+        cl = Hri @ (AWi @ fc); tl = (Hri.to_3x3() @ (A3 @ th)).normalized(); dl = (Hri.to_3x3() @ (A3 @ fd))
+        dl = (dl - tl * dl.dot(tl)).normalized()
+        LFIST = (cl, Matrix((tl, dl, tl.cross(dl))).transposed())
     LEFT = ('LeftShoulder', 'LeftArm', 'LeftForeArm', 'LeftHand')
     # In Avanzare (camminata in guardia) il braccio sinistro della clip originale è alzato come per
     # reggere uno scudo: prendo l'oscillazione naturale della Camminata, alla stessa fase.
@@ -382,6 +450,16 @@ if WEAPON:
                 frames[f] = {nm: arm.pose.bones[nm].rotation_quaternion.copy() for nm in BONES[:3]}
                 continue
             gl = AWi @ (g + d * SEP)                            # presa sinistra
+            if LFIST:
+                # mano chiusa: il pugno sinistro stringe l'asta come il destro (pollice verso la testa)
+                Dd = (AWi.to_3x3() @ d).normalized(); Ee = (AWi.to_3x3() @ e); Ee = (Ee - Dd * Ee.dot(Dd)).normalized()
+                Rh = Matrix((Dd, Ee, Dd.cross(Ee))).transposed() @ LFIST[1].transposed()
+                Hh = gl - Rh @ LFIST[0]
+                two_bone('Left', Hh, AWi.to_3x3() @ (-Up + Lf * .6 - F * .2))
+                pbh = arm.pose.bones['LeftHand']; Mh = Rh.to_4x4(); Mh.translation = pbh.head
+                pbh.matrix = Mh; bpy.context.view_layer.update()
+                frames[f] = {nm: arm.pose.bones[nm].rotation_quaternion.copy() for nm in BONES}
+                continue
             S = head('LeftArm'); tgt = gl - (gl - S).normalized() * .07 * UNIT
             two_bone('Left', tgt, AWi.to_3x3() @ (-Up + Lf * .6 - F * .2))
             E, Wr = head('LeftForeArm'), head('LeftHand'); D = (AWi.to_3x3() @ d).normalized()
@@ -402,6 +480,7 @@ if WEAPON:
     for a in bpy.data.actions:
         a.use_fake_user = True
     rest(arm); bpy.context.view_layer.update()
+
 
 for img in bpy.data.images:
     used_by_body = any(img in [nd.image for nd in m.node_tree.nodes if nd.type == 'TEX_IMAGE']

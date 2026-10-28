@@ -380,7 +380,7 @@ func _zoc_strikes(i: int,from: String,to: String) -> bool:
 		if not posmod(direction(e.cell,from)-int(e.facing),6) in m.red:continue
 		e.done=true;e.guarding=false
 		note("%s si sgancia da %s, che tenta un colpo (regola modificata)." % [p.name,e.name])
-		_combat(j,i,m)
+		_log_attack(j,i);_combat(j,i,m)
 		if not living(p) or p.unbalanced or p.down:return true
 	return false
 func in_view(p: Dictionary,k: String) -> bool:
@@ -546,8 +546,14 @@ func guard_attack(i: int,k: String,facing: int) -> bool:
 	var p=state.fighters[i];var old=p.facing;p.facing=posmod(facing,6)
 	if not k in targets(i):p.facing=old;return false
 	p.guarding=false;state.active=i;_attack_request(i,at(k,i),p.facing);return true
+# registro dei colpi portati davvero (per la mappa 3D: chi colpisce chi, e chi è solo in guardia)
+func _log_attack(i: int,j: int) -> void:
+	state.attack_seq=int(state.get("attack_seq",0))+1
+	var log: Array=state.get("attack_log",[]);log.append({"actor":i,"victim":j,"seq":state.attack_seq})
+	state.attack_log=log.slice(maxi(0,log.size()-20))
 func _attack_request(i: int,j: int,facing: int,charge_imbalance: int=0) -> void:
 	state.last_attack={"actor":i,"victim":j}   # per la mappa 3D: chi para o subisce il colpo
+	_log_attack(i,j)
 	state.pending={"kind":"attack","actor":i,"victim":j,"facing":facing,"charge_imbalance":charge_imbalance,"reactors":[j]}
 	if reaction_options(j).size()>1:state.phase="reaction"
 	else:_attack_pending()
