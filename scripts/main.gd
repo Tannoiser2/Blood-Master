@@ -460,6 +460,9 @@ var stage: Control
 var picker: Control
 var action_panel: PanelContainer
 var journal_panel: PanelContainer
+var journal_open=false
+var news_panel: PanelContainer;var news_now: RichTextLabel;var news_prev: RichTextLabel
+var _news_seen=-1
 var hint_label: Label
 func _bar_button(text: String,cb: Callable,tip:="") -> Button:
 	var b=button(text,cb);b.add_theme_font_size_override("font_size",13);b.tooltip_text=tip
@@ -500,6 +503,7 @@ func _build_game() -> void:
 	new_btn=_bar_button("Nuovo scontro",_show_menu,"Torna al menu per preparare un altro scontro")
 	new_btn.add_theme_stylebox_override("normal",tex_box("btn_on.png",8,11,6));new_btn.add_theme_color_override("font_color",DARK_INK)
 	row.add_child(replay_btn);row.add_child(new_btn);replay_btn.visible=false;new_btn.visible=false
+	row.add_child(_bar_check("Diario",journal_open,func(v):journal_open=v;journal_panel.visible=v,"Apri o chiudi il diario completo dello scontro"))
 	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
 	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
 	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
@@ -538,13 +542,26 @@ func _build_game() -> void:
 	hint_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;hint_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	var right=VBoxContainer.new();right.mouse_filter=Control.MOUSE_FILTER_IGNORE;right.custom_minimum_size.x=240;cols.add_child(right)
 	var rgap=Control.new();rgap.custom_minimum_size.x=CARD_W;rgap.mouse_filter=Control.MOUSE_FILTER_IGNORE;cols.add_child(rgap)
-	journal_panel=_overlay_panel(.72);right.add_child(journal_panel)
+	journal_panel=_overlay_panel(.86);right.add_child(journal_panel);journal_panel.visible=journal_open
 	var jv=VBoxContainer.new();journal_panel.add_child(jv)
 	var jh=HBoxContainer.new();jv.add_child(jh);jh.add_child(label("DIARIO",13,GOLD));jh.add_child(spacer())
 	log_box=RichTextLabel.new();log_box.bbcode_enabled=true;log_box.scroll_following=true;log_box.custom_minimum_size=Vector2(210,240);log_box.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;log_box.add_theme_font_size_override("normal_font_size",14);jv.add_child(log_box)
 	jh.add_child(_bar_button("−",func():log_box.visible=not log_box.visible,"Riduci o apri il diario"))
 	var fill=Control.new();fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;fill.size_flags_vertical=Control.SIZE_EXPAND_FILL;right.add_child(fill)
 	right.add_child(hint_label)
+	# CRONACA: in alto al centro, quello che è appena successo (formule e dadi); l'azione prima resta sotto, attenuata
+	news_panel=_overlay_panel(.88);news_panel.mouse_filter=Control.MOUSE_FILTER_IGNORE;stage.add_child(news_panel)
+	news_panel.set_anchors_preset(Control.PRESET_CENTER_TOP);news_panel.custom_minimum_size.x=560;news_panel.visible=false
+	var nv=VBoxContainer.new();nv.add_theme_constant_override("separation",4);nv.mouse_filter=Control.MOUSE_FILTER_IGNORE;news_panel.add_child(nv)
+	for k in 2:
+		var rt=RichTextLabel.new();rt.bbcode_enabled=true;rt.fit_content=true;rt.scroll_active=false;rt.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+		rt.custom_minimum_size.x=530;rt.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		rt.add_theme_font_size_override("normal_font_size",16 if k==0 else 13);rt.add_theme_font_size_override("bold_font_size",16 if k==0 else 13)
+		if k==1:rt.modulate=Color(1,1,1,.62)
+		nv.add_child(rt)
+		if k==0:news_now=rt
+		else:news_prev=rt
+	_news_seen=-1
 	_refresh_portraits()
 var team_cols: Array=[]
 var panel_home: Control
@@ -672,6 +689,20 @@ func _meter(f: float,col: Color,tip: String,w:=96.0) -> Control:
 	var fill=ColorRect.new();fill.color=col if f>.5 or col!=Color("5fd068") else (Color("f0c040") if f>.25 else Color("d9534f"));fill.size=Vector2(w*clampf(f,0,1),6);fill.mouse_filter=Control.MOUSE_FILTER_IGNORE;back.add_child(fill)
 	return back
 var _dice_re: RegEx
+# cronaca in alto: le righe nuove dall'ultimo aggiornamento formano un blocco; il blocco prima scende sotto
+func _update_news() -> void:
+	if news_panel==null or not is_instance_valid(news_panel):return
+	var total=int(game.state.get("log_n",game.state.log.size()));var lg: Array=game.state.log
+	if _news_seen<0:_news_seen=total   # all'inizio (o dopo un caricamento) niente arretrati
+	var fresh=mini(total-_news_seen,lg.size())
+	if fresh<=0:return
+	_news_seen=total
+	var lines=lg.slice(lg.size()-fresh)
+	if lines.size()>6:lines=lines.slice(lines.size()-6)   # al massimo sei righe: le più recenti
+	if news_now.text!="":news_prev.text=news_now.text;news_prev.visible=true
+	news_now.text="[b]"+_log_bbcode(lines.slice(0,1))+"[/b]"+("\n"+_log_bbcode(lines.slice(1)) if lines.size()>1 else "")
+	news_panel.visible=true
+	news_panel.reset_size();news_panel.position.x=(stage.size.x-news_panel.size.x)*.5;news_panel.position.y=6
 func _log_bbcode(lines: Array) -> String:
 	# "dado 5" nel diario diventa l'immagine del dado con quella faccia
 	if _dice_re==null:_dice_re=RegEx.new();_dice_re.compile("dado ([1-6])")
@@ -723,6 +754,7 @@ func _refresh() -> void:
 	_refresh_portraits()
 	panel_narrow=_panel_owner()>=0 and cards.has(_panel_owner()) and _human(_panel_owner())
 	log_box.text=_log_bbcode(game.state.log.slice(maxi(0,game.state.log.size()-40)))
+	_update_news()
 	board.highlights=[];board.preview_facing=-1;board.focus_fighter=-1;board.selected=selected_cell
 	status.text=""
 	match game.state.phase:

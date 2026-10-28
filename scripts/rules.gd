@@ -40,7 +40,7 @@ func die() -> int:
 	if not forced_dice.is_empty(): return int(forced_dice.pop_front())
 	return rng.randi_range(1,6)
 func note(s: String) -> void:
-	state.log.append(s)
+	state.log.append(s);state.log_n=int(state.get("log_n",0))+1   # contatore: quante righe in tutto (il diario tiene solo le ultime 100)
 	if state.log.size()>100: state.log.pop_front()
 func definition(p: Dictionary) -> Dictionary: return catalog[p.character]
 func move(p: Dictionary,id: String="") -> Dictionary:

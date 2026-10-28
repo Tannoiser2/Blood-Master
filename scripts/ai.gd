@@ -239,6 +239,7 @@ static func _blocks_enemy(game: BloodRules,i: int,k: String) -> float:
 	return v
 
 # ------------------------------------------------------------------ scelta della mossa segreta
+static var _dbg_scores={}
 static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 	var p=game.state.fighters[i];var legal=game.legal_moves(i)
 	if legal.is_empty():return ""
@@ -251,6 +252,8 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 	for j in _enemies(game,i):
 		if game.walk_distance(p.cell,game.state.fighters[j].cell)<=2:within2+=1
 	var exposure=float(adjacent)*EXPOSE_ADJ+float(within2-adjacent)*EXPOSE_NEAR
+	# chi ha tante ferite (Nuchra 38, Ut 38) può esporsi: la difesa della pedina pesa meno; un arciere da 14 resta prudente
+	exposure*=clampf(22.0/maxf(float(p.max_hp),1.0),.5,1.2)
 	if p.character=="golem" and legal.has("guard") and legal.has("advance"):   # il Golem può solo avanzare o colpire
 		if not game.targets(i,"guard").is_empty() or adjacent>0:return "guard"
 		for k in game.targets(i,"advance"):
@@ -349,6 +352,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 			var now_risk=_back_risk(game,i,p.cell,int(p.facing));var turned=_back_risk(game,i,p.cell,_best_facing(game,i,p.cell,int(p.facing)))
 			score+=(now_risk-turned)*BACK_W*.8
 		if difficulty==0:score+=sin(float(i*61+game.state.turn*13+id.hash()%97))*6
+		if OS.get_environment("BM_AIDBG")==str(p.character):_dbg_scores[id]=snappedf(score,.1)
 		if score>best:best=score;selected=id
 	return selected
 
