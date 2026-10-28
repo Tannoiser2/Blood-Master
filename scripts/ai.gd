@@ -411,17 +411,38 @@ static func _parry_facing(game: BloodRules,i: int,m: Dictionary) -> int:
 		if s>best_s:best_s=s;best=f
 	return best
 static func reaction(game: BloodRules,i: int) -> String:
+	# Reagire con una parata costa la mossa preparata: conviene solo se le ferite evitate valgono più di
+	# quello che si perde (un attacco pronto, una guardia, un'azione utile). Se il colpo può uccidere, si para.
 	var s=game.state.pending;var v=int(game.move(game.state.fighters[s.actor]).get("value",0)) if s.kind=="spell" else 0
 	var opts=game.reaction_options(i,v)
 	if "counter" in opts:return "counter"
-	var best="pass";var value=999
-	var p=game.state.fighters[i];var attacker=game.state.fighters[s.actor]
-	var side=posmod(BloodRules.direction(p.cell,attacker.cell)-int(p.facing),6)
+	if opts.size()<=1:return "pass"
+	var p=game.state.fighters[i];var a=int(s.actor);var attacker=game.state.fighters[a];var m_att=game.move(attacker)
+	var keep_cur=str(p.current);var keep_face=int(p.facing)
+	var now_w=_expected_wounds(game,a,i,m_att,attacker.cell)
+	var best="pass";var best_w=now_w
 	for id in opts:
 		if id=="pass":continue
-		var m=game.move(p,id);var defense=int(m.defense) if side in m.blue else int(m.secondary)
-		if defense<value:value=defense;best=id
-	return best
+		p.current=id
+		var blue: Array=game.move(p).get("blue",[])
+		var side=posmod(BloodRules.direction(p.cell,attacker.cell)-keep_face,6)
+		if id.begins_with("parry") and not side in blue:   # come nelle regole: si gira di un lato verso il lato blu
+			for d in [1,-1]:
+				if posmod(side-d,6) in blue:p.facing=posmod(keep_face+d,6);break
+		var w=_expected_wounds(game,a,i,m_att,attacker.cell)+(1.0 if id=="dematerialize" else 0.0)
+		p.facing=keep_face
+		if w<best_w:best_w=w;best=id
+	p.current=keep_cur
+	if best=="pass":return "pass"
+	if now_w>=float(p.hp) and best_w<float(p.hp):return best     # altrimenti muore: si para
+	# quanto vale la mossa che si perderebbe
+	var mine=game.move(p);var keep=1.5
+	if mine.get("attack")!=null and mine.id!="guard":keep=4.0+(4.0 if not game.targets(i).is_empty() else 0.0)
+	elif mine.id=="guard":keep=3.0+(3.0 if not game.targets(i).is_empty() else 0.0)
+	elif mine.get("spell",false):keep=5.0
+	elif mine.id in ["load","shoot"]:keep=5.0
+	elif mine.id in ["rise","run","charge"]:keep=3.0
+	return best if (now_w-best_w)*1.6>keep else "pass"
 
 static func opportunity(game: BloodRules,i: int) -> String:
 	var p=game.state.fighters[i]

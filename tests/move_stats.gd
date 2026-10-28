@@ -50,14 +50,22 @@ func _init() -> void:
 					if am.get("attack")!=null and am.id!="guard":atk+=1;done_atk[am.id]=done_atk.get(am.id,0)+1
 					if str(r.state.fighters[a].cell)!=before:moved+=1
 				"opportunity":guard_hits+=1;r.opportunity(BloodAI.opportunity(r,int(r.state.pending.reactors[0])))
-				"reaction":r.react(BloodAI.reaction(r,int(r.state.pending.reactors[0])))
+				"reaction":
+					var rj=int(r.state.pending.reactors[0]);var planned=r.move(r.state.fighters[rj]);var ch=BloodAI.reaction(r,rj)
+					var tag="reazioni_"+("para" if ch!="pass" else "passa")+("_aveva_attacco" if planned.get("attack")!=null and planned.id!="guard" else ("_aveva_guardia" if planned.id=="guard" else "_altro"))
+					stats["_"+tag]=stats.get("_"+tag,0)+1
+					r.react(ch)
 				"stumble":r.choose_stumble(r.state.pending.path.back())
 				"upkeep":r.advance_effect(int(r.state.fighters[r.state.active].facing))
 		turns+=int(r.state.turn);finished+=1 if r.state.phase=="finished" else 0
 		for p in r.state.fighters:hits+=int(p.max_hp)-int(p.hp)
 	var ks=stats.keys();ks.sort_custom(func(a,b):return stats[a]>stats[b])
 	var line=""
-	for k in ks.slice(0,10):line+="%s %d%%  "%[k,roundi(100.0*stats[k]/total)]
+	var rr=[]
+	for k in ks:
+		if k.begins_with("_"):rr.append("%s %d"%[k.substr(1),stats[k]])
+	print("REAZIONI ",", ".join(rr))
+	for k in ks.filter(func(x):return not x.begins_with("_")).slice(0,10):line+="%s %d%%  "%[k,roundi(100.0*stats[k]/total)]
 	print("MOVIMENTI ",mv_total," fermi ",mv_still," fermi pur potendo avvicinarsi ",mv_still_closer)
 	print("ESEGUITI ",done_atk," guard-colpi ",guard_hits);print(line);print("attacchi/turno %.2f spostamenti/turno %.2f"%[float(atk)/turns,float(moved)/turns]," spostamenti ",moved," ferite inflitte ",hits," turni ",turns," partite finite ",finished,"/40")
 	quit()

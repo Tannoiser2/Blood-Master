@@ -575,6 +575,13 @@ func react(id: String) -> bool:
 		# Author clarification: failure spends magic but leaves the move available.
 	elif id!="pass":
 		p.current=id;p.done=true;p.guarding=false
+		if id.begins_with("parry") and pending.kind!="spell":
+			# reagendo con una parata ci si gira (al massimo di un lato) per portare l'attaccante sotto i lati blu
+			var att=state.fighters[int(pending.actor)];var blue: Array=move(p).blue
+			var side=posmod(direction(p.cell,att.cell)-int(p.facing),6)
+			if not side in blue:
+				for d in [1,-1]:
+					if posmod(side-d,6) in blue:p.facing=posmod(int(p.facing)+d,6);note(p.name+" si gira verso "+att.name+" per parare.");break
 		if id=="dematerialize":_hurt(j,1,false)
 		note(p.name+" reagisce con "+move(p).name+".")
 	pending.reactors.pop_front()
