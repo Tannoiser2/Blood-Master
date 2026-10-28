@@ -19,6 +19,7 @@ var sidebar: VBoxContainer
 var roster_box: VBoxContainer
 var log_box: RichTextLabel
 var turn_label: Label
+var replay_btn: Button;var new_btn: Button   # a fine scontro, nella barra in alto (il riquadro coprirebbe la mappa)
 var move_grid: GridContainer
 var roster: Array=[]
 var mode="solo"
@@ -493,6 +494,12 @@ func _build_game() -> void:
 	row.add_child(_bar_check("Suoni",sound_on,func(v):sound_on=v;board3d.sound=v;_save_settings()))
 	row.add_child(_bar_check("Basette trasparenti",clear_plates,func(v):clear_plates=v;board3d.set_clear_plates(v);_save_settings()))
 	row.add_child(_bar_check("Nomi e barre",labels_on,func(v):labels_on=v;board3d.set_labels(v);_save_settings(),"Nomi, ferite e fatica sopra le miniature"))
+	replay_btn=_bar_button("Replay 3D",func():
+		minis_3d=true;board.visible=false;board3d.visible=true;board3d.replay(),"Rivedi tutto lo scontro con le miniature 3D")
+	replay_btn.add_theme_stylebox_override("normal",tex_box("btn_on.png",8,11,6));replay_btn.add_theme_color_override("font_color",DARK_INK)
+	new_btn=_bar_button("Nuovo scontro",_show_menu,"Torna al menu per preparare un altro scontro")
+	new_btn.add_theme_stylebox_override("normal",tex_box("btn_on.png",8,11,6));new_btn.add_theme_color_override("font_color",DARK_INK)
+	row.add_child(replay_btn);row.add_child(new_btn);replay_btn.visible=false;new_btn.visible=false
 	row.add_child(_bar_button("Salva",_save_game));row.add_child(_bar_button("Regolamento",_open_manual))
 	row.add_child(_bar_button("Crediti",_credits));row.add_child(_bar_button("Menu",_confirm_menu))
 	stage=Control.new();stage.size_flags_vertical=Control.SIZE_EXPAND_FILL;stage.clip_contents=true;page.add_child(stage)
@@ -708,6 +715,11 @@ func _refresh() -> void:
 	if not showing_game:return
 	clear(sidebar);clear(picker)
 	turn_label.text=("STANZA "+room_code+" · " if room_code!="" else "")+"TURNO %d" % game.state.turn
+	var over=str(game.state.get("phase",""))=="finished"
+	if replay_btn:replay_btn.visible=over;new_btn.visible=over
+	if over:
+		var w=int(game.state.winner)
+		turn_label.text="FINE · "+("vince la Lama Lucente" if w==0 else ("vince l’Ombra Oscura" if w==1 else "pace nell’arena"))
 	_refresh_portraits()
 	panel_narrow=_panel_owner()>=0 and cards.has(_panel_owner()) and _human(_panel_owner())
 	log_box.text=_log_bbcode(game.state.log.slice(maxi(0,game.state.log.size()-40)))
@@ -851,13 +863,7 @@ func _upkeep_panel() -> void:
 	board.selected=e.cell
 	if _human(i):_facing_controls();sidebar.add_child(button("Muovi l’effetto",func():_submit({"type":"effect","facing":selected_facing}),true))
 func _finish_panel() -> void:
-	sidebar.add_child(label("LO SCONTRO È FINITO",13,GOLD))
-	var winner=int(game.state.winner)
-	sidebar.add_child(label("Lama Lucente" if winner==0 else ("Ombra Oscura" if winner==1 else "Pace nell’arena"),27,GOLD))
-	_wrap("La battaglia si conclude. Puoi consultare le schede e la cronaca prima di preparare un nuovo scontro.")
-	sidebar.add_child(button("Replay 3D dello scontro",func():
-		minis_3d=true;board.visible=false;board3d.visible=true;board3d.replay()))
-	sidebar.add_child(button("Nuovo scontro",_show_menu,true))
+	pass   # fine scontro: risultato, Replay 3D e Nuovo scontro stanno nella barra in alto; niente riquadro sopra la mappa
 func _facing_controls(limit:=6,from:=-1) -> void:
 	# limit: di quanti lati si può ruotare rispetto all'orientamento attuale (from); 0 = fisso
 	if limit<=0:return
