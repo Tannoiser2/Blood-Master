@@ -613,7 +613,7 @@ func _attack_request(i: int,j: int,facing: int,charge_imbalance: int=0) -> void:
 	state.last_attack={"actor":i,"victim":j}   # per la mappa 3D: chi para o subisce il colpo
 	_log_attack(i,j)
 	state.pending={"kind":"attack","actor":i,"victim":j,"facing":facing,"charge_imbalance":charge_imbalance,"reactors":[j]}
-	if reaction_options(j).size()>1:state.phase="reaction"
+	if reaction_options(j).size()>1 and not move(state.fighters[i]).get("feint",false):state.phase="reaction"   # la finta non lascia il tempo di parare
 	else:_attack_pending()
 func react(id: String) -> bool:
 	if state.phase!="reaction":return false
@@ -647,8 +647,13 @@ func react(id: String) -> bool:
 func _attack_pending() -> void:
 	var pending=state.pending.duplicate(true);var i=int(pending.actor);var p=state.fighters[i];var m=move(p)
 	var penalty=int(state.get("spin",{}).get("penalty",0))
-	var effect=_combat(i,int(pending.victim),m,false,-penalty,int(pending.get("charge_imbalance",0)))
-	if m.id=="spin":
+	var vj=int(pending.victim)
+	var effect=_combat(i,vj,m,false,-penalty,int(pending.get("charge_imbalance",0)))
+	if m.get("double",false) and living(state.fighters[vj]) and living(p) and not p.down:   # doppio colpo: la seconda lama, a -2
+		note(p.name+" colpisce di nuovo con la seconda arma.");_log_attack(i,vj)
+		effect=_combat(i,vj,m,false,-penalty-2) or effect
+	_riposte(vj,i)
+	if m.id=="spin" or m.get("multi",false):
 		var remaining=targets(i).duplicate();remaining.erase(state.fighters[int(pending.victim)].cell)
 		remaining=remaining.filter(func(k):return at(k,i)!=-1 and living(state.fighters[at(k,i)]))
 		if not remaining.is_empty():
@@ -663,6 +668,16 @@ func _attack_pending() -> void:
 		state.last_shot={"actor":i,"victim":int(pending.victim)}
 	_finish_action(i,m,effect,int(pending.facing))
 
+## contrattacco: chi ha parato con una pedina che ha "riposte" colpisce a sua volta l'attaccante, se lo ha sui lati blu
+func _riposte(j: int,i: int) -> void:
+	var b=state.fighters[j];var a=state.fighters[i]
+	if not living(b) or not living(a) or b.down or b.unbalanced or distance(a.cell,b.cell)!=1:return
+	var m=move(b);var r=int(m.get("riposte",0))
+	if r<=0:return
+	var side=posmod(direction(b.cell,a.cell)-int(b.facing),6)
+	if not side in m.get("blue",[]):return
+	note(b.name+" para e contrattacca.");_log_attack(j,i)
+	_combat(j,i,{"id":"riposte","attack":r,"imbalance":null,"fatigue":0},false)
 static func combat_table(total: int) -> Dictionary:
 	var wounds=clampi(total-10,0,10)
 	if total>20:wounds=mini(16,10+int(ceil((total-20)/2.0)))
@@ -678,7 +693,7 @@ func _combat(i: int,j: int,m: Dictionary,magic: bool=false,bonus: int=0,charge_i
 	var side=posmod(direction(b.cell,a.cell)-int(b.facing),6)
 	var dv=int(defense.get("defense",0))
 	if b.get("shield",false):dv=-15
-	if not defense.get("blue",[]).is_empty() and not side in defense.blue:dv=int(defense.secondary)
+	if not defense.get("blue",[]).is_empty() and (not side in defense.blue or m.get("feint",false)):dv=int(defense.secondary)
 	var positional=[0,1,3,5,3,1][side] if not side in defense.get("red",[]) else 0
 	var base_attack=int(m.attack) if m.get("attack")!=null else 0   # cariche senza valore d'attacco (alcuni maghi): 0
 	var attack=base_attack+bonus

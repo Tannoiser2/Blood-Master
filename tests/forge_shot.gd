@@ -12,7 +12,7 @@ func run() -> void:
 	if OS.get_environment("ARMA")!="":f._set_trait("arma",OS.get_environment("ARMA"),true)
 	if OS.get_environment("EDIT")=="1":
 		f._edit("cleave","fatigue",1);f._edit("cleave","attack",2);f._edit("thrust","defense",-1);f.brush="green";f._side("thrust",3)
-		f._set_trait("INT",3);f._toggle_spell("fireball",true);f._toggle_spell("shield",true);f._toggle_token("kick")
+		f._set_trait("INT",3);f._toggle_spell("fireball",true);f._toggle_spell("shield",true);f._toggle_token("kick");f._toggle_token("parry_counter");f._toggle_token("feint");f._edit("cleave","multi",true,true);f.brush="red";f._side("cleave",1)
 	if OS.get_environment("SAVE")=="1":
 		f.traits.name="Brunilde";f.traits.title="La forgiata";f._fit_budget();f._save()
 	if OS.get_environment("TEST")=="1":

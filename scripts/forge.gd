@@ -43,11 +43,15 @@ const NAMES = {"guard":"In guardia","advance":"Avanzare","run":"Correre","rise":
 	"unbalanced":"Sbilanciato","down":"A terra","parry_r":"Parata destra","parry_l":"Parata sinistra","dodge":"Schivare",
 	"charge":"Carica","right":"Colpo a destra","left":"Colpo a sinistra","thrust":"Affondo","again":"Ancora",
 	"cleave":"Fendente","sweep":"Spazzata","kick":"Calcio","spin":"Rotazione","meditate":"Meditare",
-	"shoot":"Tirare","load":"Incoccare","weapon":"Impugnare l'arma","concentrate":"Concentrarsi"}
+	"shoot":"Tirare","load":"Incoccare","weapon":"Impugnare l'arma","concentrate":"Concentrarsi",
+	"double":"Doppio colpo","parry_counter":"Contrattacco","feint":"Finta","bash":"Colpo di scudo","trip":"Sgambetto"}
+# pedine in più, spente finché non le accendi: doppio colpo (due armi), contrattacco (para e poi colpisce),
+# finta (non si può parare e i lati blu non contano), colpo di scudo, sgambetto, rotazione (colpisce tutto intorno)
+const EXTRA_IDS=["double","parry_counter","feint","bash","trip","spin"]
 
 static func default_traits() -> Dictionary:
 	return {"name":"Nuovo eroe","title":"Il forgiato","FOR":3,"DES":3,"COS":3,"INT":1,
-		"carattere":"equilibrato","arma":"spada","scudo":"nessuno","armatura":"leggera","team":-1,"aspetto":"uomo","spells":[],"off":[]}
+		"carattere":"equilibrato","arma":"spada","scudo":"nessuno","armatura":"leggera","team":-1,"aspetto":"uomo","spells":[],"off":[],"on":[]}
 ## eroi salvati con la prima forgia (stazza, forza, agilità, resistenza da 1 a 3): stessi valori nella scala nuova
 static func migrate(t: Dictionary) -> Dictionary:
 	var o=t.duplicate(true)
@@ -55,6 +59,7 @@ static func migrate(t: Dictionary) -> Dictionary:
 		o.FOR=clampi(int(o.get("forza",2))*2-1,1,5);o.DES=clampi(int(o.get("agilita",2))*2-1,1,5);o.COS=clampi(int(o.get("resistenza",2))*2-1,1,5);o.INT=1
 	if not o.has("spells"):o.spells=[]
 	if not o.has("off"):o.off=[]
+	if not o.has("on"):o.on=[]
 	o.aspetto="uomo"
 	return o
 static func stat(t: Dictionary,k: String) -> int:return clampi(int(t.get(k,3)),1,5)
@@ -119,6 +124,16 @@ static func build_all(t0: Dictionary) -> Dictionary:
 		if (scudo!="nessuno") and w[0]=="guard":dd-=1
 		add.call(_tok(w[0],atk,dd,w[3],[0,5,1] if w[0]=="charge" else [],[],int(w[4]),imb,null,w[0]=="guard"))
 	if mv.has("charge"):mv.charge.green=[5,0,1]
+	# pedine in più (spente finché non si accendono)
+	var native_spin=mv.has("spin")
+	if arma!="arco":
+		if not native_spin:add.call(_tok("spin",A+1,D-1,[0,1,2,3,4,5],[],[],2,2));mv.spin.multi=true
+		add.call(_tok("parry_counter",null,pd+1,[],[],[0],0,null,ps,false));mv.parry_counter.riposte=A+1
+		add.call(_tok("feint",A-1,D,[0],[],[],0,null));mv.feint.feint=true
+		add.call(_tok("trip",A-3,D+1,[0,1],[],[],0,5))
+	if arma=="due_armi":add.call(_tok("double",A+1,D,[0],[],[],1,null));mv.double.double=true
+	if scudo!="nessuno":add.call(_tok("bash",A-1,D-1,[0],[],[],0,4))
+	if native_spin:mv.spin.multi=true;mv.spin.native=true
 	if arma=="bastone":add.call(_tok("meditate",null,D+2,[],[],[],0,null,null,true))
 	if arma=="arco":
 		add.call(_tok("shoot",15,D+1,[5,0,1]))
@@ -163,7 +178,14 @@ static func build(t0: Dictionary) -> Dictionary:
 	var d=build_all(t0)
 	for id in d.traits.get("off",[]):
 		if not id in BASE_IDS:d.moves.erase(id)
+	for id in EXTRA_IDS:
+		if d.moves.has(id) and not id in d.traits.get("on",[]) and not d.moves[id].get("native",false):d.moves.erase(id)
 	return d
+## la pedina è accesa?
+static func is_on(t: Dictionary,id: String) -> bool:
+	if id in BASE_IDS:return true
+	if id in EXTRA_IDS:return id in t.get("on",[])
+	return not id in t.get("off",[])
 static var _cat: Dictionary={}
 static func _catalog() -> Dictionary:
 	if _cat.is_empty():_cat=JSON.parse_string(FileAccess.get_file_as_string("res://data/characters.json"))
@@ -182,14 +204,15 @@ const OFFICIAL=["zenyo","gascor","ut","shannon","kylvia","anteos","shaara","zak"
 # coefficienti (forza in scala logit per unità di caratteristica), tarati con le simulazioni
 # tarati su circa 20.000 duelli e 1.200 partite a squadre fra cast ufficiale, 60 varianti e 40 eroi forgiati
 # (correlazione 0,90 con la forza osservata; su eroi esclusi dalla taratura 0,86-0,94)
-static var COEF={"off":1.0107,"hp":0.9422,"sub":-0.4924,"sprint":0.0,"size":0.1286,"fat":-0.7116,"imb":0.3,"natk":0.0,"green":0.3,"shoot":1.1919,"best":-0.3314,"rest":1.0171,
-	"reach":1.0,"step":.03,"spells":0.0,"zero":-4.5759}
+static var COEF={"off":1.0226,"hp":0.8668,"sub":-0.2078,"sprint":0.0,"size":0.1524,"fat":-0.7704,"imb":0.3,"natk":0.0,"green":0.2,"shoot":1.1399,"best":-0.5233,"rest":0.714,
+	"reach":1.0,"step":.03,"spells":0.0,"ntok":.02,"zero":-4.614}
 # valore in punti di ogni magia per un eroe forgiato: misurato con 1.080 duelli contro il cast (bastone di fuoco,
 # evocazione, fulmine, palla di fuoco, sonno, abisso, controllo, paura, gorgo, scudo e cura); le altre stimate
 const SPELL_POINTS={"firestaff":60,"summon":50,"lightning":40,"fireball":35,"sleep":28,"abyss":28,"transform":25,
 	"livingfire":15,"plague":15,"control":12,"drain":12,"age":10,"vortex":9,"fear":8,"teleport":8,"shock":8,"wall":5,"pustules":4,"shield":3,"heal":3}
 # stime, non dai dati (nelle partite simulate non variavano abbastanza o non esistevano):
-#  green .3 (lati verdi delle pedine di movimento), reach 1.0 (lati rossi), step .03 a lato (passo prima/dopo),
+#  green .2 (lati verdi delle pedine di movimento), reach 1.0 (lati rossi), step .03 a lato (passo prima/dopo),
+#  ntok .02 a pedina (una scelta in più),
 #  imb .3 (sbilanciamento); le magie hanno un prezzo ciascuna (SPELL_POINTS)
 # imb: nelle simulazioni lo sbilanciamento pesa quasi zero; gli si dà comunque un piccolo prezzo, perché non sia gratis
 static var _die: Dictionary={}
@@ -262,18 +285,28 @@ static func features(def: Dictionary,_catalog: Dictionary={}) -> Dictionary:
 	var offs=[];var fat=0.0;var imb=0.0
 	for m in _play(def):
 		if m.attack==null:continue
-		offs.append(offense(11 if m.id=="shoot" else int(m.attack)))
+		var o=offense(11 if m.id=="shoot" else int(m.attack))
+		if m.get("multi",false):o*=1.0+.3*float(maxi(0,m.red.size()-1))/2.0   # più nemici nello stesso colpo (stima)
+		if m.get("double",false):o*=1.7          # due colpi (il secondo a -2) (stima)
+		if m.get("feint",false):o*=1.2           # niente parata, lati blu ignorati (stima)
+		offs.append(o)
 		fat+=float(m.fatigue)
 		if m.imbalance!=null:imb+=sum_hits(int(def.size)+int(m.imbalance))
+	for m in _play(def):   # contrattacco: metà di un colpo in più quando para
+		if int(m.get("riposte",0))>0:offs.append(offense(int(m.riposte))*.5)
 	offs.sort();offs.reverse()
 	var top=0.0;var n=mini(4,offs.size())
 	for k in n:top+=offs[k]
 	top/=maxf(1,n)
-	var sub=0.0;var toks=_play(def);var green=0.0;var best=INF
+	# ferite subite: media sulle 10 pedine più solide (una pedina in più non peggiora mai: basta non giocarla)
+	var sub=0.0;var toks=_play(def);var green=0.0;var best=INF;var recs=[]
 	for m in toks:
-		var rc=received(m,def.armor);sub+=rc;green+=m.green.size()
+		var rc=received(m,def.armor);recs.append(rc);green+=m.green.size()
 		if m.attack==null and m.id!="load":best=minf(best,rc)   # la difesa migliore (parata o schivata)
-	sub/=maxf(1,toks.size())
+	recs.sort()
+	var kk=mini(10,recs.size())
+	for q in kk:sub+=recs[q]
+	sub/=maxf(1,kk)
 	var na=float(offs.size())
 	# lati rossi: quanto delle direzioni da cui arrivano i nemici copre ogni pedina d'attacco
 	var reach=0.0;var rest=0.0;var step=0.0;var spells=0.0
@@ -284,15 +317,15 @@ static func features(def: Dictionary,_catalog: Dictionary={}) -> Dictionary:
 		if not m.id in BloodRules.MOVE_IDS:step+=m.green.size()   # passo prima o dopo l'azione
 	for k in def.moves:
 		if def.moves[k].get("spell",false):spells+=float(def.moves[k].get("cost",1))
-	return {"reach":reach/maxf(1.0,na),"rest":rest/maxf(1.0,toks.size()),"step":step,"spells":spells,"off":top,"sub":sub,"hp":float(def.hp),"sprint":float(def.sprint),"size":float(def.size),
-		"fat":fat/maxf(1.0,na),"imb":imb/maxf(1.0,na),"natk":na,"green":green/maxf(1.0,toks.size()),
+	return {"reach":reach/maxf(1.0,na),"rest":minf(rest,6.0)/10.0,"ntok":float(toks.size()),"step":step,"spells":spells,"off":top,"sub":sub,"hp":float(def.hp),"sprint":float(def.sprint),"size":float(def.size),
+		"fat":fat/maxf(1.0,na),"imb":imb/maxf(1.0,na),"natk":na,"green":green/10.0,
 		"shoot":1.0 if def.moves.has("shoot") else 0.0,"mage":1.0 if def.get("mage",false) else 0.0,
 		"best":best if best<INF else sub}
 ## forza in scala logit: log dell'offesa e della vita, meno log delle ferite subite, più il resto
 static func logit(f: Dictionary) -> float:
 	var z=float(COEF.zero)
 	z+=float(COEF.off)*log(maxf(f.off,.05))+float(COEF.hp)*log(maxf(f.hp,1.0))+float(COEF.sub)*log(maxf(f.sub,.05))+float(COEF.best)*log(maxf(f.best,.05))
-	for k in ["sprint","size","fat","imb","natk","green","shoot","reach","rest","step","spells"]:z+=float(COEF.get(k,0.0))*float(f.get(k,0.0))
+	for k in ["sprint","size","fat","imb","natk","green","shoot","reach","rest","step","spells","ntok"]:z+=float(COEF.get(k,0.0))*float(f.get(k,0.0))
 	return z
 ## valore in punti: 100 = la media dei guerrieri ufficiali; 10 punti ≈ 5 vittorie in più (o in meno) su 100
 static func points(def: Dictionary) -> float:
@@ -331,9 +364,17 @@ static func apply_edits(def: Dictionary,edits: Dictionary) -> Dictionary:
 			var kind=side_kind(m)
 			if kind!="":m[kind]=e.sides.map(func(v):return int(v))
 		for c in ["red","green","blue"]:
-			if e.has(c):m[c]=e[c].map(func(v):return int(v))
+			if e.has(c):
+				var nw=e[c].map(func(v):return int(v));var diff=nw.size()-m[c].size()
+				# più lati rossi = colpo più largo ma più debole; più lati blu = parata più ampia ma meno solida
+				if c=="red" and m.attack!=null and m.id!="shoot":m.attack=maxi(0,int(m.attack)-diff)
+				if c=="blue" and had_blue:m.defense=int(m.defense)+diff
+				m[c]=nw
+		if e.has("multi") and m.attack!=null:m.multi=bool(e.multi)
+		if e.has("riposte") and int(m.get("riposte",0))>0:m.riposte=maxi(1,int(m.riposte)+int(e.riposte))
 		if e.has("secondary") and not m.blue.is_empty():m.secondary=int(m.secondary)+int(e.secondary)
 		if m.blue.is_empty():m.secondary=m.defense   # senza lati blu la difesa è una sola
+		if int(m.fatigue)>0:m.rest=false   # col pallino nero (fatica) niente pallino bianco (riposo)
 	d.edits=edits.duplicate(true)
 	return d
 ## quale colore di lato si modifica su questa pedina: rosso (attacchi), verde (movimenti), blu (parate)

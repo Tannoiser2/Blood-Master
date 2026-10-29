@@ -27,6 +27,7 @@ const CLIP={"guard":"In guardia","advance":"Avanzare","run":"Correre","charge":"
 	"left":"Taglio Dx","right":"Taglio Sx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
 	"dodge":"Schivata","roll":"Rotolare","unbalanced":"Sbilanciato","down":"A terra","rise":"Rialzarsi","again":"In guardia",
 	"spin":"Taglio Dx","sweep":"Taglio Sx","meditate":"Riposo",
+	"double":"Taglio Sx","parry_counter":"Parata Dx","feint":"Affondo","bash":"Calcio","trip":"Calcio",
 	"load":"Incoccare","shoot":"Tirare","weapon":"Riposo",
 	# maghi: ogni incantesimo ha la sua clip, generata sul rig del mago
 	"concentrate":"Concentrarsi","punch":"Pugno","float":"Fluttuare","pieces":"A terra",
@@ -49,7 +50,7 @@ const TWIST={"Taglio Dx":58.0,"Taglio Sx":-58.0,"Parata Sx":60.0,"Parata Dx":-60
 const SIDE_FX={"Taglio Dx":[1.0,"colpo"],"Taglio Sx":[-1.0,"colpo"],"Parata Sx":[1.0,"parata"],"Parata Dx":[-1.0,"parata"],"Pugno Sx":[1.0,"colpo"],"Pugno Dx":[-1.0,"colpo"]}
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
-const DEFENSIVE=["parry_l","parry_r","dodge","guard"]
+const DEFENSIVE=["parry_l","parry_r","parry_counter","dodge","guard"]
 const TEAL=Color("69cec1")
 const RED=Color("e68078")
 
@@ -546,7 +547,7 @@ func sync() -> void:
 			track.strike=struck_now.has(i)
 			if track.strike and track.clip=="In guardia":track.clip=_clip_for(i,"thrust",bool(p.get("bow",false)))
 			elif not track.strike and track.clip=="Schianto":track.clip="In guardia"   # il Golem in guardia senza nemici resta fermo
-		if id in ["parry_l","parry_r","dodge"] and not track.strike:
+		if id in ["parry_l","parry_r","parry_counter","dodge"] and not track.strike:
 			# parata e schivata si vedono solo quando c'è davvero un colpo da cui difendersi (traccia "parried"
 			# all'istante dell'impatto); quando tocca a lui e nessuno lo attacca resta in guardia, o cammina se si sposta
 			if str(was.cell)==str(p.cell):continue
@@ -597,6 +598,8 @@ func sync() -> void:
 				var word="SCHIVATA!" if fq.current in ["dodge","roll"] else ({"parry_r":"PARATA DESTRA!","parry_l":"PARATA SINISTRA!"}.get(fq.current,"PARATA!") if defensive else "MANCATO")
 				step.append({"i":front,"clip":CLIP[fq.current] if defensive and CLIP.has(fq.current) else _clip_for(front,"parry_r" if minis[front].ap and minis[front].ap.has_animation("Parata Dx") else "guard",bool(fq.get("bow",false))),
 					"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":maxf(.05,hit_at-.35),"move":fq.current,"strike":false,"parried":i,"parry_word":word})
+				if struck_now.has(front) and int(game.move(fq).get("riposte",0))>0:   # contrattacco: dopo la parata, l'affondo
+					step.append({"i":front,"clip":_clip_for(front,"thrust",false),"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":hit_at+.45,"move":"riposte","strike":true})
 	var strike_delay=0.0
 	for t in step:
 		if t.get("strike",false) and minis[t.i].ap and minis[t.i].ap.has_animation(_anim(minis[t.i],t.clip)):strike_delay=maxf(strike_delay,minis[t.i].ap.get_animation(_anim(minis[t.i],t.clip)).length*.45)

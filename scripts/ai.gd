@@ -326,7 +326,9 @@ static func _choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 					var j=game.at(k,i)
 					if j==-1:continue
 					var tv=_target_value(game,i,j,_expected_wounds(game,i,j,m,p.cell));vals.append(tv);top=maxf(top,tv)
-				if m.id=="spin" and vals.size()>1:   # la rotazione colpisce tutti gli adiacenti (con -2 per ogni colpo successivo)
+				if m.get("double",false):top*=1.7          # doppio colpo: la seconda arma colpisce ancora
+				if m.get("feint",false):top+=2.0           # finta: niente parata
+				if (m.id=="spin" or m.get("multi",false)) and vals.size()>1:   # la rotazione colpisce tutti gli adiacenti (con -2 per ogni colpo successivo)
 					vals.sort();vals.reverse();top=0.0
 					for n in vals.size():top+=maxf(0.0,vals[n]-float(n)*4.0)
 				score=top-float(m.fatigue)*2.5+(float(m.imbalance)*.8 if m.get("imbalance")!=null else 0.0)
@@ -351,7 +353,7 @@ static func _choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 		if m.get("rest",false):score+=minf(10.0,float(p.fatigue)*2.0)*(1.0 if adjacent==0 else .3)
 		var waiting=id=="guard" and targets.is_empty()   # in guardia senza nessuno davanti: si aspetta che qualcuno arrivi
 		if id=="guard":score=maxf(score,(GUARD_WAIT if nearest<=2 else -1.0)+(2.0 if adjacent>0 else 0.0))
-		if id.begins_with("parry"):score=float(adjacent)*3.5+trouble*4.0-6.0
+		if id.begins_with("parry"):score=float(adjacent)*3.5+trouble*4.0-6.0+(float(adjacent)*2.0 if int(m.get("riposte",0))>0 else 0.0)   # il contrattacco vale di più in mischia
 		if id=="shoot":   # tiro: 15 meno la distanza, fortissimo anche a bruciapelo; la freccia incoccata non va sprecata
 			if targets.is_empty():score=-20.0
 			else:

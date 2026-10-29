@@ -19,20 +19,25 @@ class TokenHex extends Control:
 		var pts=PackedVector2Array()
 		for k in 6:pts.append(_corner(k))
 		draw_colored_polygon(pts,Color(.09,.06,.04,.92) if on else Color(.09,.06,.04,.55))
-		if tex:
-			var w=R*1.25;draw_texture_rect(tex,Rect2(size*.5-Vector2(w,w*.86)*.5,Vector2(w,w*.86)),false,Color(1,1,1,.16 if on else .08))
 		for s in 6:   # lato s fra i vertici a 240+60s e 300+60s gradi; più colori = strisce affiancate
 			var n=0
 			for c in ["red","green","blue"]:
 				if s in m.get(c,[]):
-					draw_line(_corner((4+s)%6,3+n*6),_corner((5+s)%6,3+n*6),COL[c] if on else COL[c].darkened(.5),5.0,true);n+=1
+					draw_line(_corner((4+s)%6,2+n*5),_corner((5+s)%6,2+n*5),COL[c] if on else COL[c].darkened(.5),4.0,true);n+=1
 			if n==0:draw_line(_corner((4+s)%6,3),_corner((5+s)%6,3),Color(1,1,1,.14),1.5,true)
 		draw_circle(size*.5+Vector2(0,-R*.72),3.0,Color(1,1,1,.7))   # puntino del fronte
+	var content: Control
+	func set_content(c: Control) -> void:
+		content=c;add_child(c);c.minimum_size_changed.connect(_center)
+	func _ready() -> void:_center.call_deferred()
+	func _center() -> void:   # i valori al centro dell'esagono (misurati quando il tema è già applicato)
+		if content==null:return
+		var ms=content.get_combined_minimum_size();content.size=ms;content.position=(size-ms)*.5+Vector2(0,3)
 	func _gui_input(ev: InputEvent) -> void:
 		if not on:return
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index==MOUSE_BUTTON_LEFT:
 			var v: Vector2=ev.position-size*.5
-			if v.length()<R*.62:return   # al centro ci sono i valori
+			if v.length()<R*.66:return   # al centro ci sono i valori
 			side_clicked.emit(posmod(roundi(fposmod(rad_to_deg(atan2(v.y,v.x))-270.0,360.0)/60.0),6))
 
 var ui   # la schermata principale (main.gd): caratteri, colori, pulsanti
@@ -174,61 +179,78 @@ func _side(id: String,s: int) -> void:
 	else:list.append(s)
 	list.sort();_edit(id,brush,list,true)
 func _toggle_token(id: String) -> void:
-	var off: Array=traits.get("off",[]).duplicate()
-	if id in off:off.erase(id)
-	else:off.append(id)
-	traits.off=off;_rebuild(false)
+	if id in BloodForge.EXTRA_IDS and not all_def.moves[id].get("native",false):   # pedine in più: spente finché non le accendi
+		var on_list: Array=traits.get("on",[]).duplicate()
+		if id in on_list:on_list.erase(id)
+		else:on_list.append(id)
+		traits.on=on_list
+	else:
+		var off: Array=traits.get("off",[]).duplicate()
+		if id in off:off.erase(id)
+		else:off.append(id)
+		traits.off=off
+	_rebuild(false)
 func _mini(text: String,cb: Callable,tip:="") -> Button:
-	var b=Button.new();b.text=text;b.tooltip_text=tip;b.focus_mode=Control.FOCUS_NONE;b.custom_minimum_size=Vector2(18,18)
-	b.add_theme_font_size_override("font_size",12);b.pressed.connect(cb);b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
-	var st=ui.box(Color(.35,.25,.14,.9),3);var sh=ui.box(Color(.55,.4,.2,.95),3)
-	for k in ["normal","focus"]:st.content_margin_left=3;st.content_margin_right=3;st.content_margin_top=0;st.content_margin_bottom=0;b.add_theme_stylebox_override(k,st)
-	for k in ["hover","pressed"]:sh.content_margin_left=3;sh.content_margin_right=3;sh.content_margin_top=0;sh.content_margin_bottom=0;b.add_theme_stylebox_override(k,sh)
+	var b=_tiny(text,cb,tip);b.custom_minimum_size=Vector2(20,20);b.add_theme_font_size_override("font_size",13);return b
+func _tiny(text: String,cb: Callable,tip:="",disabled:=false) -> Button:
+	var b=Button.new();b.text=text;b.tooltip_text=tip;b.focus_mode=Control.FOCUS_NONE;b.custom_minimum_size=Vector2(13,13);b.disabled=disabled
+	b.add_theme_font_size_override("font_size",10);b.pressed.connect(cb);b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+	for k in ["normal","focus","hover","pressed","disabled"]:
+		var st=ui.box(Color(.42,.3,.16,.85) if k!="hover" else Color(.62,.45,.22,.95),2);st.content_margin_left=2;st.content_margin_right=2;st.content_margin_top=0;st.content_margin_bottom=0
+		if k=="disabled":st.bg_color=Color(.2,.16,.12,.5)
+		b.add_theme_stylebox_override(k,st)
 	for k in ["font_color","font_hover_color","font_pressed_color"]:b.add_theme_color_override(k,ui.INK)
+	b.add_theme_color_override("font_disabled_color",Color(.5,.45,.4))
 	return b
-## un valore con il suo − e + (compatto: due per riga dentro l'esagono)
+## interruttore a parola: dorato se acceso, spento grigio
+func _flag(text: String,on: bool,cb: Callable,tip: String,disabled:=false) -> Button:
+	var b=_tiny(text,cb,tip,disabled)
+	var st=ui.box(Color(.78,.6,.28,.95) if on else Color(.18,.13,.09,.8),2);st.content_margin_left=3;st.content_margin_right=3;st.content_margin_top=0;st.content_margin_bottom=0
+	for k in ["normal","focus","pressed"]:b.add_theme_stylebox_override(k,st)
+	for k in ["font_color","font_pressed_color"]:b.add_theme_color_override(k,ui.DARK_INK if on else Color(.62,.55,.45))
+	return b
+## un valore: numero grande in mezzo, − e + piccoli ai lati, etichetta minuscola sopra
 func _cell(parent: Node,label: String,value: String,minus: Callable,plus: Callable,tip: String) -> void:
-	var r=HBoxContainer.new();r.add_theme_constant_override("separation",1);r.tooltip_text=tip;r.mouse_filter=Control.MOUSE_FILTER_PASS;parent.add_child(r)
-	var l=ui.label(label,10,ui.MUTED);l.custom_minimum_size.x=20;l.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;r.add_child(l)
-	r.add_child(_mini("−",minus,tip))
-	var v=ui.label(value,13,ui.INK);v.custom_minimum_size.x=22;v.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;r.add_child(v)
-	r.add_child(_mini("+",plus,tip))
+	var c=VBoxContainer.new();c.add_theme_constant_override("separation",-2);c.tooltip_text=tip;c.mouse_filter=Control.MOUSE_FILTER_PASS;parent.add_child(c)
+	var l=ui.label(label,9,ui.MUTED);l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;c.add_child(l)
+	var r=HBoxContainer.new();r.add_theme_constant_override("separation",1);r.alignment=BoxContainer.ALIGNMENT_CENTER;c.add_child(r)
+	r.add_child(_tiny("−",minus,tip))
+	var v=ui.label(value,17,ui.INK);v.custom_minimum_size.x=24;v.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;r.add_child(v)
+	r.add_child(_tiny("+",plus,tip))
 func _line(parent: Node) -> HBoxContainer:
-	var h=HBoxContainer.new();h.alignment=BoxContainer.ALIGNMENT_CENTER;h.add_theme_constant_override("separation",6);parent.add_child(h);return h
+	var h=HBoxContainer.new();h.alignment=BoxContainer.ALIGNMENT_CENTER;h.add_theme_constant_override("separation",5);parent.add_child(h);return h
 func _hex_for(id: String,R: float) -> Control:
-	var m: Dictionary=all_def.moves[id];var opt=not id in BloodForge.BASE_IDS;var on=not id in traits.get("off",[])
+	var m: Dictionary=all_def.moves[id];var opt=not id in BloodForge.BASE_IDS;var on=BloodForge.is_on(traits,id) or bool(m.get("native",false)) and not id in traits.get("off",[])
 	var hx=TokenHex.new(R);hx.m=m;hx.on=on
-	var tp=Art.token(str(m.get("texture","")))
-	if ResourceLoader.exists(tp):hx.tex=load(tp)
 	hx.side_clicked.connect(func(s):_side(id,s))
-	var v=VBoxContainer.new();v.add_theme_constant_override("separation",2);v.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	hx.add_child(v)
+	var v=VBoxContainer.new();v.add_theme_constant_override("separation",1);v.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	hx.set_content(v)
 	var title=_line(v)
-	var nm=ui.label(str(m.name),13,ui.GOLD if on else ui.MUTED);nm.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;title.add_child(nm)
-	if opt:title.add_child(_mini("✓" if on else "＋",func():_toggle_token(id),"Pedina attiva: clic per toglierla" if on else "Pedina spenta: clic per aggiungerla"))
+	var nm=ui.label(str(m.name),11,ui.GOLD if on else ui.MUTED);nm.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;title.add_child(nm)
+	if opt:title.add_child(_tiny("✓" if on else "+",func():_toggle_token(id),"Pedina attiva: clic per toglierla" if on else "Pedina spenta: clic per aggiungerla"))
 	if on:
 		var blue=not m.blue.is_empty()
-		if m.get("spell",false):
-			var sp=ui.label("magia · costo %d"%int(m.get("cost",1)),10,ui.MUTED);sp.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(sp)
 		var l1=_line(v)
-		if m.attack!=null and id!="shoot":_cell(l1,"Att",str(m.attack),func():_edit(id,"attack",-1),func():_edit(id,"attack",1),"Valore d'attacco")
-		_cell(l1,"Blu" if blue else "Dif",str(m.defense),func():_edit(id,"defense",-1),func():_edit(id,"defense",1),"Difesa (più bassa è meglio)"+(" sui lati blu" if blue else ""))
-		if blue:_cell(l1 if m.attack==null or id=="shoot" else _line(v),"Altri",str(m.secondary),func():_edit(id,"secondary",-1),func():_edit(id,"secondary",1),"Difesa sugli altri lati")
+		if m.attack!=null and id!="shoot":_cell(l1,"ATTACCO",str(m.attack),func():_edit(id,"attack",-1),func():_edit(id,"attack",1),"Valore d'attacco (ogni lato rosso in più lo abbassa di 1)")
+		_cell(l1,"DIFESA BLU" if blue else "DIFESA",str(m.defense),func():_edit(id,"defense",-1),func():_edit(id,"defense",1),"Difesa: più bassa è meglio"+(" (sui lati blu; ogni lato blu in più la peggiora di 1)" if blue else ""))
+		if blue:_cell(l1 if m.attack==null or id=="shoot" else _line(v),"ALTRI LATI",str(m.secondary),func():_edit(id,"secondary",-1),func():_edit(id,"secondary",1),"Difesa sugli altri lati")
+		if int(m.get("riposte",0))>0:_cell(_line(v),"CONTRATTACCO",str(m.riposte),func():_edit(id,"riposte",-1),func():_edit(id,"riposte",1),"Dopo aver parato colpisce l'attaccante con questo valore")
 		if m.attack!=null:
 			var l2=_line(v)
-			_cell(l2,"Fat","●".repeat(int(m.fatigue)) if int(m.fatigue)>0 else "—",func():_edit(id,"fatigue",-1),func():_edit(id,"fatigue",1),"Pallini neri: il colpo stanca, ogni punto di fatica toglie 1 all'attacco e alla difesa finché non si riposa")
+			_cell(l2,"FATICA","●".repeat(int(m.fatigue)) if int(m.fatigue)>0 else "0",func():_edit(id,"fatigue",-1),func():_edit(id,"fatigue",1),"Pallini neri: il colpo stanca, ogni punto di fatica toglie 1 all'attacco e alla difesa finché non si riposa")
 			var iv=int(m.imbalance) if m.imbalance!=null else -1
-			_cell(l2,"Sbil",str(iv) if iv>=0 else "—",func():_edit(id,"imb",maxi(-1,iv-1),true),func():_edit(id,"imb",mini(6,iv+1),true),"Sbilanciamento: modificatore sulla tabella (con la stazza); — = non sbilancia")
+			_cell(l2,"SBILANCIA",str(iv) if iv>=0 else "–",func():_edit(id,"imb",maxi(-1,iv-1),true),func():_edit(id,"imb",mini(6,iv+1),true),"Sbilanciamento: modificatore sulla tabella (con la stazza)")
 		var l3=_line(v)
-		var rest=bool(m.get("rest",false))
-		l3.add_child(_mini("☾ riposo" if rest else "☾ no",func():_edit(id,"rest",not rest,true),"Riposo: a fine turno con questa pedina si recupera fatica"))
+		var rest=bool(m.get("rest",false));var tired=int(m.fatigue)>0
+		l3.add_child(_flag("riposo",rest,func():_edit(id,"rest",not rest,true),"Pallino bianco (riposo): a fine turno con questa pedina si recupera fatica" if not tired else "Con il pallino nero (fatica) il riposo non è possibile",tired))
+		if m.attack!=null and id!="shoot":
+			var multi=bool(m.get("multi",false))
+			l3.add_child(_flag("multi",multi,func():_edit(id,"multi",not multi,true),"Multi attacco: colpisce tutti i nemici sui lati rossi, uno dopo l'altro (−2 a ogni colpo in più)"))
 		var e=edits.get("moves",{}).get(id,{})
 		if not e.is_empty():
 			var no=edits.duplicate(true);no.moves.erase(id)
 			var dv=BloodForge.points(def)-BloodForge.points(BloodForge.apply_edits(BloodForge.build(traits),no))
-			var dl=ui.label("%+.1f"%dv,12,Color("e8a070") if dv>0 else Color("8fd08a"));dl.tooltip_text="Quanto spostano i punti i tuoi ritocchi su questa pedina";l3.add_child(dl)
-	# centra il contenuto nell'esagono
-	var ms=v.get_combined_minimum_size();v.size=ms;v.position=(hx.size-ms)*.5+Vector2(0,4)
+			var dl=ui.label("%+.1f"%dv,10,Color("e8a070") if dv>0 else Color("8fd08a"));dl.tooltip_text="Quanto spostano i punti i tuoi ritocchi su questa pedina";l3.add_child(dl)
 	return hx
 func _comb() -> void:
 	ui.clear(comb)
@@ -239,21 +261,18 @@ func _comb() -> void:
 		var key=b[0]
 		var btn=ui._bar_check(b[1],brush==key,func(_v):brush=key;_comb(),"Clic su un lato di una pedina per accendere o spegnere questo colore");top.add_child(btn)
 		btn.add_theme_color_override("font_color",TokenHex.COL[key].lightened(.25))
-	var hint=ui.label("In alto il fronte. Rosso: da dove colpisce · Verde: dove si muove (su un colpo o una parata è un passo prima o dopo l'azione) · Blu: da dove para. Le pedine con ✓ si possono togliere.",12,ui.MUTED)
+	var hint=ui.label("In alto il fronte. Rosso: da dove colpisce (ogni lato in più: attacco −1) · Verde: dove si muove (su un colpo o una parata è un passo prima o dopo l'azione) · Blu: da dove para (ogni lato in più: difesa +1). Prima le pedine base, poi quelle dell'arma, quelle in più (spente: + per accenderle) e le magie.",12,ui.MUTED)
 	hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;comb.add_child(hint)
 	var ids=all_def.moves.keys().filter(func(k):return not k in HIDDEN)
-	var base_ids=ids.filter(func(k):return k in BloodForge.BASE_IDS)
-	var weapon_ids=ids.filter(func(k):return not k in BloodForge.BASE_IDS and not all_def.moves[k].get("spell",false))
-	var spell_ids=ids.filter(func(k):return all_def.moves[k].get("spell",false))
-	var R=100.0
-	for group in [["MOVIMENTO E DIFESA",base_ids],["ARMA",weapon_ids],["MAGIE",spell_ids]]:
-		if group[1].is_empty():continue
-		var gl=ui.label(group[0],12,ui.GOLD);comb.add_child(gl)
-		comb.add_child(_honeycomb(group[1],R))
+	var order=func(k):return (0 if k in BloodForge.BASE_IDS else (2 if k in BloodForge.EXTRA_IDS and not all_def.moves[k].get("native",false) else (3 if all_def.moves[k].get("spell",false) else 1)))
+	var sorted_ids=[]
+	for g in 4:sorted_ids+=ids.filter(func(k):return order.call(k)==g)   # base, arma, in più, magie (ordine stabile)
+	ids=sorted_ids
+	comb.add_child(_honeycomb(ids,82.0))
 func _honeycomb(ids: Array,R: float) -> Control:
 	# colonne sfalsate di mezza altezza (esagoni coi lati piatti in alto e in basso)
-	var avail=maxf(500.0,get_viewport().get_visible_rect().size.x-430.0)
-	var w=2*R;var h=1.732*R;var gap=6.0
+	var avail=maxf(460.0,get_viewport().get_visible_rect().size.x-420.0)
+	var w=2*R;var h=1.732*R;var gap=7.0
 	var cols=maxi(2,int((avail-w)/(w*.75+gap))+1)
 	var rows=ceili(float(ids.size())/cols)
 	var c=Control.new();c.custom_minimum_size=Vector2(w+(mini(cols,ids.size())-1)*(w*.75+gap),rows*(h+gap)+h*.5+4)
