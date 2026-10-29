@@ -138,13 +138,13 @@ func _sheet() -> void:
 		for mage in BloodForge.SPELL_FROM:
 			var opts=[];var off=[]
 			for sid in BloodForge.SPELL_FROM[mage]:
-				opts.append([sid,"%s (%d)"%[cat[mage].moves[sid].name,int(cat[mage].moves[sid].get("cost",1))]])
+				opts.append([sid,"%s · %d mana · +%d"%[cat[mage].moves[sid].name,int(cat[mage].moves[sid].get("cost",1)),int(BloodForge.SPELL_POINTS.get(sid,10))]])
 				if not sid in chosen and chosen.size()>=spells_max:off.append(sid)
 			sheet.add_child(ui.label(str(cat[mage].name),11,ui.MUTED))
 			var flow=HFlowContainer.new();flow.add_theme_constant_override("h_separation",4);flow.add_theme_constant_override("v_separation",4);sheet.add_child(flow)
 			for o in opts:
 				var sid=o[0]
-				var b=ui._bar_check(o[1],sid in chosen,func(v):_toggle_spell(sid,v),"Tra parentesi il costo in punti magia");b.disabled=sid in off;flow.add_child(b)
+				var b=ui._bar_check(o[1],sid in chosen,func(v):_toggle_spell(sid,v),"Costo in punti magia e quanti punti di valore aggiunge all'eroe (misurato con le partite simulate)");b.disabled=sid in off;flow.add_child(b)
 func _toggle_spell(sid: String,v: bool) -> void:
 	var c: Array=traits.get("spells",[]).duplicate()
 	if v and not sid in c:c.append(sid)

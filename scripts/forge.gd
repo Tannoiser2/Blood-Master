@@ -183,10 +183,14 @@ const OFFICIAL=["zenyo","gascor","ut","shannon","kylvia","anteos","shaara","zak"
 # tarati su circa 20.000 duelli e 1.200 partite a squadre fra cast ufficiale, 60 varianti e 40 eroi forgiati
 # (correlazione 0,90 con la forza osservata; su eroi esclusi dalla taratura 0,86-0,94)
 static var COEF={"off":1.0107,"hp":0.9422,"sub":-0.4924,"sprint":0.0,"size":0.1286,"fat":-0.7116,"imb":0.3,"natk":0.0,"green":0.3,"shoot":1.1919,"best":-0.3314,"rest":1.0171,
-	"reach":1.0,"step":.03,"spells":.04,"zero":-4.5759}
+	"reach":1.0,"step":.03,"spells":0.0,"zero":-4.5759}
+# valore in punti di ogni magia per un eroe forgiato: misurato con 1.080 duelli contro il cast (bastone di fuoco,
+# evocazione, fulmine, palla di fuoco, sonno, abisso, controllo, paura, gorgo, scudo e cura); le altre stimate
+const SPELL_POINTS={"firestaff":60,"summon":50,"lightning":40,"fireball":35,"sleep":28,"abyss":28,"transform":25,
+	"livingfire":15,"plague":15,"control":12,"drain":12,"age":10,"vortex":9,"fear":8,"teleport":8,"shock":8,"wall":5,"pustules":4,"shield":3,"heal":3}
 # stime, non dai dati (nelle partite simulate non variavano abbastanza o non esistevano):
 #  green .3 (lati verdi delle pedine di movimento), reach 1.0 (lati rossi), step .03 a lato (passo prima/dopo),
-#  spells .04 per punto di costo della magia, imb .3 (sbilanciamento)
+#  imb .3 (sbilanciamento); le magie hanno un prezzo ciascuna (SPELL_POINTS)
 # imb: nelle simulazioni lo sbilanciamento pesa quasi zero; gli si dà comunque un piccolo prezzo, perché non sia gratis
 static var _die: Dictionary={}
 static var _ref_def: Array=[]
@@ -299,7 +303,10 @@ static func points(def: Dictionary) -> float:
 				for field in ["red","blue","green"]:m[field]=m[field].map(func(v):return int(v))
 			t+=logit(features(cat[id]))
 		_base_logit=t/OFFICIAL.size()
-	return 100.0+50.0*(logit(features(def))-_base_logit)
+	var sp=0.0
+	for k in def.moves:
+		if def.moves[k].get("spell",false):sp+=float(SPELL_POINTS.get(k,10))
+	return 100.0+50.0*(logit(features(def))-_base_logit)+(sp if def.get("kind","")=="forged" else 0.0)
 const BUDGET=100.0
 
 # ------------------------------------------------------------------ modifiche a mano e salvataggio
