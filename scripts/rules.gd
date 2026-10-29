@@ -9,9 +9,12 @@ var cells: Dictionary = {}
 var state: Dictionary = {}
 var rng = RandomNumberGenerator.new()
 var forced_dice: Array = []
+# personaggi creati con l'editor (o varianti per i test di equilibrio): si aggiungono al catalogo di ogni partita
+static var extra_defs: Dictionary = {}
 
 func _init() -> void:
 	catalog = JSON.parse_string(FileAccess.get_file_as_string("res://data/characters.json"))
+	for id in extra_defs:catalog[id]=extra_defs[id].duplicate(true)
 	for character in catalog.values():
 		for m in character.moves.values():
 			for field in ["red","blue","green"]:
@@ -169,6 +172,14 @@ func snapshot() -> Dictionary:
 func restore(s: Dictionary) -> void:
 	state=_restore_numbers(s)
 	rng.state=int(state.get("rng_state","1"))
+	for id in state.get("custom_defs",{}):add_definition(state.custom_defs[id])
+## aggiunge (o aggiorna) un personaggio al catalogo di questa partita, coi lati come interi
+func add_definition(def: Dictionary) -> void:
+	var d=def.duplicate(true)
+	for m in d.moves.values():
+		for field in ["red","blue","green"]:
+			if m.has(field):m[field]=m[field].map(func(v):return int(v))
+	catalog[str(d.id)]=d
 
 # JSON represents all numbers as floats; array membership in Godot is typed.
 # Restore integer rule values, including abyss dice and campaign player indices.
@@ -204,6 +215,11 @@ func hr(name: String) -> bool:
 func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int=-1) -> void:
 	rng.seed=seed_n
 	state={"version":VERSION,"turn":0,"phase":"deploy","fighters":[],"plans":{},"bag":[],"active":-1,"effects":[],"log":[],"pending":{},"scenario":scenario,"war":scenario!="frontale","peace_left":4,"winner":-2,"seed":seed_n,"revision":0,"magic_start":magic,"round":1,"campaign":{},"interrupt_stack":[],"spin":{},"house":house.duplicate()}
+	# eroi forgiati: la loro scheda viaggia con la partita (salvataggi, partite online)
+	var forged={}
+	for cfg in roster:
+		if catalog.has(cfg.character) and str(catalog[cfg.character].get("kind",""))=="forged":forged[cfg.character]=catalog[cfg.character].duplicate(true)
+	if not forged.is_empty():state.custom_defs=forged
 	for i in roster.size():
 		var cfg=roster[i];var d=catalog[cfg.character]
 		var p={"character":cfg.character,"name":cfg.get("name",d.name),"team":int(cfg.get("team",i%2)),"controller":cfg.get("controller","ai"),"seat":int(cfg.get("seat",i)),"cell":"","facing":0,"hp":int(d.hp),"max_hp":int(d.hp),"fatigue":0,"permanent":0,"magic":(5+die() if magic<0 else magic) if d.mage else 0,"current":"float" if d.kind=="ziggy" else "guard","previous":"","done":false,"alive":true,"lost":[],"unbalanced":false,"down":false,"frog":false,"pieces":false,"guarding":false,"loaded":false,"bow":false,"meditated":false,"burning":false,"plague":-1,"controller_by":-1,"sprint_mod":0,"owner":-1}
@@ -404,7 +420,7 @@ func in_view(p: Dictionary,k: String) -> bool:
 const SPEARS=["shannon","ramok","skelos","sketos","sanguinaria","zenyo"]   # armi lunghe: lance, alabarde, tridente e il bastone di Zenyo
 func spear_reach(p: Dictionary,m: Dictionary) -> bool:
 	# regola modificata: con un'arma lunga l'affondo e la carica arrivano a due esagoni davanti
-	return hr("reach") and str(p.character) in SPEARS and str(m.get("id","")) in ["thrust","charge"]
+	return hr("reach") and (str(p.character) in SPEARS or bool(definition(p).get("reach",false))) and str(m.get("id","")) in ["thrust","charge"]
 func acting_team(p: Dictionary) -> int:
 	# sotto controllo mentale si combatte per la squadra del mago che controlla
 	var c=int(p.get("controller_by",-1))

@@ -178,7 +178,7 @@ func _mini(i: int) -> Dictionary:
 	var nm=StandardMaterial3D.new();nm.albedo_color=team;nm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;notch.material_override=nm;pivot.add_child(notch)
 	var info={"root":root,"pivot":pivot,"sides":sides,"plate":plate,"model":null,"ap":null,"token":null}
 	plate.visible=not clear_plates
-	var path=MODELS.get(p.character,"")
+	var path=MODELS.get(str(game.definition(p).get("look",p.character)),"")   # eroi della forgia: il modello a cui somigliano
 	if path!="" and not ResourceLoader.exists(path):path=""   # modello non ancora pronto: pedina in piedi
 	if path!="":
 		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;pivot.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
@@ -489,7 +489,7 @@ func sync() -> void:
 			track["hits"]=hs
 		step.append(track)
 		# lancia: colpo a due esagoni (regola modificata), con la casella in mezzo libera
-		if track.strike and game.hr("reach") and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
+		if track.strike and game.hr("reach") and (str(p.character) in BloodRules.SPEARS or bool(game.definition(p).get("reach",false))) and id in ["thrust","charge"]:
 			var mid=BloodRules.neighbor(p.cell,int(p.facing));var far=BloodRules.neighbor(mid,int(p.facing))
 			if game.at(mid,i)==-1 and game.at(far,i)!=-1 and game.cells.has(far):track["reach"]=cell_pos(far)
 		# il difensore di fronte mostra la sua pedina difensiva mentre arriva il colpo
@@ -1644,7 +1644,7 @@ func _sfx(name: String,at: Vector3,delay:=0.0,db:=0.0,pitch:=1.0) -> void:
 	p.pitch_scale=pitch*randf_range(.94,1.06);viewport.add_child(p);p.global_position=at;p.play()
 	p.finished.connect(p.queue_free)
 func _voice(i: int) -> String:
-	var c=str(game.state.fighters[i].character)
+	var c=str(game.definition(game.state.fighters[i]).get("look",game.state.fighters[i].character))
 	if c=="thorn" or c=="golem":return "monster"
 	if c=="ziggy":return "spirit"
 	if c in ["skelos","sketos"]:return "bones"

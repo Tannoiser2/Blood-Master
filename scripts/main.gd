@@ -71,11 +71,27 @@ var menu_options: Array=[]
 var preview_overlay: Control
 
 func _ready() -> void:
+	_load_heroes()
 	_build_theme()
 	if OS.get_environment("BM_SMOKE")=="1":
 		roster=[{"character":"gascor","team":0,"controller":"human","seat":0},{"character":"anteos","team":1,"controller":"ai","seat":1}]
 		_start_local();return
 	_show_splash()
+func _load_heroes() -> void:
+	# eroi della forgia salvati su questo dispositivo: entrano nel catalogo come gli altri
+	var saved=BloodForge.load_saved()
+	for id in saved:
+		BloodRules.extra_defs[id]=saved[id];game.add_definition(saved[id])
+func _forged(id: String) -> bool:
+	return game.catalog.has(id) and str(game.catalog[id].get("kind",""))=="forged"
+func face_path(id: String) -> String:
+	var look=str(game.catalog[id].get("look",id)) if game.catalog.has(id) else id
+	return "res://assets/ui/faces/%s.webp"%look
+func _show_forge(hero_id:="") -> void:
+	showing_game=false;clear(page)
+	var f=preload("res://scripts/forge_ui.gd").new();page.add_child(f)
+	f.on_close=func():_show_menu()
+	f.setup(self,hero_id)
 # simboli (◀ ▶ ✕ …) che Cinzel e Alegreya non hanno: sul web non c'è un font di sistema di riserva
 var font_symbols: Font=load("res://assets/fonts/NotoSansSymbols2-sub.ttf")
 func _with_symbols(path: String) -> FontFile:
@@ -177,11 +193,11 @@ func _save_settings() -> void:
 	var f=FileAccess.open("user://settings.json",FileAccess.WRITE)
 	if f:f.store_string(JSON.stringify({"art":art,"blood":blood_on,"sound":sound_on,"labels":labels_on,"house_rules":house,"clear_plates":clear_plates,"pause":step_pause}))
 func card_path(id: String) -> String:
-	var r="res://assets/reborn/cards/%s.webp"%id
+	var r="res://assets/reborn/cards/%s.webp"%str(game.catalog[id].get("look",id))
 	if art=="reborn" and ResourceLoader.exists(r):return r
 	return game.catalog[id].card
 func mini_path(id: String) -> String:
-	var r="res://assets/reborn/minis/%s.webp"%id
+	var r="res://assets/reborn/minis/%s.webp"%str(game.catalog[id].get("look",id))
 	return r if art=="reborn" and ResourceLoader.exists(r) else ""
 func _free_agent(id: String) -> bool:
 	return int(game.catalog[id].team)<0                       # maghi e scheletri
@@ -195,6 +211,12 @@ func _card_widget(id: String,width: float,on_click: Callable,halves:=false) -> T
 	var tex: Texture2D=t.texture;t.custom_minimum_size=Vector2(width,width*tex.get_height()/tex.get_width())
 	t.mouse_filter=Control.MOUSE_FILTER_STOP;t.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
 	t.tooltip_text=game.catalog[id].name+" · "+game.catalog[id].title
+	if _forged(id):   # la carta è quella del personaggio a cui somiglia: sopra il nome dell'eroe
+		t.modulate=Color(.85,.8,.75)
+		var tag=PanelContainer.new();tag.add_theme_stylebox_override("panel",box(Color(0,0,0,.72),4));tag.mouse_filter=Control.MOUSE_FILTER_IGNORE
+		var tl=label(str(game.catalog[id].name).to_upper(),maxi(11,int(width*.08)),GOLD);tl.mouse_filter=Control.MOUSE_FILTER_IGNORE;tag.add_child(tl)
+		tag.custom_minimum_size=Vector2(width*.5,t.custom_minimum_size.y*.26)   # copre il nome stampato sulla carta
+		t.add_child(tag);tag.position=Vector2(0,0)
 	if halves:   # la metà sotto il mouse si colora della squadra in cui andrà la scheda
 		var tint=ColorRect.new();tint.mouse_filter=Control.MOUSE_FILTER_IGNORE;tint.visible=false;t.add_child(tint)
 		var locked=_locked(id);var own=int(game.catalog[id].team)
@@ -242,7 +264,7 @@ func _show_splash() -> void:
 		var fr=PanelContainer.new();var fs=box(Color(0,0,0,.4),4);fs.set_border_width_all(2);fs.border_color=GOLD.darkened(.2);fr.add_theme_stylebox_override("panel",fs);fr.add_child(f);faces.add_child(fr)
 	v.add_child(Control.new())
 	var col=VBoxContainer.new();col.add_theme_constant_override("separation",10);col.custom_minimum_size.x=340;v.add_child(col)
-	for item in [["Nuovo scontro",_show_menu,true],["Riprendi la partita salvata",_load_game,false],["Regolamento",_open_manual,false],["Crediti",_credits,false]]:
+	for item in [["Nuovo scontro",_show_menu,true],["Riprendi la partita salvata",_load_game,false],["La forgia degli eroi",func():_show_forge(),false],["Regolamento",_open_manual,false],["Crediti",_credits,false]]:
 		if item[0].begins_with("Riprendi") and not FileAccess.file_exists("user://battle.json"):continue
 		var b=button(item[0],item[1],item[2]);b.add_theme_font_size_override("font_size",20);col.add_child(b)
 	var note=label("Ideazione di Stefano Ancillai e Marco Ramadori · disegni di Luigi Filipponi",12,MUTED);note.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(note)
@@ -316,6 +338,13 @@ func _show_menu() -> void:
 		if fighters.size()%2==1:   # casella vuota: i maghi stanno tutti insieme nell'ultima riga
 			var gap=Control.new();gap.custom_minimum_size=Vector2(cw,1);g.add_child(gap)
 		for id in mages:g.add_child(_pool_card(id,cw))
+	# eroi della forgia: una fila sotto, con il pulsante per crearne di nuovi
+	var forge_row=HBoxContainer.new();forge_row.alignment=BoxContainer.ALIGNMENT_CENTER;pool.add_child(forge_row)
+	forge_row.add_child(label("EROI FORGIATI",12,GOLD))
+	if mode!="online":
+		for id in _selectable().filter(func(x):return _forged(x)):forge_row.add_child(_pool_card(id,cw*.72))
+	else:forge_row.add_child(label("(non ancora nelle partite online)",12,MUTED))
+	forge_row.add_child(_bar_button("＋ Forgia un eroe",func():_show_forge(),"Crea un personaggio da tratti, armi e armatura"))
 	var right=panel_content(cols,10);right.get_parent().get_parent().custom_minimum_size.x=side_w;_team_column(right,1)
 	status=label(message,13,GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;status.custom_minimum_size.x=side_w-24;right.add_child(status)
 	if mode=="online":
@@ -330,6 +359,7 @@ func _pool_order() -> Array:
 	# prima fila: Ordine della Lama e due maghi; seconda: Ordine dell'Ombra e gli altri due maghi
 	var lama=[];var ombra=[];var mages=[]
 	for id in _selectable():
+		if _forged(id):continue   # gli eroi della forgia hanno una fila tutta loro
 		var t=int(game.catalog[id].team)
 		if t==0:lama.append(id)
 		elif t==1:ombra.append(id)
@@ -389,7 +419,7 @@ func _team_column(parent: Node,team: int) -> void:
 			continue
 		var i: int=members[n];var id: String=roster[i].character
 		var row=HBoxContainer.new();row.add_theme_constant_override("separation",5);slot.add_child(row)
-		var f=TextureRect.new();var fp="res://assets/ui/faces/%s.webp"%id
+		var f=TextureRect.new();var fp=face_path(id)
 		if ResourceLoader.exists(fp):f.texture=load(fp)
 		f.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;f.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;f.custom_minimum_size=Vector2(40,40);row.add_child(f)
 		var nm=label(game.catalog[id].name,14,INK);nm.size_flags_horizontal=Control.SIZE_EXPAND_FILL;nm.clip_text=true;row.add_child(nm)
@@ -398,7 +428,7 @@ func _team_column(parent: Node,team: int) -> void:
 func _show_detail(id: String) -> void:
 	# finestra sopra il menu con scheda e tessere; si chiude cliccando fuori o su Chiudi
 	detail_id=id
-	var layer=Control.new();layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);add_child(layer)
+	var layer=Control.new();layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);layer.set_meta("overlay",true);add_child(layer)
 	var dim=ColorRect.new();dim.color=Color(0,0,0,.6);dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);layer.add_child(dim)
 	dim.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed:layer.queue_free())
@@ -406,6 +436,10 @@ func _show_detail(id: String) -> void:
 	var v=panel_content(center,18);v.get_parent().get_parent().custom_minimum_size.x=460
 	_detail_panel(v)
 	v.add_child(button("Chiudi",layer.queue_free))
+func _close_overlays() -> void:
+	# chiude la finestra della scheda (livello sopra il menu)
+	for c in get_children():
+		if c is Control and c.get_meta("overlay",false):c.queue_free()
 func _detail_panel(v: VBoxContainer) -> void:
 	var d=game.catalog[detail_id]
 	var head=HBoxContainer.new();v.add_child(head)
@@ -421,6 +455,10 @@ func _detail_panel(v: VBoxContainer) -> void:
 	v.add_child(label("LE SUE TESSERE · %d"%d.moves.size(),13,GOLD))
 	var info=label("Passa sopra una tessera (o toccala) per leggerne i valori.",13,MUTED);info.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;info.custom_minimum_size=Vector2(400,52)
 	v.add_child(_honeycomb(d,info));v.add_child(info)
+	if _forged(detail_id):
+		var did=detail_id
+		v.add_child(label("Valore %d punti (budget %d)"%[roundi(BloodForge.points(d)),int(BloodForge.BUDGET)],13,MUTED))
+		v.add_child(button("Modifica nella forgia",func():_close_overlays();_show_forge(did)))
 func _honeycomb(d: Dictionary,info: Label) -> Control:
 	# tessere esagonali coi lati piatti in alto e in basso: colonne sfalsate di mezza altezza
 	var w=92.0;var h=w*.8625;var cols=5;var n=d.moves.size();var gap=3.0
@@ -611,7 +649,7 @@ func _refresh_portraits() -> void:
 				var gp=PanelContainer.new();gp.add_theme_stylebox_override("panel",box(GOLD,6));gp.mouse_filter=Control.MOUSE_FILTER_IGNORE;go.mouse_filter=Control.MOUSE_FILTER_IGNORE;gp.add_child(go);v.add_child(gp)
 			var fs=28.0 if tiny else 44.0
 			var face=TextureRect.new();face.custom_minimum_size=Vector2(fs,fs);face.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;face.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;face.mouse_filter=Control.MOUSE_FILTER_IGNORE
-			var fp="res://assets/ui/faces/%s.webp"%p.character
+			var fp=face_path(p.character)
 			if not ResourceLoader.exists(fp):fp="res://assets/reborn/minis/%s.webp"%p.character
 			if ResourceLoader.exists(fp):face.texture=load(fp)
 			head.add_child(face)
@@ -913,7 +951,7 @@ func _tile(path: String,width: int) -> void:
 	var t=TextureRect.new();t.texture=load(path);t.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;t.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED;t.custom_minimum_size=Vector2(width,width*.866);sidebar.add_child(t)
 func _reach_tip(p: Dictionary,id: String) -> String:
 	# regola modificata delle lance: affondo e carica arrivano al secondo esagono davanti
-	if game.hr("reach") and str(p.character) in BloodRules.SPEARS and id in ["thrust","charge"]:
+	if game.hr("reach") and (str(p.character) in BloodRules.SPEARS or bool(game.definition(p).get("reach",false))) and id in ["thrust","charge"]:
 		return "\nArma lunga: colpisce anche il secondo esagono davanti (regola modificata)"
 	return ""
 func _move_tip(m: Dictionary) -> String:
