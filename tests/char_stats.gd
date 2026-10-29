@@ -23,7 +23,7 @@ func _init() -> void:
 						if r.state.fighters[i].character==who and dbg_n<10 and OS.get_environment("BM_AIDBG")!="":
 							var nn=99
 							for j in BloodAI._enemies(r,i):nn=mini(nn,r.walk_distance(r.state.fighters[i].cell,r.state.fighters[j].cell))
-							if nn in [2,3]:dbg_n+=1;print("SCELTA ",mv," ",BloodAI._dbg_scores," fronte ",r.state.fighters[i].facing," nemici-lati ",BloodAI._enemies(r,i).filter(func(j):return BloodRules.distance(r.state.fighters[i].cell,r.state.fighters[j].cell)==1).map(func(j):return posmod(BloodRules.direction(r.state.fighters[i].cell,r.state.fighters[j].cell)-int(r.state.fighters[i].facing),6)))
+							if nn==1:dbg_n+=1;print("SCELTA ",mv," fatica ",r.state.fighters[i].fatigue,"+",r.state.fighters[i].permanent," ",BloodAI._dbg_scores," fronte ",r.state.fighters[i].facing," nemici-lati ",BloodAI._enemies(r,i).filter(func(j):return BloodRules.distance(r.state.fighters[i].cell,r.state.fighters[j].cell)==1).map(func(j):return posmod(BloodRules.direction(r.state.fighters[i].cell,r.state.fighters[j].cell)-int(r.state.fighters[i].facing),6)))
 						if r.state.fighters[i].character==who:
 							stats[mv]=stats.get(mv,0)+1;total+=1
 							var near=99

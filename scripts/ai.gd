@@ -19,6 +19,10 @@ static var MAGES_KEEP_DISTANCE=false
 static var WEAPON_RANGE=2
 static var CHARGE_W=.6
 static var BACK_W=.8
+# aspettare in guardia: nelle partite simulate solo una guardia su dieci arriva davvero a colpire,
+# perché nessuno si infila davanti a chi è in guardia. Vale poco: meglio muoversi e aggirare
+static var GUARD_WAIT=float(OS.get_environment("BM_GW")) if OS.get_environment("BM_GW")!="" else 5.0
+static var GUARD_GAIN=float(OS.get_environment("BM_GG")) if OS.get_environment("BM_GG")!="" else .7
 
 # ------------------------------------------------------------------ valutazioni di base
 static func _team(game: BloodRules,i: int) -> int:
@@ -58,6 +62,16 @@ static func _expected_wounds(game: BloodRules,i: int,j: int,m: Dictionary,from: 
 	if b.get("shield",false):dv=-15
 	if not defense.get("blue",[]).is_empty() and not side in defense.blue:dv=int(defense.get("secondary",dv))
 	var positional=POSITIONAL[side] if not side in defense.get("red",[]) else 0
+	if _guessing and not b.get("shield",false) and not b.done:
+		# in pianificazione la pedina del nemico è segreta: non quella del turno prima, ma la media di quelle che può scegliere
+		var sum=0.0;var pos=0.0;var n=0
+		for id in game.definition(b).moves:
+			if id in b.lost or id in ["unbalanced","down","pieces","again"]:continue
+			if (id in ["rise","roll"])!=bool(b.down):continue
+			var mm=game.definition(b).moves[id];var dd=int(mm.get("defense",0))
+			if not mm.get("blue",[]).is_empty() and not side in mm.blue:dd=int(mm.get("secondary",dd))
+			sum+=float(dd);pos+=float(POSITIONAL[side] if not side in mm.get("red",[]) else 0);n+=1
+		if n>0:dv=roundi(sum/n);positional=roundi(pos/n)
 	var attack=float(m.attack)
 	if m.id=="shoot":attack=15.0-float(BloodRules.distance(from,b.cell))
 	attack+=float(a.get("sprint_mod",0))-float(a.fatigue)-float(a.permanent)
@@ -145,7 +159,7 @@ static func _move_score(game: BloodRules,i: int,k: String,m: Dictionary) -> floa
 		s+=-float(d)*2.0
 		if d==1:   # arrivare sul fianco o alle spalle del bersaglio
 			var side=posmod(BloodRules.direction(b.cell,k)-int(b.facing),6)
-			s+=float(POSITIONAL[side])*1.2
+			s+=float(POSITIONAL[side])*2.5   # aggirare: fianchi (+3) e spalle (+5) sono dove si fanno le ferite
 		s-=maxf(0.0,_threat_at(game,i,k)-4.0)*.6           # non infilarsi in mezzo a troppi nemici
 	if focus!=-1 and k!=p.cell:
 		var face=BloodRules.direction(k,game.state.fighters[focus].cell)
@@ -158,6 +172,10 @@ static func _move_score(game: BloodRules,i: int,k: String,m: Dictionary) -> floa
 			var em=game.move(e)
 			if em.get("attack")==null or em.get("spell",false) or e.get("bow",false):continue
 			if posmod(BloodRules.direction(e.cell,p.cell)-int(e.facing),6) in em.red:s-=4.0+float(em.attack)*.5
+	if m.id in ["run","charge"] and k!=p.cell:
+		# sprint: più esagoni, più rischio di cadere (e un turno perso per rialzarsi)
+		var sp: Array=game.definition(p).get("sprints",[]);var steps=BloodRules.distance(p.cell,k)
+		if steps>0 and steps<=sp.size():s-=float(sp[steps-1][2])/6.0*7.0+float(sp[steps-1][1])*.5
 	if m.id=="charge":
 		var front=game.at(BloodRules.neighbor(k,int(p.facing)))
 		if front!=-1 and game.state.fighters[front].team!=_team(game,i):
@@ -240,7 +258,13 @@ static func _blocks_enemy(game: BloodRules,i: int,k: String) -> float:
 
 # ------------------------------------------------------------------ scelta della mossa segreta
 static var _dbg_scores={}
+static var _guessing=false   # vero mentre si sceglie la pedina segreta: le pedine dei nemici non si conoscono
 static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
+	_guessing=true
+	var r=_choose_move(game,i,difficulty)
+	_guessing=false
+	return r
+static func _choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 	var p=game.state.fighters[i];var legal=game.legal_moves(i)
 	if legal.is_empty():return ""
 	var trouble=_trouble(game,i)
@@ -314,12 +338,16 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 				score=(14.0 if p.magic<3 else 4.0)+(top-here)*.3-float(adjacent)*4.0
 				for sk in game.state.fighters:   # uno scheletro in pezzi da rigenerare (amico o nemico): ne vale la pena
 					if sk.alive and sk.get("pieces",false) and int(p.magic)>=2:score+=22.0;break
-			if id=="load":score=(14.0 if not p.get("loaded",false) else -5.0)+(top-here)*.3-float(adjacent)*6.0
+			if id=="load":
+				score=(14.0 if not p.get("loaded",false) else -5.0)+(top-here)*.3-float(adjacent)*6.0
+				# già incoccata ma nessuno nel campo visivo: rimirare (un passo e un lato) tiene la freccia invece di perderla
+				if p.get("loaded",false) and game.targets(i,"shoot").is_empty() and _best_aim(game,i)[0]>0.0:score=12.0-float(adjacent)*6.0
 			if id=="rise":score=25.0
 			if id in ["run","charge"]:score-=float(p.fatigue)*.6
 			if id=="dodge" or id=="roll":score+=trouble*6.0*float(adjacent)
 		if m.get("rest",false):score+=minf(10.0,float(p.fatigue)*2.0)*(1.0 if adjacent==0 else .3)
-		if id=="guard":score=maxf(score,(5.0 if nearest<=2 else -1.0)+(2.0 if adjacent>0 else 0.0))
+		var waiting=id=="guard" and targets.is_empty()   # in guardia senza nessuno davanti: si aspetta che qualcuno arrivi
+		if id=="guard":score=maxf(score,(GUARD_WAIT if nearest<=2 else -1.0)+(2.0 if adjacent>0 else 0.0))
 		if id.begins_with("parry"):score=float(adjacent)*3.5+trouble*4.0-6.0
 		if id=="shoot":   # tiro: 15 meno la distanza, fortissimo anche a bruciapelo; la freccia incoccata non va sprecata
 			if targets.is_empty():score=-20.0
@@ -330,7 +358,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 					if o!=-1:top=maxf(top,_target_value(game,i,o,_expected_wounds(game,i,o,m,p.cell)))
 				score=top+18.0+(6.0 if adjacent==0 else 0.0)
 		if id=="weapon":score=18.0 if p.get("bow",false) and (nearest<=WEAPON_RANGE or int(p.get("arrows",-1))==0) else -10.0   # senza frecce si riprende la spada
-		if id=="meditate":score=(8.0 if adjacent==0 else -6.0)+trouble*4.0
+		if id=="meditate":score=(8.0 if adjacent==0 and nearest<=3 else (1.0 if adjacent==0 else -6.0))+trouble*4.0   # medita se poi potrà colpire
 		# esposizione: la difesa della pedina scelta conta quando i nemici ci attaccano (valore alto = più ferite subite)
 		if id=="again":   # "Ancora" mantiene in gioco gorgo e fuoco vivente: valgono quanto i nemici che hanno intorno
 			for e in game.state.effects:
@@ -347,7 +375,7 @@ static func choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 			var gbest=0.0
 			for j in _enemies(game,i):
 				if game.walk_distance(p.cell,game.state.fighters[j].cell)<=2:gbest=maxf(gbest,_target_value(game,i,j,_expected_wounds(game,i,j,m,p.cell)))
-			score=maxf(score,gbest*.7+3.0)
+			score=maxf(score,gbest*(GUARD_GAIN if waiting else .7)+3.0)
 		if id=="guard" and adjacent>0:
 			var now_risk=_back_risk(game,i,p.cell,int(p.facing));var turned=_back_risk(game,i,p.cell,_best_facing(game,i,p.cell,int(p.facing)))
 			score+=(now_risk-turned)*BACK_W*.8
@@ -378,6 +406,9 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 			score-=float(near)*.05+(.6 if k==p.cell else 0.0)
 			if p.character=="golem":score=-float(near)*3.0   # il Golem va dritto addosso al nemico più vicino
 		if score>best:best=score;selected=k
+	if m.id=="load":   # arciere: si mette dove e come potrà tirare al turno dopo
+		var aim=_best_aim(game,i)
+		if aim[0]>0.0:return {"target":aim[1],"facing":aim[2]}
 	var focus=_focus(game,i)
 	if focus!=-1:
 		var look=game.state.fighters[focus].cell
@@ -385,6 +416,16 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 		if m.id=="guard" and targets.is_empty():desired=_best_facing(game,i,p.cell,desired)
 		if m.id in ["rise","meditate","teleport","float"] or (m.id=="guard" and targets.is_empty()):facing=desired
 		elif desired!=facing:facing=posmod(facing+(1 if posmod(desired-facing,6)<=3 else -1),6)
+	# chi è attaccato di lato o alle spalle si gira verso la minaccia: tra i fronti consentiti, quello che
+	# lascia meno scoperti fianchi e schiena; a parità resta il fronte verso il bersaglio
+	if not m.id in ["dematerialize","weapon","roll","charge"] and not m.id.begins_with("parry"):
+		var endc=selected if m.id in ["advance","run","float","dodge","roll","rise","concentrate","load","teleport"] else p.cell
+		var rot=game.max_rotation(i,m.id=="guard" and targets.is_empty())
+		var keep=_back_risk(game,i,endc,facing);var bf=facing
+		for d in range(-rot,rot+1):
+			var f=posmod(int(p.facing)+d,6);var r=_back_risk(game,i,endc,f)
+			if r<keep-2.0:keep=r;bf=f
+		facing=bf
 	if m.id in ["dematerialize","weapon","roll","charge"]:facing=int(p.facing)   # la carica non ruota: colpisce davanti
 	if m.id.begins_with("parry"):facing=_parry_facing(game,i,m)   # gira il lato blu verso chi minaccia
 	if targets.is_empty():
@@ -409,6 +450,24 @@ static func _parry_facing(game: BloodRules,i: int,m: Dictionary) -> int:
 			if side in m.blue:s+=3.0*w
 			elif side in [2,3,4]:s-=2.0*w   # fianco o spalle verso un nemico
 		if s>best_s:best_s=s;best=f
+	return best
+# miglior tiro possibile dopo Incoccare: [valore, cella, fronte] tra le celle raggiungibili e i fronti consentiti
+static func _best_aim(game: BloodRules,i: int) -> Array:
+	var p=game.state.fighters[i];var keep_c=str(p.cell);var keep_f=int(p.facing)
+	var shoot=game.definition(p).moves.get("shoot",{})
+	if shoot.is_empty():return [0.0,keep_c,keep_f]
+	var best=[0.0,keep_c,keep_f];var rot=1   # Incoccare: un passo in qualunque direzione e un lato di rotazione
+	var cells=game.targets(i,"load")
+	if not keep_c in cells:cells.append(keep_c)
+	for c in cells:
+		for d in range(-rot,rot+1):
+			var f=posmod(keep_f+d,6);p.cell=c;p.facing=f
+			for j in _enemies(game,i):
+				var e=game.state.fighters[j]
+				if not game.living(e) or not game.in_view(p,e.cell) or not game.clear_shot(c,e.cell):continue
+				var v=_target_value(game,i,j,_expected_wounds(game,i,j,shoot,c))-float(BloodRules.distance(c,keep_c))*.3
+				if v>best[0]:best=[v,c,f]
+	p.cell=keep_c;p.facing=keep_f
 	return best
 static func reaction(game: BloodRules,i: int) -> String:
 	# Reagire con una parata costa la mossa preparata: conviene solo se le ferite evitate valgono più di

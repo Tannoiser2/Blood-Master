@@ -259,7 +259,7 @@ func deploy(k: String,facing: int) -> bool:
 	if state.active>=state.fighters.size():begin_turn()
 	return true
 func begin_turn() -> void:
-	state.turn+=1;state.phase="planning";state.active=-1;state.plans={};state.bag=[];state.pending={}
+	state.turn+=1;state.phase="planning";state.active=-1;state.plans={};state.bag=[];state.pending={};state.last_call=false
 	if not state.war:
 		if rng.randi_range(0,int(state.peace_left))==0:state.war=true;note("GUERRA · ora è possibile attaccare.")
 		else:state.peace_left-=1;note("PACE · questo turno non si attacca.")
@@ -340,6 +340,18 @@ func draw_next() -> void:
 		if not opportunities.is_empty():
 			state.pending={"kind":"opportunity","resume":int(b.fighter),"reactors":opportunities};state.phase="opportunity"
 		return
+	# la guardia vale per tutto il turno: chi aspetta ancora ha un'ultima occasione di colpire chi gli è arrivato
+	# davanti con l'ultima azione (prima la guardia scadeva senza che nessuno potesse più approfittarne)
+	if not state.get("last_call",false):
+		state.last_call=true
+		var late=[]
+		for j in state.fighters.size():
+			var other=state.fighters[j]
+			if not living(other) or other.done or other.down:continue
+			if (other.guarding and not targets(j).is_empty()) or other.current=="concentrate":late.append(j)
+		if not late.is_empty():
+			state.pending={"kind":"opportunity","resume":-1,"reactors":late};state.phase="opportunity"
+			return
 	finish_turn()
 
 func reachable(i: int,max_steps: int,dirs: Array=[]) -> Dictionary:
@@ -1012,12 +1024,15 @@ func opportunity(id: String) -> bool:
 	var pending=state.pending;var i=int(pending.reactors[0]);var p=state.fighters[i]
 	if id=="pass":
 		pending.reactors.pop_front()
-		if pending.reactors.is_empty():state.phase="acting";state.active=int(pending.resume);state.pending={}
+		if pending.reactors.is_empty():
+			if int(pending.resume)<0:state.phase="draw";state.active=-1;state.pending={};draw_next()   # ultima occasione: fine turno
+			else:state.phase="acting";state.active=int(pending.resume);state.pending={}
 		return true
 	if id=="guard" and not p.guarding:return false
 	if id!="guard":
 		if p.current!="concentrate" or not id in legal_moves(i) or not move(p,id).get("spell",false):return false
-	state.interrupt_stack.append(int(pending.resume));state.active=i;state.phase="acting";state.pending={}
+	if int(pending.resume)>=0:state.interrupt_stack.append(int(pending.resume))
+	state.active=i;state.phase="acting";state.pending={}
 	p.previous=p.current;p.current=id;p.guarding=false
 	return true
 func regenerate(i: int) -> bool:
