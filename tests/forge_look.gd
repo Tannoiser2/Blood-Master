@@ -20,6 +20,10 @@ func run():
 	if OS.get_environment("SIZES")!="":   # la stessa lancia con stazze diverse
 		sets=[]
 		for k in 5:sets.append(["FOR e COS %d"%(k+1),{"arma":"lancia","armatura":"leggera","FOR":k+1,"COS":k+1}])
+	if OS.get_environment("ONE")!="":   # un eroe solo: arma e armatura dall'ambiente
+		var tr={"arma":OS.get_environment("ONE"),"armatura":OS.get_environment("ARM") if OS.get_environment("ARM")!="" else "leggera"}
+		if OS.get_environment("SCUDO")!="":tr.scudo=OS.get_environment("SCUDO")
+		sets=[[OS.get_environment("CLIP"),tr]]
 	if OS.get_environment("SET")!="":sets=sets.slice(int(OS.get_environment("SET")),int(OS.get_environment("SET"))+1)
 	root.size=Vector2i(maxi(520,260*sets.size()),640)
 	var world=Node3D.new();root.add_child(world)

@@ -415,7 +415,7 @@ func _make_preview(parent: Node) -> void:
 	var plate=MeshInstance3D.new();var cyl=CylinderMesh.new();cyl.top_radius=.62;cyl.bottom_radius=.62;cyl.height=.03;cyl.radial_segments=6;plate.mesh=cyl
 	var pm=StandardMaterial3D.new();pm.albedo_color=Color(.22,.16,.1);pm.roughness=.8;plate.material_override=pm;plate.rotation_degrees.y=30;w.add_child(plate)
 	pv_root=Node3D.new();w.add_child(pv_root)
-	var cam=Camera3D.new();cam.fov=30;w.add_child(cam);cam.position=Vector3(0,1.05,3.3);cam.look_at(Vector3(0,.58,0))
+	var cam=Camera3D.new();cam.fov=30;w.add_child(cam);cam.position=Vector3(0,1.15,3.9);cam.look_at(Vector3(0,.66,0))
 	cam.current=true
 	svc.gui_input.connect(func(ev):   # trascina per girare il personaggio
 		if ev is InputEventMouseMotion and (ev.button_mask&MOUSE_BUTTON_MASK_LEFT)!=0:pv_root.rotation.y+=ev.relative.x*.012
@@ -434,10 +434,11 @@ func _update_preview() -> void:
 		if path!="" and ResourceLoader.exists(path):
 			pv_model=load(path).instantiate();pv_root.add_child(pv_model)
 			pv_b3._dress(pv_model,dr)
-			pv_model.scale*=1.6   # più grande che sulla mappa: riempie l'anteprima
+			pv_model.scale*=1.3   # più grande che sulla mappa: riempie l'anteprima
 			var aps=pv_model.find_children("*","AnimationPlayer",true,false)
 			if not aps.is_empty():
 				pv_ap=aps[0]
+				pv_b3._extract_root_motion({"model":pv_model,"root":pv_root,"ap":pv_ap})   # il bacino resta sopra la basetta, come in partita
 				pv_ap.animation_finished.connect(func(n):   # la mossa si ripete, con una breve pausa
 					if is_inside_tree():get_tree().create_timer(.6).timeout.connect(func():if is_instance_valid(pv_ap) and pv_ap.assigned_animation==n:pv_ap.play(n)))
 	if pv_ap==null:pv_label.text="";return
@@ -451,7 +452,7 @@ func _update_preview() -> void:
 	var clip=_preview_clip(selected_id,bow)
 	pv_ap.play(clip,.15)
 	var m=all_def.moves.get(selected_id,{})
-	pv_label.text="%s · %s · trascina per girarlo"%[str(m.get("name","")),clip]
+	pv_label.text="%s · clic su una pedina per vederla · trascina per girarlo"%str(m.get("name",""))
 func _preview_clip(id: String,bow: bool) -> String:
 	var m=all_def.moves.get(id,{})
 	var base=str(pv_b3.CLIP.get(id,"In guardia"))
