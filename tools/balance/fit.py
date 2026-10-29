@@ -80,7 +80,9 @@ rows = [r for r in rows if not (hold and r[0].startswith(hold))]
 X = np.array([x_of(r[1]) for r in rows]); y = np.array([r[2] for r in rows]); W = np.array([r[3] for r in rows])
 lam = float(sys.argv[5]) if len(sys.argv) > 5 else .3
 A = X.T @ (X * W[:, None]) + lam * np.diag([1] * (X.shape[1] - 1) + [0]); bvec = X.T @ (y * W)
-coef = np.linalg.solve(A, bvec)
+drop = [KEYS.index(k) for k in os.environ.get('DROP', '').split(',') if k]   # caratteristiche tolte (coefficiente 0)
+keep = [i for i in range(X.shape[1]) if i not in drop]
+coef = np.zeros(X.shape[1]); coef[keep] = np.linalg.solve(A[np.ix_(keep, keep)], bvec[keep])
 pred = X @ coef
 print('coefficienti:')
 for k, c in zip(KEYS + ['zero'], coef): print('  %-7s %+.3f' % (k, c))

@@ -120,9 +120,10 @@ const POS=[0,1,3,5,3,1]
 const SIDE_W={0:.45,1:.15,5:.15,2:.09,4:.09,3:.07}
 const OFFICIAL=["zenyo","gascor","ut","shannon","kylvia","anteos","shaara","zak","nuchra","ramok"]
 # coefficienti (forza in scala logit per unità di caratteristica), tarati con le simulazioni
-# tarati su ~13.000 duelli e 1.200 partite a squadre (correlazione 0,87 con la forza osservata):
-# offesa, vita e ferite subite pesano quasi uguale, come vuole la logica del "chi resiste di più"
-static var COEF={"off":0.6129,"hp":0.5997,"sub":-0.6721,"sprint":-0.0484,"size":0.0135,"fat":-0.4503,"imb":0.9659,"natk":0.0,"green":0.0,"shoot":1.1413,"zero":-2.376}
+# tarati su circa 20.000 duelli e 1.200 partite a squadre fra cast ufficiale, 60 varianti e 40 eroi forgiati
+# (correlazione 0,90 con la forza osservata; su eroi esclusi dalla taratura 0,86-0,94)
+static var COEF={"off":1.013,"hp":0.9122,"sub":-0.5209,"sprint":0.0,"size":0.1363,"fat":-0.756,"imb":0.3,"natk":0.0,"green":0.0,"shoot":1.2267,"best":-0.3212,"zero":-4.1831}
+# imb: nelle simulazioni lo sbilanciamento pesa quasi zero; gli si dà comunque un piccolo prezzo, perché non sia gratis
 static var _die: Dictionary={}
 static var _ref_def: Array=[]
 static var _ref_atk: Array=[]
@@ -213,7 +214,7 @@ static func features(def: Dictionary,_catalog: Dictionary={}) -> Dictionary:
 ## forza in scala logit: log dell'offesa e della vita, meno log delle ferite subite, più il resto
 static func logit(f: Dictionary) -> float:
 	var z=float(COEF.zero)
-	z+=float(COEF.off)*log(maxf(f.off,.05))+float(COEF.hp)*log(maxf(f.hp,1.0))+float(COEF.sub)*log(maxf(f.sub,.05))
+	z+=float(COEF.off)*log(maxf(f.off,.05))+float(COEF.hp)*log(maxf(f.hp,1.0))+float(COEF.sub)*log(maxf(f.sub,.05))+float(COEF.best)*log(maxf(f.best,.05))
 	for k in ["sprint","size","fat","imb","natk","green","shoot"]:z+=float(COEF[k])*float(f[k])
 	return z
 ## valore in punti: 100 = la media dei guerrieri ufficiali; 10 punti ≈ 5 vittorie in più (o in meno) su 100
