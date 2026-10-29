@@ -16,9 +16,10 @@ func _process_modification() -> void:
 		return
 	# quanto aprire: dalla metà della caduta in poi, fino in fondo; morbido anche quando si rialza
 	var target := 0.0
-	var clip := str(ap.assigned_animation)
-	if clip in DOWN_CLIPS and ap.has_animation(clip):
-		var length := maxf(ap.get_animation(clip).length, .01)
+	var full := str(ap.assigned_animation)
+	var clip := full.trim_suffix(" lancia").trim_suffix(" 2h")   # varianti a due mani dei corpi della forgia
+	if clip in DOWN_CLIPS and ap.has_animation(full):
+		var length := maxf(ap.get_animation(full).length, .01)
 		target = clampf((ap.current_animation_position / length - .45) / .4, 0.0, 1.0)
 	var now := Time.get_ticks_msec()
 	var dt := clampf(float(now - _last_ms) / 1000.0, 0.0, .1) if _last_ms > 0 else .016

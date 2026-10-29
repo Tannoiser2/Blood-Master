@@ -23,9 +23,13 @@ const ASPETTI = {"uomo":"Uomo","donna":"Donna"}
 # corpo 3D: armi a una mano (le clip impugnano con la destra, la sinistra libera o con lo scudo) o a due mani,
 # poi armatura e aspetto. L'arma vera viene montata in mano dopo (vedi board3d._dress).
 const ONE_HAND = ["spada","pugnale","due_armi"]
+# corpi nuovi della forgia (uomini), uno per armatura: hanno sia le clip a una mano sia quelle a due mani
+const FORGE_BODIES={"nessuna":"f_barbaro","leggera":"f_nomade","media":"f_predone","pesante":"f_cavaliere"}
+const BODY_NAMES={"f_barbaro":"il barbaro delle steppe","f_nomade":"il nomade del deserto","f_predone":"il predone del nord","f_cavaliere":"il cavaliere nero"}
 static func body_for(t: Dictionary) -> String:
 	var arma=str(t.arma);var arm=str(t.armatura);var donna=str(t.get("aspetto","uomo"))=="donna";var big=int(t.stazza)>=4
 	if arma=="arco":return "kylvia" if donna else "zak"
+	if not donna:return FORGE_BODIES.get(arm,"f_nomade")
 	if arma=="due_armi":return "kylvia" if donna else "zak"   # la sinistra libera (niente posa da scudo)
 	if arma in ONE_HAND:
 		if donna or arm in ["nessuna","leggera"]:return "kylvia" if donna else "zak"
@@ -39,7 +43,7 @@ static func dress_for(t: Dictionary,size: int,catalog_sizes: Dictionary={}) -> D
 	var off=""
 	if arma=="due_armi":off="spada"
 	elif str(t.scudo)!="nessuno" and not arma in NO_SHIELD:off="scudo_"+str(t.scudo)
-	var bsize={"zenyo":3,"shaara":3,"gascor":4,"anteos":4,"ut":6,"nuchra":6,"shannon":4,"ramok":4,"kylvia":2,"zak":2}.get(body,4)
+	var bsize={"f_barbaro":5,"f_nomade":3,"f_predone":4,"f_cavaliere":5,"zenyo":3,"shaara":3,"gascor":4,"anteos":4,"ut":6,"nuchra":6,"shannon":4,"ramok":4,"kylvia":2,"zak":2}.get(body,4)
 	return {"body":body,"weapon":"spada" if arma=="due_armi" else arma,"off":off,"scale":clampf(1.0+.07*(size-bsize),.8,1.25)}
 
 const NAMES = {"guard":"In guardia","advance":"Avanzare","run":"Correre","rise":"Rialzarsi","roll":"Rotolare",
@@ -131,7 +135,7 @@ static func build(t: Dictionary) -> Dictionary:
 	for m in mv.values():m.texture="res://assets/tokens/%s_%s.webp"%[tex_from,m.id]
 	var id=str(t.get("id","")) if str(t.get("id",""))!="" else "forged_%d"%(abs(str(t.name).hash())%100000)
 	return {"id":id,"name":str(t.name),"title":str(t.title),"kind":"forged","team":int(t.get("team",-1)),"size":size,"hp":hp,
-		"sprint":sprint,"armor":ARMOR_RANGE[arm],"recovery":rec,"sprints":sprints,"card":"res://assets/cards/%s.webp"%body_for(t),
+		"sprint":sprint,"armor":ARMOR_RANGE[arm],"recovery":rec,"sprints":sprints,"card":"res://assets/cards/%s.webp"%(tex_from if body_for(t).begins_with("f_") else body_for(t)),
 		"mage":false,"look":body_for(t),"dress":dress_for(t,size),"reach":arma in ["lancia","bastone"],"traits":t.duplicate(),"moves":mv}
 
 # ------------------------------------------------------------------ valore in punti

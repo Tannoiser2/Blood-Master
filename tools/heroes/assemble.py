@@ -19,6 +19,9 @@ CID = sys.argv[-1]
 # in frazione della lunghezza (valori bassi = mano verso il fondo, punta lontana davanti); shaft: tratto dell'asta (m, negativo = verso il fondo) dove
 # può stare la mano sinistra; heavy: fendente con la clip a due mani del martello;
 # kind: 'sword' trova la guardia, 'pole' trova la testa dalla larghezza degli estremi.
+import os
+VARIANT = os.environ.get('BM_VARIANT', '')   # corpi della forgia: 1h | lancia | pesante
+FORGE_NAMES = {'f_barbaro': 'Barbaro', 'f_nomade': 'Nomade', 'f_predone': 'Predone', 'f_cavaliere': 'Cavaliere'}
 CFG = {
     'ut':      dict(name='Ut', kind='sword', length=1.50, grip=.235, shaft=(-.20, -.12), heavy=True),
     'shannon': dict(name='Shannon', kind='pole', length=2.05, grip=.15, shaft=(-.85, -.25), heavy=False),
@@ -26,10 +29,16 @@ CFG = {
     'zenyo':   dict(name='Zenyo', kind='pole', length=1.80, grip=.28, shaft=(-.85, -.25), heavy=False),
     'shaara':  dict(name='Shaara', weapon=False, heavy=False),
     'ramok':   dict(name='Ramok', kind='pole', length=2.05, grip=.15, shaft=(-.85, -.25), heavy=True),
-}[CID]
+}.get(CID) or {
+    # corpi della forgia: tre montaggi dello stesso corpo, poi uniti da tools/heroes/merge_clips.py
+    '1h':      dict(name=FORGE_NAMES.get(CID, CID), weapon=False, heavy=False),
+    'lancia':  dict(name=FORGE_NAMES.get(CID, CID), kind='pole', length=2.05, grip=.15, shaft=(-.85, -.25), heavy=False, weapon_src='shannon'),
+    'pesante': dict(name=FORGE_NAMES.get(CID, CID), kind='pole', length=1.30, grip=.40, shaft=(-.48, -.18), heavy=True, sep=-.17, weapon_src='nuchra'),
+}[VARIANT]
 SRC = root / f'source_art/{CID}/meshy'
+WEAPON_GLB = root / f"source_art/{CFG['weapon_src']}/meshy/weapon.glb" if CFG.get('weapon_src') else SRC / 'weapon.glb'
 ANTEOS = root / 'source_art/anteos/anteos.blend'
-OUT = root / f'assets/models/{CID}'
+OUT = root / (f'source_art/{CID}/build' if VARIANT else f'assets/models/{CID}')
 OUT.mkdir(parents=True, exist_ok=True)
 
 
@@ -227,7 +236,7 @@ WEAPON = CFG.get('weapon', True)       # Shaara combatte a mani nude
 w = None
 if WEAPON:
     # --- Arma: asse lungo, testa riconosciuta, origine sulla presa della mano destra ---
-    w = next(x for x in imported(SRC / 'weapon.glb') if x.type == 'MESH')
+    w = next(x for x in imported(WEAPON_GLB) if x.type == 'MESH')
     w.data.transform(w.matrix_world); w.matrix_world = Matrix()
     mod = w.modifiers.new('riduzione', 'DECIMATE'); mod.ratio = min(1, 9000 / len(w.data.polygons))
     bpy.context.view_layer.objects.active = w; bpy.ops.object.modifier_apply(modifier=mod.name)
@@ -485,7 +494,7 @@ if WEAPON:
 for img in bpy.data.images:
     used_by_body = any(img in [nd.image for nd in m.node_tree.nodes if nd.type == 'TEX_IMAGE']
                        for m in body.data.materials if m and m.use_nodes)
-    lim = 2048 if used_by_body else 1024
+    lim = (1024 if CID.startswith('f_') else 2048) if used_by_body else 1024   # corpi della forgia: texture leggere
     if img.size[0] > lim:
         img.scale(lim, lim * img.size[1] // img.size[0])
     img.pack()
@@ -496,8 +505,8 @@ for o in (arm, body, w):
     if o:
         o.select_set(True)
 bpy.context.view_layer.objects.active = arm
-bpy.ops.export_scene.gltf(filepath=str(OUT / f'{CID}.glb'), export_format='GLB', use_selection=True,
+bpy.ops.export_scene.gltf(filepath=str(OUT / (f'{VARIANT}.glb' if VARIANT else f'{CID}.glb')), export_format='GLB', use_selection=True,
                           export_animations=True, export_animation_mode='ACTIONS', export_force_sampling=True,
                           export_image_format='JPEG', export_image_quality=88)
-bpy.ops.wm.save_as_mainfile(filepath=str(root / f'source_art/{CID}/{CID}.blend'), compress=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(root / (f'source_art/{CID}/{CID}_{VARIANT}.blend' if VARIANT else f'source_art/{CID}/{CID}.blend')), compress=True)
 print('READY', CID, sorted(a.name for a in bpy.data.actions), flush=True)

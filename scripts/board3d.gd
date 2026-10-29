@@ -19,7 +19,10 @@ const MODELS={"gascor":"res://assets/models/gascor/gascor.glb","anteos":"res://a
 	"zak":"res://assets/models/zak/zak.glb","kylvia":"res://assets/models/kylvia/kylvia.glb",
 	"gandy":"res://assets/models/gandy/gandy.glb","thorn":"res://assets/models/thorn/thorn.glb",
 	"sanguinaria":"res://assets/models/sanguinaria/sanguinaria.glb","ziggy":"res://assets/models/ziggy/ziggy.glb",
-	"golem":"res://assets/models/golem/golem.glb","skelos":"res://assets/models/skelos/skelos.glb","sketos":"res://assets/models/sketos/sketos.glb"}
+	"golem":"res://assets/models/golem/golem.glb","skelos":"res://assets/models/skelos/skelos.glb","sketos":"res://assets/models/sketos/sketos.glb",
+	# corpi della forgia (uomini): ognuno ha le clip a una mano, "… lancia" e "… 2h"
+	"f_barbaro":"res://assets/models/f_barbaro/f_barbaro.glb","f_nomade":"res://assets/models/f_nomade/f_nomade.glb",
+	"f_predone":"res://assets/models/f_predone/f_predone.glb","f_cavaliere":"res://assets/models/f_cavaliere/f_cavaliere.glb"}
 const CLIP={"guard":"In guardia","advance":"Avanzare","run":"Correre","charge":"Carica","cleave":"Fendente",
 	"left":"Taglio Dx","right":"Taglio Sx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
 	"dodge":"Schivata","roll":"Rotolare","unbalanced":"Sbilanciato","down":"A terra","rise":"Rialzarsi","again":"In guardia",
@@ -179,6 +182,8 @@ func _mini(i: int) -> Dictionary:
 	var info={"root":root,"pivot":pivot,"sides":sides,"plate":plate,"model":null,"ap":null,"token":null}
 	plate.visible=not clear_plates
 	var path=MODELS.get(str(game.definition(p).get("look",p.character)),"")   # eroi della forgia: il modello a cui somigliano
+	# corpi della forgia: le stesse clip con le mani sull'asta per lance e bastoni (" lancia") e per le asce (" 2h")
+	info["sfx"]={"lancia":" lancia","bastone":" lancia","ascia":" 2h"}.get(str(game.definition(p).get("dress",{}).get("weapon","")),"")
 	if path!="" and not ResourceLoader.exists(path):path=""   # modello non ancora pronto: pedina in piedi
 	if path!="":
 		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;pivot.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
@@ -197,11 +202,13 @@ func _mini(i: int) -> Dictionary:
 			# così le due versioni si distinguono anche dall'alto; gli arcieri finiscono Incoccare in posa di tiro (vedi _rest_pose)
 			var mdl: Node3D=model
 			var apx: AnimationPlayer=info.ap
-			info.ap.animation_started.connect(func(n):
+			var sfx_now=str(info.get("sfx",""))
+			info.ap.animation_started.connect(func(full):
+				var n=str(full).trim_suffix(sfx_now) if sfx_now!="" else str(full)
 				var yaw=TWIST.get(n,0.0)
 				var tw=create_tween();tw.tween_property(mdl,"rotation:y",deg_to_rad(yaw),.18 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE)
 				var lean=create_tween();lean.tween_property(mdl,"rotation:z",deg_to_rad(-yaw*.14),.2 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE)   # si piega verso il lato
-				if SIDE_FX.has(n) and apx.has_animation(n):_side_fx(pivot,float(SIDE_FX[n][0]),SIDE_FX[n][1]=="parata",apx.get_animation(n).length/maxf(absf(apx.speed_scale),.1)))
+				if SIDE_FX.has(n) and apx.has_animation(str(full)):_side_fx(pivot,float(SIDE_FX[n][0]),SIDE_FX[n][1]=="parata",apx.get_animation(str(full)).length/maxf(absf(apx.speed_scale),.1)))
 		if p.character=="ziggy":   # lo spirito fluttua sopra la basetta
 			model.position.y=.14
 			var bob=create_tween().set_loops();bob.bind_node(model)
@@ -211,8 +218,9 @@ func _mini(i: int) -> Dictionary:
 			info["spirit"]=true
 		if info.ap:_extract_root_motion(info)
 		for n in ["In guardia","Riposo","Avanzare","Correre","Carica"]:
-			if info.ap and info.ap.has_animation(n):info.ap.get_animation(n).loop_mode=Animation.LOOP_LINEAR
-		if info.ap:info.ap.play("In guardia")
+			for sfx in [""," lancia"," 2h"]:
+				if info.ap and info.ap.has_animation(n+sfx):info.ap.get_animation(n+sfx).loop_mode=Animation.LOOP_LINEAR
+		if info.ap:info.ap.play(_anim(info,"In guardia"))
 	else:
 		# personaggio senza modello 3D: pedina in piedi con il disegno della mossa corrente
 		var s=Sprite3D.new();s.pixel_size=.0019;s.position.y=.47;s.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y;s.shaded=false;pivot.add_child(s);info.token=s
@@ -234,7 +242,7 @@ func _mini(i: int) -> Dictionary:
 # Le armi vengono prese dai modelli ufficiali (stessa posizione rispetto alla mano: i corpi hanno
 # tutti lo stesso scheletro di riferimento). La statura cambia con la stazza.
 const WEAPON_SRC={"spada":["gascor","Spada"],"pugnale":["kylvia","Spada"],"ascia":["nuchra","Arma"],"lancia":["shannon","Arma"],"bastone":["zenyo","Arma"],"scudo":["gascor","Scudo"]}
-const NATIVE={"gascor":"spada","anteos":"spada","kylvia":"pugnale","zak":"pugnale","ut":"spadone","nuchra":"ascia","shannon":"lancia","ramok":"alabarda","zenyo":"bastone","shaara":""}
+const NATIVE={"f_barbaro":"","f_nomade":"","f_predone":"","f_cavaliere":"","gascor":"spada","anteos":"spada","kylvia":"pugnale","zak":"pugnale","ut":"spadone","nuchra":"ascia","shannon":"lancia","ramok":"alabarda","zenyo":"bastone","shaara":""}
 var _weapon_lib={}
 # Ogni arma è descritta rispetto all'osso che la tiene nella posa di riposo dello scheletro, in assi
 # del modello (non dell'osso): così si può montare su corpi con scheletri orientati in modo diverso,
@@ -249,7 +257,8 @@ func _lib_piece(kind: String) -> Array:
 			var bone=sk.find_bone(ba.bone_name)
 			var bw: Transform3D=_to_model(inst,sk)*sk.get_bone_global_rest(bone)
 			var ww: Transform3D=bw*n.transform
-			out=[n.duplicate(),ww.origin-bw.origin,ww.basis,str(ba.bone_name)]
+			out=[n.duplicate(),ww.origin-bw.origin,ww.basis,str(ba.bone_name),n.transform]
+		if out.size()<5:out.append(Transform3D())
 		inst.free();_weapon_lib[kind]=out
 	return _weapon_lib[kind]
 func _to_model(model: Node3D,node: Node3D) -> Transform3D:
@@ -266,7 +275,7 @@ func _hand(sk: Skeleton3D,bone: String) -> BoneAttachment3D:
 func _drop(model: Node,name: String) -> void:
 	var n=model.find_child(name,true,false)
 	if n:n.get_parent().remove_child(n);n.free()
-func _mount(model: Node3D,sk: Skeleton3D,kind: String,bone: String,name: String,mirror:=false,scale:=1.0) -> void:
+func _mount(model: Node3D,sk: Skeleton3D,kind: String,bone: String,name: String,mirror:=false,scale:=1.0,same_rig:=false) -> void:
 	var piece=_lib_piece(kind)
 	if piece[0]==null or sk.find_bone(bone)<0:return
 	var off: Vector3=piece[1];var rot: Basis=piece[2]
@@ -275,6 +284,9 @@ func _mount(model: Node3D,sk: Skeleton3D,kind: String,bone: String,name: String,
 		off=Vector3(-off.x,off.y,off.z);rot=f*rot*f
 	var bw: Transform3D=_to_model(model,sk)*sk.get_bone_global_rest(sk.find_bone(bone))
 	var local: Transform3D=bw.affine_inverse()*Transform3D(rot.scaled(Vector3.ONE*scale) if scale!=1.0 else rot,bw.origin+off)
+	if same_rig and not mirror:   # corpi montati come le armi d'origine: stessa presa rispetto all'osso
+		local=piece[4]
+		if scale!=1.0:local.basis=local.basis.scaled(Vector3.ONE*scale)
 	var m: Node3D=piece[0].duplicate();m.name=name;m.transform=local;_hand(sk,bone).add_child(m)
 func _dress(model: Node3D,dr: Dictionary) -> void:
 	var skl=model.find_children("*","Skeleton3D",true,false)
@@ -285,7 +297,7 @@ func _dress(model: Node3D,dr: Dictionary) -> void:
 		for n in ["Arco","ArcoSchiena","FrecciaIncoccata"]:_drop(model,n)
 		if NATIVE.get(body,"")!=weapon:
 			for n in ["Spada","Arma","ArmaAzione"]:_drop(model,n)
-			_mount(model,sk,weapon,str(_lib_piece(weapon)[3]) if str(_lib_piece(weapon)[3])!="" else "RightHand","Spada" if weapon in ["spada","pugnale"] else "Arma")
+			_mount(model,sk,weapon,str(_lib_piece(weapon)[3]) if str(_lib_piece(weapon)[3])!="" else "RightHand","Spada" if weapon in ["spada","pugnale"] else "Arma",false,1.0,body.begins_with("f_"))
 	var native_shield=model.find_child("Scudo",true,false)
 	if off.begins_with("scudo"):
 		var sc=.72 if off=="scudo_piccolo" else 1.0
@@ -418,6 +430,11 @@ func _find_animation(n: Node) -> AnimationPlayer:
 	return null
 
 const CLIP_FALLBACK={"Fendente":["Taglio Dx","Affondo"],"Calcio":["Affondo"],"Schivata":["Rotolare"],"Rotolare":["Schivata"],"Riposo":["In guardia"],"Carica":["Correre"]}
+## nome vero della clip da suonare su questa miniatura (variante a due mani dei corpi della forgia)
+func _anim(info: Dictionary,name: String) -> String:
+	var sfx=str(info.get("sfx",""));var ap: AnimationPlayer=info.get("ap")
+	if sfx!="" and ap!=null and ap.has_animation(name+sfx):return name+sfx
+	return name
 func _clip_for(i: int,id: String,bow: bool) -> String:
 	# arcieri: in modalità arco le clip "… arco" (guardia, avanzata, corsa, sbilanciato)
 	var base=CLIP.get(id,"In guardia")
@@ -574,7 +591,7 @@ func sync() -> void:
 					"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":maxf(.05,hit_at-.35),"move":fq.current,"strike":false,"parried":i,"parry_word":word})
 	var strike_delay=0.0
 	for t in step:
-		if t.get("strike",false) and minis[t.i].ap:strike_delay=maxf(strike_delay,minis[t.i].ap.get_animation(t.clip).length*.45)
+		if t.get("strike",false) and minis[t.i].ap and minis[t.i].ap.has_animation(_anim(minis[t.i],t.clip)):strike_delay=maxf(strike_delay,minis[t.i].ap.get_animation(_anim(minis[t.i],t.clip)).length*.45)
 	for i in victims:
 		var p=game.state.fighters[i]
 		var clip="A terra" if (p.down or not p.alive or p.get("pieces",false)) else _clip_for(i,"unbalanced",bool(p.get("bow",false)))
@@ -683,7 +700,7 @@ func _refresh_tokens() -> void:
 			if p.cell!="":info.root.position=_spot(i,p.cell)
 			var sm=.5 if _shared(i) else 1.0                       # basette ridotte quando l'esagono è condiviso
 			info.plate.scale=Vector3(sm,1,sm);info.sides.scale=Vector3(sm,1,sm)
-			var lie="Morte" if not p.alive and info.ap and info.ap.has_animation("Morte") else "A terra"
+			var lie=_anim(info,"Morte" if not p.alive and info.ap and info.ap.has_animation("Morte") else "A terra")
 			if info.ap and (p.down or not p.alive) and info.ap.assigned_animation!=lie:info.ap.play(lie,0.0);info.ap.seek(info.ap.get_animation(lie).length-.05,true)
 			var f=int(p.facing)
 			if i==focus_fighter and preview_facing>=0:f=preview_facing
@@ -831,7 +848,7 @@ func _attack_marker(from: Vector3,to: Vector3,color: Color,start: float,until: f
 func _plan(t: Dictionary,info: Dictionary) -> Dictionary:
 	# come verrà animata la traccia: modalità, durata naturale, ripetizioni
 	var ap=info.ap;var pivot=info.pivot
-	var anim: Animation=ap.get_animation(t.clip) if ap and ap.has_animation(t.clip) else null
+	var anim: Animation=ap.get_animation(_anim(info,t.clip)) if ap and ap.has_animation(_anim(info,t.clip)) else null
 	var length=anim.length if anim else 1.2
 	if t.clip in ["In guardia","Avanzare","Correre","Carica"]:length=minf(length,1.6)
 	length=minf(length,3.2)
@@ -902,8 +919,8 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		_set_rim(t.i,t.move,t.get("facing",-1))
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
-			ap.play(t.clip,.12 if fluid else .18);ap.speed_scale=rate*(1.0-.3*float(info.get("fatigue_lvl",0.0)))   # stanco: più lento
-			if t.get("lying",false):ap.seek(ap.get_animation(t.clip).length-.05,true)   # già disteso: niente caduta
+			ap.play(_anim(info,t.clip),.12 if fluid else .18);ap.speed_scale=rate*(1.0-.3*float(info.get("fatigue_lvl",0.0)))   # stanco: più lento
+			if t.get("lying",false):ap.seek(ap.get_animation(_anim(info,t.clip)).length-.05,true)   # già disteso: niente caduta
 		if t.has("bow"):_set_gear(t.i,t.bow,t.get("loaded",false))
 		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
 		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
@@ -1022,7 +1039,7 @@ func _gear(info: Dictionary,name: String) -> Node3D:
 func _end_pose(i: int) -> void:
 	var p=game.state.fighters[i];var ap: AnimationPlayer=minis.get(i,{}).get("ap")
 	if ap and p.alive and p.down and ap.has_animation("A terra"):
-		ap.play("A terra",.25);ap.seek(ap.get_animation("A terra").length-.05,true);return
+		var lie=_anim(minis.get(i,{}),"A terra");ap.play(lie,.25);ap.seek(ap.get_animation(lie).length-.05,true);return
 	_rest_pose(i,.25)
 func _rest_pose(i: int,blend:=.25) -> void:
 	var info=minis.get(i,{});var ap: AnimationPlayer=info.get("ap")
@@ -1033,7 +1050,7 @@ func _rest_pose(i: int,blend:=.25) -> void:
 		# resterebbe a metà, con l'arciere girato di lato come alla fine di Incoccare)
 		ap.play("Tirare",0.0);ap.seek(ap.get_animation("Tirare").length*.45,true);ap.pause()
 	elif st[0] and ap.has_animation("In guardia arco"):ap.play("In guardia arco",blend)
-	elif ap.has_animation("In guardia"):ap.play("In guardia",blend)
+	elif ap.has_animation("In guardia"):ap.play(_anim(info,"In guardia"),blend)
 func _set_gear(i: int,bow: bool,loaded: bool) -> void:
 	var info=minis.get(i,{})
 	info["bow_state"]=[bow,loaded]
@@ -1389,7 +1406,7 @@ func _rebuild(info: Dictionary) -> void:
 	if info.get("model")!=null:
 		var mdl: Node3D=info.model;var y0=mdl.position.y
 		mdl.position.y=y0-1.1;mdl.visible=true
-		if info.ap and info.ap.has_animation("Rialzarsi"):info.ap.play("Rialzarsi",0.0)
+		if info.ap and info.ap.has_animation("Rialzarsi"):info.ap.play(_anim(info,"Rialzarsi"),0.0)
 		var tw=create_tween();tw.tween_property(mdl,"position:y",y0,1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 func _fireball(from: Vector3,to: Vector3) -> void:
 	# sfera incandescente con una scia di fiamme e fumo
@@ -1851,7 +1868,7 @@ func replay() -> void:
 	for i in initial:
 		if not minis.has(i):continue
 		minis[i].root.position=cell_pos(initial[i].cell);minis[i].pivot.rotation.y=facing_yaw(int(initial[i].facing));minis[i].root.visible=true;minis[i].pivot.visible=true;minis[i].pivot.scale=Vector3.ONE
-		if minis[i].ap:minis[i].ap.play("In guardia",0.0)
+		if minis[i].ap:minis[i].ap.play(_anim(minis[i],"In guardia"),0.0)
 		var q=game.state.fighters[i];_set_status(i,int(q.max_hp),int(q.max_hp),true,0);_set_rim(i,initial[i].current,int(initial[i].facing))
 	for i in minis:
 		if not initial.has(i):minis[i].root.visible=false   # evocati (golem): compaiono quando entrano in scena

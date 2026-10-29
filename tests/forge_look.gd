@@ -12,6 +12,11 @@ func run():
 		["Pugnale",{"arma":"pugnale","armatura":"leggera","stazza":2,"aspetto":"donna"}],["Ascia enorme",{"arma":"ascia","armatura":"nessuna","stazza":5}],
 		["Lancia e scudo",{"arma":"lancia","scudo":"piccolo","armatura":"media","stazza":3}],["Bastone (donna)",{"arma":"bastone","armatura":"nessuna","stazza":2,"aspetto":"donna"}],
 		["Ascia pesante",{"arma":"ascia","armatura":"pesante","stazza":4}],["Spada minuta",{"arma":"spada","armatura":"leggera","stazza":1,"aspetto":"donna","scudo":"piccolo"}]]
+	if OS.get_environment("NEW")!="":   # i quattro corpi nuovi con armi diverse
+		sets=[["Barbaro · ascia",{"arma":"ascia","armatura":"nessuna","stazza":5}],["Barbaro · due spade",{"arma":"due_armi","armatura":"nessuna","stazza":4}],
+			["Nomade · pugnale",{"arma":"pugnale","armatura":"leggera","stazza":2}],["Nomade · lancia",{"arma":"lancia","armatura":"leggera","stazza":3}],
+			["Predone · spada e scudo",{"arma":"spada","scudo":"grande","armatura":"media","stazza":3}],["Predone · bastone",{"arma":"bastone","armatura":"media","stazza":3}],
+			["Cavaliere · spada",{"arma":"spada","scudo":"piccolo","armatura":"pesante","stazza":4}],["Cavaliere · ascia",{"arma":"ascia","armatura":"pesante","stazza":4}]]
 	if OS.get_environment("SIZES")!="":   # la stessa lancia con le cinque stazze
 		sets=[]
 		for k in 5:sets.append([BloodForge.STAZZE[k],{"arma":"lancia","armatura":"leggera","stazza":k+1}])
@@ -30,8 +35,11 @@ func run():
 		b3._dress(m,d.dress)
 		m.position=Vector3((k-(sets.size()-1)/2.0)*1.0,0,0);m.rotation_degrees.y=yaw
 		var ap: AnimationPlayer=_find(m,"AnimationPlayer")
-		if ap and ap.has_animation(OS.get_environment("CLIP") if OS.get_environment("CLIP")!="" else "In guardia"):
-			ap.play(OS.get_environment("CLIP") if OS.get_environment("CLIP")!="" else "In guardia");ap.seek(.3,true);ap.pause()
+		var clip=OS.get_environment("CLIP") if OS.get_environment("CLIP")!="" else "In guardia"
+		var sfx={"lancia":" lancia","bastone":" lancia","ascia":" 2h"}.get(str(d.dress.weapon),"")
+		if ap and ap.has_animation(clip+sfx):clip=clip+sfx
+		if ap and ap.has_animation(clip):
+			ap.play(clip);ap.seek(float(OS.get_environment("AT")) if OS.get_environment("AT")!="" else .3,true);ap.pause()
 		var l=Label3D.new();l.text=sets[k][0]+"\n"+d.look;l.font_size=40;l.pixel_size=.004;l.position=m.position+Vector3(0,-.12,.3);world.add_child(l)
 	var cam=Camera3D.new();cam.fov=30;world.add_child(cam);cam.current=true
 	cam.position=Vector3(0,.8,4.4 if sets.size()>4 else 2.6);cam.look_at(Vector3(0,.45,0))
