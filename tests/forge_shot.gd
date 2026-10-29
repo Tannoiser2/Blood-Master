@@ -14,6 +14,10 @@ func run() -> void:
 		f._edit("cleave","fatigue",1);f._edit("cleave","attack",2);f._edit("thrust","defense",-1)
 	if OS.get_environment("SAVE")=="1":
 		f.traits.name="Brunilde";f.traits.title="La forgiata";f._fit_budget();f._save()
+	if OS.get_environment("TEST")=="1":
+		f._run_test()
+		while f.testing:await create_timer(.5).timeout
+		print("COLLAUDO ",f.test_label.text)
 	if OS.get_environment("MENU")=="1":
 		scene.set_meta("roster_default",true);scene.mode="solo";scene._show_menu()
 	await create_timer(.8).timeout

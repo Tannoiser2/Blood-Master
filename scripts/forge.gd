@@ -120,7 +120,9 @@ const POS=[0,1,3,5,3,1]
 const SIDE_W={0:.45,1:.15,5:.15,2:.09,4:.09,3:.07}
 const OFFICIAL=["zenyo","gascor","ut","shannon","kylvia","anteos","shaara","zak","nuchra","ramok"]
 # coefficienti (forza in scala logit per unità di caratteristica), tarati con le simulazioni
-static var COEF={"off":1.0,"sub":-1.0,"hp":1.0,"sprint":0.0,"size":0.0,"fat":0.0,"imb":0.0,"natk":0.0,"green":0.0,"shoot":0.0,"zero":0.0}
+# tarati su ~13.000 duelli e 1.200 partite a squadre (correlazione 0,87 con la forza osservata):
+# offesa, vita e ferite subite pesano quasi uguale, come vuole la logica del "chi resiste di più"
+static var COEF={"off":0.6129,"hp":0.5997,"sub":-0.6721,"sprint":-0.0484,"size":0.0135,"fat":-0.4503,"imb":0.9659,"natk":0.0,"green":0.0,"shoot":1.1413,"zero":-2.376}
 static var _die: Dictionary={}
 static var _ref_def: Array=[]
 static var _ref_atk: Array=[]
@@ -211,7 +213,7 @@ static func logit(f: Dictionary) -> float:
 	z+=float(COEF.off)*log(maxf(f.off,.05))+float(COEF.hp)*log(maxf(f.hp,1.0))+float(COEF.sub)*log(maxf(f.sub,.05))
 	for k in ["sprint","size","fat","imb","natk","green","shoot"]:z+=float(COEF[k])*float(f[k])
 	return z
-## valore in punti: 100 = la media dei guerrieri ufficiali; +10 punti ≈ qualche vittoria in più su cento
+## valore in punti: 100 = la media dei guerrieri ufficiali; 10 punti ≈ 5 vittorie in più (o in meno) su 100
 static func points(def: Dictionary) -> float:
 	if _base_logit==INF:
 		var cat=JSON.parse_string(FileAccess.get_file_as_string("res://data/characters.json"));var t=0.0
@@ -220,7 +222,7 @@ static func points(def: Dictionary) -> float:
 				for field in ["red","blue","green"]:m[field]=m[field].map(func(v):return int(v))
 			t+=logit(features(cat[id]))
 		_base_logit=t/OFFICIAL.size()
-	return 100.0*exp((logit(features(def))-_base_logit)*.5)
+	return 100.0+50.0*(logit(features(def))-_base_logit)
 const BUDGET=100.0
 
 # ------------------------------------------------------------------ modifiche a mano e salvataggio

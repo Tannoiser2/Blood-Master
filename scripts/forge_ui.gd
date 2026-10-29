@@ -173,7 +173,7 @@ func _value_panel() -> void:
 	var f=BloodForge.features(def);var pts=BloodForge.points(def)
 	value_box.add_child(ui.label("VALORE",13,ui.GOLD))
 	var big=ui.label("%d"%roundi(pts),52,ui.GOLD if pts<=BloodForge.BUDGET+.5 else Color("e86a5a"));value_box.add_child(big)
-	value_box.add_child(ui.label("budget %d (media dei personaggi ufficiali)"%int(BloodForge.BUDGET),12,ui.MUTED))
+	var bl=ui.label("budget %d = la media dei personaggi ufficiali · 10 punti ≈ 5 vittorie su 100"%int(BloodForge.BUDGET),12,ui.MUTED);bl.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;value_box.add_child(bl)
 	var bar=ProgressBar.new();bar.min_value=0;bar.max_value=160;bar.value=pts;bar.show_percentage=false;bar.custom_minimum_size.y=14;value_box.add_child(bar)
 	var over=pts-BloodForge.BUDGET
 	var msg=ui.label(("Dentro il budget: restano %d punti."%roundi(-over)) if over<=.5 else ("Oltre il budget di %d punti: togli qualcosa."%roundi(over)),14,Color("8fd08a") if over<=.5 else Color("e86a5a"))
