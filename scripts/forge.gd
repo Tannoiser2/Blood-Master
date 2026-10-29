@@ -200,13 +200,16 @@ static func features(def: Dictionary,_catalog: Dictionary={}) -> Dictionary:
 	var top=0.0;var n=mini(4,offs.size())
 	for k in n:top+=offs[k]
 	top/=maxf(1,n)
-	var sub=0.0;var toks=_play(def);var green=0.0
-	for m in toks:sub+=received(m,def.armor);green+=m.green.size()
+	var sub=0.0;var toks=_play(def);var green=0.0;var best=INF
+	for m in toks:
+		var rc=received(m,def.armor);sub+=rc;green+=m.green.size()
+		if m.attack==null and m.id!="load":best=minf(best,rc)   # la difesa migliore (parata o schivata)
 	sub/=maxf(1,toks.size())
 	var na=float(offs.size())
 	return {"off":top,"sub":sub,"hp":float(def.hp),"sprint":float(def.sprint),"size":float(def.size),
 		"fat":fat/maxf(1.0,na),"imb":imb/maxf(1.0,na),"natk":na,"green":green/maxf(1.0,toks.size()),
-		"shoot":1.0 if def.moves.has("shoot") else 0.0,"mage":1.0 if def.get("mage",false) else 0.0}
+		"shoot":1.0 if def.moves.has("shoot") else 0.0,"mage":1.0 if def.get("mage",false) else 0.0,
+		"best":best if best<INF else sub}
 ## forza in scala logit: log dell'offesa e della vita, meno log delle ferite subite, più il resto
 static func logit(f: Dictionary) -> float:
 	var z=float(COEF.zero)

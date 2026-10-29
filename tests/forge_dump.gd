@@ -6,10 +6,16 @@ func _init() -> void:
 		["arco",1,2,2,1,"prudente","nessuno","leggera"],["spada",4,3,1,3,"prudente","grande","pesante"],["lancia",4,2,1,2,"aggressivo","grande","media"],["ascia",3,2,2,2,"equilibrato","nessuno","leggera"],
 		["bastone",3,3,2,3,"aggressivo","nessuno","nessuna"],["arco",2,1,3,2,"astuto","nessuno","nessuna"]]
 	var out={};var n=0
+	if OS.get_environment("RANDOM")!="":   # eroi a caso, con tratti estratti
+		var rng=RandomNumberGenerator.new();rng.seed=int(OS.get_environment("RANDOM"));sets=[]
+		for k in int(OS.get_environment("COUNT")):
+			var armi=BloodForge.ARMI.keys();var arma=armi[rng.randi_range(0,armi.size()-1)]
+			sets.append([arma,rng.randi_range(1,5),rng.randi_range(1,3),rng.randi_range(1,3),rng.randi_range(1,3),BloodForge.CARATTERI.keys()[rng.randi_range(0,3)],["nessuno","piccolo","grande"][rng.randi_range(0,2)],BloodForge.ARMATURE.keys()[rng.randi_range(0,3)]])
+		n=int(OS.get_environment("RANDOM"))
 	for s in sets:
 		var t=BloodForge.default_traits()
 		t.arma=s[0];t.stazza=s[1];t.forza=s[2];t.agilita=s[3];t.resistenza=s[4];t.carattere=s[5];t.scudo=s[6];t.armatura=s[7]
-		t.id="v_forged%02d_%s"%[n,s[0]];t.name=t.id;n+=1
+		t.id="v_forged%03d_%s"%[n,s[0]];t.name=t.id;n+=1
 		var d=BloodForge.build(t);out[d.id]=d
 		print("PUNTI %s %.1f"%[d.id,BloodForge.points(d)])
 	var f=FileAccess.open(OS.get_environment("OUT"),FileAccess.WRITE);f.store_string(JSON.stringify(out))

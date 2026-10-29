@@ -66,11 +66,17 @@ vids = sorted({x for A, B, r in var for x in A + B if x.startswith('v_')})
 for v in vids:
     p, n = winrate(var, v)
     base = v.split('_')[1]
+    if base.startswith('forged'):   # eroi della forgia: lo scarto squadra-duello dell'archetipo dell'arma
+        base = {'spada': 'gascor', 'ascia': 'ut', 'lancia': 'shannon', 'bastone': 'zenyo', 'pugnale': 'gascor', 'due': 'gascor', 'arco': 'kylvia'}[v.split('_')[2]]
     rows.append((v, feat[v], logit(p) + TEAM_SHARE * team_adj[base], 1.0))
 
-KEYS = ['off', 'hp', 'sub', 'sprint', 'size', 'fat', 'imb', 'shoot']
+KEYS = ['off', 'hp', 'sub', 'sprint', 'size', 'fat', 'imb', 'shoot', 'best', 'natk', 'green']
 def x_of(f):
-    return [math.log(max(f['off'], .05)), math.log(max(f['hp'], 1)), math.log(max(f['sub'], .05)), f['sprint'], f['size'], f['fat'], f['imb'], f['shoot'], 1.0]
+    return [math.log(max(f['off'], .05)), math.log(max(f['hp'], 1)), math.log(max(f['sub'], .05)), f['sprint'], f['size'], f['fat'], f['imb'], f['shoot'], math.log(max(f.get('best', f['sub']), .05)), f['natk'], f['green'], 1.0]
+import os
+hold = os.environ.get('HOLD', '')
+test = [r for r in rows if hold and r[0].startswith(hold)]
+rows = [r for r in rows if not (hold and r[0].startswith(hold))]
 X = np.array([x_of(r[1]) for r in rows]); y = np.array([r[2] for r in rows]); W = np.array([r[3] for r in rows])
 lam = float(sys.argv[5]) if len(sys.argv) > 5 else .3
 A = X.T @ (X * W[:, None]) + lam * np.diag([1] * (X.shape[1] - 1) + [0]); bvec = X.T @ (y * W)
@@ -83,4 +89,7 @@ print('errore medio (logit) %.3f  ·  correlazione %.3f' % (np.sqrt(np.average(r
 print('\n%-22s %8s %8s' % ('personaggio', 'osserv.', 'stima'))
 for r, p in zip(rows, pred):
     if r[3] > 1 or r[0].endswith(('hp+', 'atk+2', 'def-2', 'fat0')): print('%-22s %+8.2f %+8.2f' % (r[0], r[2], p))
+if test:
+    tp = np.array([x_of(r[1]) for r in test]) @ coef; ty = np.array([r[2] for r in test])
+    print('\nVERIFICA su %d esclusi: correlazione %.2f, errore %.2f' % (len(test), np.corrcoef(tp, ty)[0, 1], np.sqrt(np.mean((tp - ty) ** 2))))
 print('\nCOEF=' + json.dumps({k: round(float(c), 4) for k, c in zip(KEYS + ['zero'], coef)}))
