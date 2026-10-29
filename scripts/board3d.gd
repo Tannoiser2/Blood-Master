@@ -182,6 +182,7 @@ func _mini(i: int) -> Dictionary:
 	if path!="" and not ResourceLoader.exists(path):path=""   # modello non ancora pronto: pedina in piedi
 	if path!="":
 		var model=load(path).instantiate();model.scale=Vector3.ONE*.58;pivot.add_child(model);info.model=model  # ~1,1 m: proporzionata a un esagono da 1,2 m
+		if game.definition(p).has("dress"):_dress(model,game.definition(p).dress)   # eroe della forgia: armi, scudo e statura
 		info.ap=_find_animation(model)
 		var skel=model.find_children("*","Skeleton3D",true,false)
 		if info.ap and not skel.is_empty() and not p.character in ["golem","ziggy"]:   # a terra: braccia aperte, arma in una mano
@@ -229,6 +230,69 @@ func _mini(i: int) -> Dictionary:
 	var tm=StandardMaterial3D.new();tm.albedo_color=Color("b48cff");tm.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;tm.no_depth_test=true;tm.render_priority=2;tired.material_override=tm;bar.add_child(tired);info.tired=tired
 	minis[i]=info;return info
 
+# --- Eroi della forgia: sul corpo scelto si montano l'arma, lo scudo o la seconda arma ----------
+# Le armi vengono prese dai modelli ufficiali (stessa posizione rispetto alla mano: i corpi hanno
+# tutti lo stesso scheletro di riferimento). La statura cambia con la stazza.
+const WEAPON_SRC={"spada":["gascor","Spada"],"pugnale":["kylvia","Spada"],"ascia":["nuchra","Arma"],"lancia":["shannon","Arma"],"bastone":["zenyo","Arma"],"scudo":["gascor","Scudo"]}
+const NATIVE={"gascor":"spada","anteos":"spada","kylvia":"pugnale","zak":"pugnale","ut":"spadone","nuchra":"ascia","shannon":"lancia","ramok":"alabarda","zenyo":"bastone","shaara":""}
+var _weapon_lib={}
+# Ogni arma è descritta rispetto all'osso che la tiene nella posa di riposo dello scheletro, in assi
+# del modello (non dell'osso): così si può montare su corpi con scheletri orientati in modo diverso,
+# e riflessa sull'asse laterale passa dalla mano destra alla sinistra (seconda spada).
+func _lib_piece(kind: String) -> Array:
+	# [mesh da duplicare, spostamento dall'osso, orientamento (assi del modello), nome dell'osso]
+	if not _weapon_lib.has(kind):
+		var src=WEAPON_SRC[kind];var inst: Node3D=load(MODELS[src[0]]).instantiate()
+		var n: Node3D=inst.find_child(src[1],true,false);var out=[null,Vector3.ZERO,Basis(),""]
+		if n:
+			var ba: BoneAttachment3D=n.get_parent();var sk: Skeleton3D=ba.get_parent()
+			var bone=sk.find_bone(ba.bone_name)
+			var bw: Transform3D=_to_model(inst,sk)*sk.get_bone_global_rest(bone)
+			var ww: Transform3D=bw*n.transform
+			out=[n.duplicate(),ww.origin-bw.origin,ww.basis,str(ba.bone_name)]
+		inst.free();_weapon_lib[kind]=out
+	return _weapon_lib[kind]
+func _to_model(model: Node3D,node: Node3D) -> Transform3D:
+	# trasformazione del nodo rispetto alla radice del modello (fuori dall'albero: si risale a mano)
+	var t=Transform3D();var n: Node=node
+	while n!=null and n!=model:
+		if n is Node3D:t=(n as Node3D).transform*t
+		n=n.get_parent()
+	return t
+func _hand(sk: Skeleton3D,bone: String) -> BoneAttachment3D:
+	for c in sk.get_children():
+		if c is BoneAttachment3D and c.bone_name==bone:return c
+	var ba=BoneAttachment3D.new();ba.bone_name=bone;sk.add_child(ba);return ba
+func _drop(model: Node,name: String) -> void:
+	var n=model.find_child(name,true,false)
+	if n:n.get_parent().remove_child(n);n.free()
+func _mount(model: Node3D,sk: Skeleton3D,kind: String,bone: String,name: String,mirror:=false,scale:=1.0) -> void:
+	var piece=_lib_piece(kind)
+	if piece[0]==null or sk.find_bone(bone)<0:return
+	var off: Vector3=piece[1];var rot: Basis=piece[2]
+	if mirror:   # riflesso sul piano che divide il corpo a metà (asse X del modello)
+		var f=Basis(Vector3(-1,0,0),Vector3(0,1,0),Vector3(0,0,1))
+		off=Vector3(-off.x,off.y,off.z);rot=f*rot*f
+	var bw: Transform3D=_to_model(model,sk)*sk.get_bone_global_rest(sk.find_bone(bone))
+	var local: Transform3D=bw.affine_inverse()*Transform3D(rot.scaled(Vector3.ONE*scale) if scale!=1.0 else rot,bw.origin+off)
+	var m: Node3D=piece[0].duplicate();m.name=name;m.transform=local;_hand(sk,bone).add_child(m)
+func _dress(model: Node3D,dr: Dictionary) -> void:
+	var skl=model.find_children("*","Skeleton3D",true,false)
+	if skl.is_empty():return
+	var sk: Skeleton3D=skl[0];var body=str(dr.get("body",""));var weapon=str(dr.get("weapon",""));var off=str(dr.get("off",""))
+	model.scale=Vector3.ONE*.58*float(dr.get("scale",1.0))
+	if weapon!="arco":
+		for n in ["Arco","ArcoSchiena","FrecciaIncoccata"]:_drop(model,n)
+		if NATIVE.get(body,"")!=weapon:
+			for n in ["Spada","Arma","ArmaAzione"]:_drop(model,n)
+			_mount(model,sk,weapon,str(_lib_piece(weapon)[3]) if str(_lib_piece(weapon)[3])!="" else "RightHand","Spada" if weapon in ["spada","pugnale"] else "Arma")
+	var native_shield=model.find_child("Scudo",true,false)
+	if off.begins_with("scudo"):
+		var sc=.72 if off=="scudo_piccolo" else 1.0
+		if native_shield:native_shield.scale=native_shield.scale*sc
+		else:_mount(model,sk,"scudo","LeftForeArm","Scudo",false,sc)
+	elif native_shield:_drop(model,"Scudo")
+	if off=="spada":_mount(model,sk,"pugnale" if weapon=="pugnale" else "spada","LeftHand","SpadaSinistra",true)
 const FATIGUE_FULL=10.0
 func _set_status(i: int,hp: int,max_hp: int,alive: bool,fatigue:=-1) -> void:
 	var info=minis[i];var p=game.state.fighters[i]
@@ -353,6 +417,7 @@ func _find_animation(n: Node) -> AnimationPlayer:
 		if f:return f
 	return null
 
+const CLIP_FALLBACK={"Fendente":["Taglio Dx","Affondo"],"Calcio":["Affondo"],"Schivata":["Rotolare"],"Rotolare":["Schivata"],"Riposo":["In guardia"],"Carica":["Correre"]}
 func _clip_for(i: int,id: String,bow: bool) -> String:
 	# arcieri: in modalità arco le clip "… arco" (guardia, avanzata, corsa, sbilanciato)
 	var base=CLIP.get(id,"In guardia")
@@ -363,6 +428,10 @@ func _clip_for(i: int,id: String,bow: bool) -> String:
 	# mosse proprie del modello, se le ha (Shaara: calcio volante, pugni, spazzata, meditazione)
 	var own=OWN_CLIP.get(id,"")
 	if own!="" and info.get("ap")!=null and info.ap.has_animation(own):return own
+	# eroi della forgia su un corpo che non ha quella clip (es. Fendente sul corpo di un arciere)
+	if info.get("ap")!=null and not info.ap.has_animation(base):
+		for alt in CLIP_FALLBACK.get(base,[]):
+			if info.ap.has_animation(alt):return alt
 	return base
 func _view(p: Dictionary) -> Dictionary:
 	return {"cell":p.cell,"facing":int(p.facing),"current":p.current,"done":p.done,"hp":int(p.hp),"unbalanced":p.unbalanced,"down":p.down,"alive":p.alive,"team":int(p.team),"character":p.character,"pieces":bool(p.get("pieces",false))}

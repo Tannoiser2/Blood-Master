@@ -18,7 +18,29 @@ const ARMATURE = {"nessuna":"Nessuna","leggera":"Leggera (cuoio)","media":"Media
 const ARMOR_RANGE = {"nessuna":[],"leggera":[2,3],"media":[1,4],"pesante":[3,6]}
 const NO_SHIELD = ["ascia","bastone","due_armi","arco"]   # armi a due mani: niente scudo
 # a chi somiglia (modello 3D, disegni delle pedine) secondo l'arma
-const LOOK = {"spada":"gascor","ascia":"ut","lancia":"shannon","bastone":"zenyo","pugnale":"kylvia","due_armi":"anteos","arco":"kylvia"}
+const LOOK = {"spada":"gascor","ascia":"ut","lancia":"shannon","bastone":"zenyo","pugnale":"kylvia","due_armi":"anteos","arco":"kylvia"}   # disegni delle pedine
+const ASPETTI = {"uomo":"Uomo","donna":"Donna"}
+# corpo 3D: armi a una mano (le clip impugnano con la destra, la sinistra libera o con lo scudo) o a due mani,
+# poi armatura e aspetto. L'arma vera viene montata in mano dopo (vedi board3d._dress).
+const ONE_HAND = ["spada","pugnale","due_armi"]
+static func body_for(t: Dictionary) -> String:
+	var arma=str(t.arma);var arm=str(t.armatura);var donna=str(t.get("aspetto","uomo"))=="donna";var big=int(t.stazza)>=4
+	if arma=="arco":return "kylvia" if donna else "zak"
+	if arma=="due_armi":return "kylvia" if donna else "zak"   # la sinistra libera (niente posa da scudo)
+	if arma in ONE_HAND:
+		if donna or arm in ["nessuna","leggera"]:return "kylvia" if donna else "zak"
+		return "anteos" if arm=="media" else "gascor"
+	if arm=="nessuna":return "shaara" if donna else ("nuchra" if big else "zenyo")
+	if arm=="leggera" or donna:return "shannon"
+	return "ramok" if arm=="media" else "ut"
+## come vestire il corpo: arma in mano, cosa nell'altra mano (scudo, seconda arma), scala dalla stazza
+static func dress_for(t: Dictionary,size: int,catalog_sizes: Dictionary={}) -> Dictionary:
+	var body=body_for(t);var arma=str(t.arma)
+	var off=""
+	if arma=="due_armi":off="spada"
+	elif str(t.scudo)!="nessuno" and not arma in NO_SHIELD:off="scudo_"+str(t.scudo)
+	var bsize={"zenyo":3,"shaara":3,"gascor":4,"anteos":4,"ut":6,"nuchra":6,"shannon":4,"ramok":4,"kylvia":2,"zak":2}.get(body,4)
+	return {"body":body,"weapon":"spada" if arma=="due_armi" else arma,"off":off,"scale":clampf(1.0+.07*(size-bsize),.8,1.25)}
 
 const NAMES = {"guard":"In guardia","advance":"Avanzare","run":"Correre","rise":"Rialzarsi","roll":"Rotolare",
 	"unbalanced":"Sbilanciato","down":"A terra","parry_r":"Parata destra","parry_l":"Parata sinistra","dodge":"Schivare",
@@ -28,7 +50,7 @@ const NAMES = {"guard":"In guardia","advance":"Avanzare","run":"Correre","rise":
 
 static func default_traits() -> Dictionary:
 	return {"name":"Nuovo eroe","title":"Il forgiato","stazza":3,"forza":2,"agilita":2,"resistenza":2,
-		"carattere":"equilibrato","arma":"spada","scudo":"nessuno","armatura":"leggera","team":-1}
+		"carattere":"equilibrato","arma":"spada","scudo":"nessuno","armatura":"leggera","team":-1,"aspetto":"uomo"}
 
 static func _tok(id: String,attack,defense: int,red: Array=[],green: Array=[],blue: Array=[],fatigue: int=0,imbalance=null,secondary=null,rest: bool=false) -> Dictionary:
 	return {"id":id,"name":NAMES.get(id,id),"attack":attack,"defense":defense,"red":red,"green":green,"blue":blue,
@@ -109,8 +131,8 @@ static func build(t: Dictionary) -> Dictionary:
 	for m in mv.values():m.texture="res://assets/tokens/%s_%s.webp"%[tex_from,m.id]
 	var id=str(t.get("id","")) if str(t.get("id",""))!="" else "forged_%d"%(abs(str(t.name).hash())%100000)
 	return {"id":id,"name":str(t.name),"title":str(t.title),"kind":"forged","team":int(t.get("team",-1)),"size":size,"hp":hp,
-		"sprint":sprint,"armor":ARMOR_RANGE[arm],"recovery":rec,"sprints":sprints,"card":"res://assets/cards/%s.webp"%tex_from,
-		"mage":false,"look":tex_from,"reach":arma in ["lancia","bastone"],"traits":t.duplicate(),"moves":mv}
+		"sprint":sprint,"armor":ARMOR_RANGE[arm],"recovery":rec,"sprints":sprints,"card":"res://assets/cards/%s.webp"%body_for(t),
+		"mage":false,"look":body_for(t),"dress":dress_for(t,size),"reach":arma in ["lancia","bastone"],"traits":t.duplicate(),"moves":mv}
 
 # ------------------------------------------------------------------ valore in punti
 # Tutto si misura in ferite attese (stesso calcolo della partita: dado che esplode sul 6, posizionale,

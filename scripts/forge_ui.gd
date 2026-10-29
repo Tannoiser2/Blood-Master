@@ -102,6 +102,14 @@ func _traits_panel() -> void:
 	var am=[]
 	for k in BloodForge.ARMATURE:am.append([k,BloodForge.ARMATURE[k]])
 	_chips(traits_box,"ARMATURA · assorbe ferite, ma appesantisce",am,traits.armatura,func(v):_set_trait("armatura",v))
+	var asp=[]
+	for k in BloodForge.ASPETTI:asp.append([k,BloodForge.ASPETTI[k]])
+	_chips(traits_box,"ASPETTO · la miniatura 3D",asp,str(traits.get("aspetto","uomo")),func(v):traits.aspetto=v;_rebuild(true))
+	var dr=BloodForge.dress_for(traits,clampi(int(traits.stazza),1,5)+1)
+	var desc={"spada":"una spada","pugnale":"un pugnale","ascia":"un'ascia","lancia":"una lancia","bastone":"un bastone","arco":"l'arco"}.get(dr.weapon,"")
+	var extra={"spada":" e una seconda spada nella sinistra","scudo_piccolo":" e uno scudo piccolo","scudo_grande":" e uno scudo grande"}.get(dr.off,"")
+	var lk=ui.label("Miniatura: il corpo di %s con %s%s, statura %d%%."%[ui.game.catalog[dr.body].name,desc,extra,roundi(dr.scale*100)],12,ui.MUTED)
+	lk.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;traits_box.add_child(lk)
 	_chips(traits_box,"SCHIERAMENTO",[[-1,"Con chiunque"],[0,"Ordine della Lama"],[1,"Ordine dell'Ombra"]],int(traits.get("team",-1)),func(v):_set_trait("team",v))
 
 # ------------------------------------------------------------------ pedine
