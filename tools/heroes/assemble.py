@@ -172,6 +172,16 @@ if CID == 'shaara':
                   'Pugno Sx': '../../anteos/meshy/anim_pugno_sx.glb',               # Left Jab from Guard (191)
                   'Spazzata': '../../anteos/meshy/anim_spazzata.glb',               # Sweeping Kick (217)
                   'Meditazione': '../../anteos/meshy/anim_meditazione.glb'})        # Sit Cross-legged on Floor (363)
+# corpi della forgia: le mosse nuove (rotazione, doppio colpo, contrattacco, finta, sgambetto, colpo di scudo),
+# dal catalogo Meshy generate sul rig del nomade e trasferite a tutti
+if VARIANT:
+    F = '../../f_nomade/meshy/'
+    EXTRA.update({'Rotazione': F + ('anim_rotazione.glb' if VARIANT == '1h' else 'anim_rotazione2h.glb'),   # Double Blade Spin (91) / Axe Spin Attack (238)
+                  'Doppio colpo': F + 'anim_doppio.glb',          # Double Combo Attack (92)
+                  'Contrattacco': F + 'anim_contrattacco.glb',    # Dodge and Counter (93)
+                  'Finta': F + 'anim_finta.glb',                  # Thrust Slash (240)
+                  'Sgambetto': F + 'anim_sgambetto.glb',          # Leg Sweep (213)
+                  'Colpo di scudo': F + 'anim_scudo.glb'})        # Shield Push Left (220)
 for name, fname in EXTRA.items():
     objs = imported(root / 'source_art/ut/meshy' / fname)
     sa = next(o for o in objs if o.type == 'ARMATURE'); act = sa.animation_data.action
@@ -358,6 +368,11 @@ if WEAPON:
                'Fendente': [(ts - .22, 'fendente_c'), (ts, 'fendente'), (ts + .12, 'fendente')],
                'Taglio Sx': [(ts - .2, 'taglio_d'), (ts, 'taglio_m'), (ts + .14, 'taglio_s')],
                'Taglio Dx': [(ts - .2, 'taglio_s'), (ts, 'taglio_m'), (ts + .14, 'taglio_d')],
+               'Rotazione': [(ts - .25, 'taglio_d'), (ts, 'taglio_m'), (ts + .15, 'taglio_s')],
+               'Doppio colpo': [(ts - .3, 'taglio_d'), (ts - .1, 'taglio_s'), (ts + .1, 'taglio_d')],
+               'Contrattacco': [(.2, 'parata'), (.45, 'parata'), (ts, 'affondo'), (ts + .12, 'affondo')],
+               'Finta': [(ts - .3, 'affondo_c'), (ts - .15, 'affondo'), (ts, 'fendente'), (ts + .1, 'fendente')],
+               'Colpo di scudo': [(ts - .2, 'affondo_c'), (ts, 'affondo'), (ts + .12, 'affondo')],
                'Parata Sx': [(.25, 'parata'), (.75, 'parata')],
                'Parata Dx': [(.25, 'parata'), (.75, 'parata')]}.get(name)
         if name in FIXED:

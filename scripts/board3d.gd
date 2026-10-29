@@ -26,8 +26,8 @@ const MODELS={"gascor":"res://assets/models/gascor/gascor.glb","anteos":"res://a
 const CLIP={"guard":"In guardia","advance":"Avanzare","run":"Correre","charge":"Carica","cleave":"Fendente",
 	"left":"Taglio Dx","right":"Taglio Sx","thrust":"Affondo","kick":"Calcio","parry_l":"Parata Sx","parry_r":"Parata Dx",
 	"dodge":"Schivata","roll":"Rotolare","unbalanced":"Sbilanciato","down":"A terra","rise":"Rialzarsi","again":"In guardia",
-	"spin":"Taglio Dx","sweep":"Taglio Sx","meditate":"Riposo",
-	"double":"Taglio Sx","parry_counter":"Parata Dx","feint":"Affondo","bash":"Calcio","trip":"Calcio",
+	"spin":"Rotazione","sweep":"Taglio Sx","meditate":"Riposo",
+	"double":"Doppio colpo","parry_counter":"Contrattacco","feint":"Finta","bash":"Colpo di scudo","trip":"Sgambetto",
 	"load":"Incoccare","shoot":"Tirare","weapon":"Riposo",
 	# maghi: ogni incantesimo ha la sua clip, generata sul rig del mago
 	"concentrate":"Concentrarsi","punch":"Pugno","float":"Fluttuare","pieces":"A terra",
@@ -433,7 +433,7 @@ func _find_animation(n: Node) -> AnimationPlayer:
 		if f:return f
 	return null
 
-const CLIP_FALLBACK={"Fendente":["Taglio Dx","Affondo"],"Calcio":["Affondo"],"Schivata":["Rotolare"],"Rotolare":["Schivata"],"Riposo":["In guardia"],"Carica":["Correre"]}
+const CLIP_FALLBACK={"Rotazione":["Taglio Dx"],"Doppio colpo":["Taglio Sx"],"Contrattacco":["Parata Dx"],"Finta":["Affondo"],"Sgambetto":["Calcio"],"Colpo di scudo":["Calcio","Affondo"],"Fendente":["Taglio Dx","Affondo"],"Calcio":["Affondo"],"Schivata":["Rotolare"],"Rotolare":["Schivata"],"Riposo":["In guardia"],"Carica":["Correre"]}
 ## nome vero della clip da suonare su questa miniatura (variante a due mani dei corpi della forgia)
 func _anim(info: Dictionary,name: String) -> String:
 	var sfx=str(info.get("sfx",""));var ap: AnimationPlayer=info.get("ap")
@@ -596,9 +596,9 @@ func sync() -> void:
 				var fq=game.state.fighters[front];var defensive=fq.current in DEFENSIVE
 				var hit_at=minis[i].ap.get_animation(track.clip).length*.45 if minis[i].ap and minis[i].ap.has_animation(track.clip) else .5
 				var word="SCHIVATA!" if fq.current in ["dodge","roll"] else ({"parry_r":"PARATA DESTRA!","parry_l":"PARATA SINISTRA!"}.get(fq.current,"PARATA!") if defensive else "MANCATO")
-				step.append({"i":front,"clip":CLIP[fq.current] if defensive and CLIP.has(fq.current) else _clip_for(front,"parry_r" if minis[front].ap and minis[front].ap.has_animation("Parata Dx") else "guard",bool(fq.get("bow",false))),
+				step.append({"i":front,"clip":_clip_for(front,fq.current,bool(fq.get("bow",false))) if defensive and CLIP.has(fq.current) else _clip_for(front,"parry_r" if minis[front].ap and minis[front].ap.has_animation("Parata Dx") else "guard",bool(fq.get("bow",false))),
 					"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":maxf(.05,hit_at-.35),"move":fq.current,"strike":false,"parried":i,"parry_word":word})
-				if struck_now.has(front) and int(game.move(fq).get("riposte",0))>0:   # contrattacco: dopo la parata, l'affondo
+				if struck_now.has(front) and int(game.move(fq).get("riposte",0))>0 and _clip_for(front,"parry_counter",false)!="Contrattacco":   # contrattacco senza la sua clip: dopo la parata, l'affondo
 					step.append({"i":front,"clip":_clip_for(front,"thrust",false),"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":hit_at+.45,"move":"riposte","strike":true})
 	var strike_delay=0.0
 	for t in step:

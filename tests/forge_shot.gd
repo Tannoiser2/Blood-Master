@@ -15,6 +15,11 @@ func run() -> void:
 		f._set_trait("INT",3);f._toggle_spell("fireball",true);f._toggle_spell("shield",true);f._toggle_token("kick");f._toggle_token("parry_counter");f._toggle_token("feint");f._edit("cleave","multi",true,true);f.brush="red";f._side("cleave",1)
 	if OS.get_environment("SAVE")=="1":
 		f.traits.name="Brunilde";f.traits.title="La forgiata";f._fit_budget();f._save()
+	if OS.get_environment("PICK")!="":
+		var pk=OS.get_environment("PICK").split(":")
+		f._pick(pk[0])
+		if pk.size()>1:f._set_trait("arma",pk[1],true);f._pick(pk[0])
+		await create_timer(float(OS.get_environment("AT")) if OS.get_environment("AT")!="" else .9).timeout
 	if OS.get_environment("TEST")=="1":
 		f._run_test()
 		while f.testing:await create_timer(.5).timeout

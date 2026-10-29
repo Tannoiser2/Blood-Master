@@ -6,7 +6,9 @@ extends VBoxContainer
 class TokenHex extends Control:
 	## una pedina: esagono coi lati colorati cliccabili (in alto il fronte, poi in senso orario)
 	signal side_clicked(s: int)
+	signal picked
 	var m: Dictionary
+	var selected:=false
 	var tex: Texture2D
 	var on:=true
 	var R:=96.0
@@ -19,6 +21,10 @@ class TokenHex extends Control:
 		var pts=PackedVector2Array()
 		for k in 6:pts.append(_corner(k))
 		draw_colored_polygon(pts,Color(.09,.06,.04,.92) if on else Color(.09,.06,.04,.55))
+		if selected:
+			var ring=PackedVector2Array()
+			for k in 7:ring.append(_corner(k%6,9))
+			draw_polyline(ring,Color("e6bf6c"),2.0,true)
 		for s in 6:   # lato s fra i vertici a 240+60s e 300+60s gradi; più colori = strisce affiancate
 			var n=0
 			for c in ["red","green","blue"]:
@@ -37,7 +43,7 @@ class TokenHex extends Control:
 		if not on:return
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index==MOUSE_BUTTON_LEFT:
 			var v: Vector2=ev.position-size*.5
-			if v.length()<R*.66:return   # al centro ci sono i valori
+			if v.length()<R*.66:picked.emit();return   # al centro: si sceglie la pedina (anteprima 3D della mossa)
 			side_clicked.emit(posmod(roundi(fposmod(rad_to_deg(atan2(v.y,v.x))-270.0,360.0)/60.0),6))
 
 var ui   # la schermata principale (main.gd): caratteri, colori, pulsanti
@@ -68,7 +74,10 @@ func setup(main_ui,hero_id: String="") -> void:
 	head.add_child(ui.label("LA FORGIA DEGLI EROI",22,ui.GOLD))
 	var sub=ui.label("Le caratteristiche calcolano le pedine; poi ritocca ogni valore e ogni lato, restando nel budget.",13,ui.MUTED);head.add_child(sub)
 	var cols=HBoxContainer.new();cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;cols.add_theme_constant_override("separation",10);add_child(cols)
-	sheet=_scroll_panel(cols,340)
+	var lv=ui.panel_content(cols,10);lv.get_parent().get_parent().custom_minimum_size.x=340
+	_make_preview(lv)
+	var lsc=ScrollContainer.new();lsc.size_flags_vertical=Control.SIZE_EXPAND_FILL;lsc.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;lv.add_child(lsc)
+	sheet=VBoxContainer.new();sheet.size_flags_horizontal=Control.SIZE_EXPAND_FILL;sheet.add_theme_constant_override("separation",6);lsc.add_child(sheet)
 	comb=_scroll_panel(cols,0);comb.get_parent().get_parent().get_parent().get_parent().size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	var bp=ui.panel_content(self,8);band=HBoxContainer.new();band.add_theme_constant_override("separation",14);bp.add_child(band)
 	_rebuild(true)
@@ -105,7 +114,7 @@ func _sheet() -> void:
 	if not ResourceLoader.exists(pp):pp="res://assets/ui/faces/%s.webp"%body
 	var fr=PanelContainer.new();var fs=ui.box(Color(0,0,0,.4),4);fs.set_border_width_all(2);fs.border_color=ui.GOLD.darkened(.2);fr.add_theme_stylebox_override("panel",fs);top.add_child(fr)
 	var face=TextureRect.new();face.texture=load(pp) if ResourceLoader.exists(pp) else null;face.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;face.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	face.custom_minimum_size=Vector2(118,118);face.tooltip_text="La miniatura: "+str(BloodForge.BODY_NAMES.get(body,"il corpo di "+str(ui.game.catalog[body].name) if ui.game.catalog.has(body) else body));fr.add_child(face)
+	face.custom_minimum_size=Vector2(92,92);face.tooltip_text="La miniatura: "+str(BloodForge.BODY_NAMES.get(body,"il corpo di "+str(ui.game.catalog[body].name) if ui.game.catalog.has(body) else body));fr.add_child(face)
 	sheet.add_child(ui.label("CARATTERISTICHE",12,ui.GOLD))
 	var g=GridContainer.new();g.columns=2;g.add_theme_constant_override("h_separation",8);g.add_theme_constant_override("v_separation",3);sheet.add_child(g)
 	for c in BloodForge.CARATTERISTICHE:
@@ -163,7 +172,7 @@ func _rebuild(full: bool) -> void:
 	def=BloodForge.apply_edits(base,edits)
 	all_def=BloodForge.apply_edits(BloodForge.build_all(traits),edits)
 	if full:_sheet()
-	_comb();_band()
+	_comb();_band();_update_preview()
 func _edit(id: String,field: String,value,absolute:=false) -> void:
 	var me: Dictionary=edits.get("moves",{});var e: Dictionary=me.get(id,{})
 	if absolute:e[field]=value
@@ -223,6 +232,7 @@ func _hex_for(id: String,R: float) -> Control:
 	var m: Dictionary=all_def.moves[id];var opt=not id in BloodForge.BASE_IDS;var on=BloodForge.is_on(traits,id) or bool(m.get("native",false)) and not id in traits.get("off",[])
 	var hx=TokenHex.new(R);hx.m=m;hx.on=on
 	hx.side_clicked.connect(func(s):_side(id,s))
+	hx.selected=id==selected_id;hx.picked.connect(func():_pick(id))
 	var v=VBoxContainer.new();v.add_theme_constant_override("separation",1);v.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	hx.set_content(v)
 	var title=_line(v)
@@ -383,3 +393,74 @@ func _run_test() -> void:
 	for foe in FOES:parts.append("%s %d%%"%[ui.game.catalog[foe].name,roundi(100*by[foe]/4.0)])
 	var verdict="in linea con il cast" if wins/games>=.4 and wins/games<=.6 else ("troppo forte" if wins/games>.6 else "un po' debole")
 	test_label.text="Collaudo: vince il %d%% dei duelli (%s; gli ufficiali vanno dal 34%% al 74%%) · %s"%[roundi(100*wins/games),verdict,", ".join(parts)]
+
+# ------------------------------------------------------------------ anteprima 3D: corpo, armatura, armi, statura e la mossa scelta
+var pv_vp: SubViewport
+var pv_root: Node3D
+var pv_model: Node3D
+var pv_ap: AnimationPlayer
+var pv_key:=""
+var pv_label: Label
+var pv_b3
+var selected_id:="guard"
+func _make_preview(parent: Node) -> void:
+	pv_b3=load("res://scripts/board3d.gd").new()   # solo per vestire il corpo (armi, scudo) come in partita
+	var svc=SubViewportContainer.new();svc.stretch=true;svc.custom_minimum_size=Vector2(318,250);parent.add_child(svc)
+	pv_vp=SubViewport.new();pv_vp.own_world_3d=true;pv_vp.msaa_3d=Viewport.MSAA_2X;svc.add_child(pv_vp)
+	var w=Node3D.new();pv_vp.add_child(w)
+	var env=WorldEnvironment.new();var e=Environment.new();e.background_mode=Environment.BG_COLOR;e.background_color=Color(.1,.075,.055)
+	e.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;e.ambient_light_color=Color(.62,.58,.55);e.ambient_light_energy=.75;env.environment=e;w.add_child(env)
+	var sun=DirectionalLight3D.new();sun.rotation_degrees=Vector3(-42,-35,0);sun.light_energy=1.25;w.add_child(sun)
+	var back=DirectionalLight3D.new();back.rotation_degrees=Vector3(-20,150,0);back.light_energy=.45;w.add_child(back)
+	var plate=MeshInstance3D.new();var cyl=CylinderMesh.new();cyl.top_radius=.62;cyl.bottom_radius=.62;cyl.height=.03;cyl.radial_segments=6;plate.mesh=cyl
+	var pm=StandardMaterial3D.new();pm.albedo_color=Color(.22,.16,.1);pm.roughness=.8;plate.material_override=pm;plate.rotation_degrees.y=30;w.add_child(plate)
+	pv_root=Node3D.new();w.add_child(pv_root)
+	var cam=Camera3D.new();cam.fov=30;w.add_child(cam);cam.position=Vector3(0,1.05,3.3);cam.look_at(Vector3(0,.58,0))
+	cam.current=true
+	svc.gui_input.connect(func(ev):   # trascina per girare il personaggio
+		if ev is InputEventMouseMotion and (ev.button_mask&MOUSE_BUTTON_MASK_LEFT)!=0:pv_root.rotation.y+=ev.relative.x*.012
+		if ev is InputEventScreenDrag:pv_root.rotation.y+=ev.relative.x*.012)
+	pv_label=ui.label("",12,ui.MUTED);pv_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;parent.add_child(pv_label)
+func _pick(id: String) -> void:
+	selected_id=id;_comb();_update_preview()
+func _update_preview() -> void:
+	if pv_root==null:return
+	var dr: Dictionary=def.get("dress",{});var body=str(def.get("look","f_nomade"))
+	var key="%s|%s|%s|%.2f"%[body,dr.get("weapon",""),dr.get("off",""),float(dr.get("scale",1.0))]
+	if key!=pv_key:
+		pv_key=key
+		if pv_model:pv_model.queue_free();pv_model=null;pv_ap=null
+		var path=str(pv_b3.MODELS.get(body,""))
+		if path!="" and ResourceLoader.exists(path):
+			pv_model=load(path).instantiate();pv_root.add_child(pv_model)
+			pv_b3._dress(pv_model,dr)
+			pv_model.scale*=1.6   # più grande che sulla mappa: riempie l'anteprima
+			var aps=pv_model.find_children("*","AnimationPlayer",true,false)
+			if not aps.is_empty():
+				pv_ap=aps[0]
+				pv_ap.animation_finished.connect(func(n):   # la mossa si ripete, con una breve pausa
+					if is_inside_tree():get_tree().create_timer(.6).timeout.connect(func():if is_instance_valid(pv_ap) and pv_ap.assigned_animation==n:pv_ap.play(n)))
+	if pv_ap==null:pv_label.text="";return
+	if not all_def.moves.has(selected_id) or not BloodForge.is_on(traits,selected_id) and not all_def.moves[selected_id].get("native",false):selected_id="guard"
+	var bow=selected_id in ["shoot","load"]
+	for n in ["Arco","FrecciaIncoccata"]:
+		var g=pv_model.find_child(n,true,false)
+		if g:g.visible=bow and (n!="FrecciaIncoccata" or selected_id=="shoot")
+	var sw=pv_model.find_child("Spada",true,false)
+	if sw and pv_model.find_child("Arco",true,false):sw.visible=not bow
+	var clip=_preview_clip(selected_id,bow)
+	pv_ap.play(clip,.15)
+	var m=all_def.moves.get(selected_id,{})
+	pv_label.text="%s · %s · trascina per girarlo"%[str(m.get("name","")),clip]
+func _preview_clip(id: String,bow: bool) -> String:
+	var m=all_def.moves.get(id,{})
+	var base=str(pv_b3.CLIP.get(id,"In guardia"))
+	var cands=[base]+Array(pv_b3.CLIP_FALLBACK.get(base,[]))
+	if m.get("spell",false):cands=["Affondo"]
+	if id=="concentrate":cands=["Riposo","In guardia"]
+	if bow:cands=[base+" arco",base]
+	var sfx={"lancia":" lancia","bastone":" lancia","ascia":" 2h"}.get(str(def.get("dress",{}).get("weapon","")),"")
+	for c in cands:
+		if sfx!="" and pv_ap.has_animation(c+sfx):return c+sfx
+		if pv_ap.has_animation(c):return c
+	return "In guardia"
