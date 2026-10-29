@@ -452,6 +452,10 @@ func _clip_for(i: int,id: String,bow: bool) -> String:
 	if info.get("ap")!=null and not info.ap.has_animation(base):
 		for alt in CLIP_FALLBACK.get(base,[]):
 			if info.ap.has_animation(alt):return alt
+		# un guerriero che ha imparato una magia: il gesto dell'affondo (o il riposo per concentrarsi)
+		var m=game.definition(game.state.fighters[i]).moves.get(id,{})
+		if m.get("spell",false) and info.ap.has_animation("Affondo"):return "Affondo"
+		if id=="concentrate" and info.ap.has_animation("Riposo"):return "Riposo"
 	return base
 func _view(p: Dictionary) -> Dictionary:
 	return {"cell":p.cell,"facing":int(p.facing),"current":p.current,"done":p.done,"hp":int(p.hp),"unbalanced":p.unbalanced,"down":p.down,"alive":p.alive,"team":int(p.team),"character":p.character,"pieces":bool(p.get("pieces",false))}

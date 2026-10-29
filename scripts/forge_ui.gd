@@ -245,14 +245,14 @@ func _comb() -> void:
 	var base_ids=ids.filter(func(k):return k in BloodForge.BASE_IDS)
 	var weapon_ids=ids.filter(func(k):return not k in BloodForge.BASE_IDS and not all_def.moves[k].get("spell",false))
 	var spell_ids=ids.filter(func(k):return all_def.moves[k].get("spell",false))
-	var R=110.0
+	var R=100.0
 	for group in [["MOVIMENTO E DIFESA",base_ids],["ARMA",weapon_ids],["MAGIE",spell_ids]]:
 		if group[1].is_empty():continue
 		var gl=ui.label(group[0],12,ui.GOLD);comb.add_child(gl)
 		comb.add_child(_honeycomb(group[1],R))
 func _honeycomb(ids: Array,R: float) -> Control:
 	# colonne sfalsate di mezza altezza (esagoni coi lati piatti in alto e in basso)
-	var avail=maxf(600.0,get_viewport().get_visible_rect().size.x-420.0)
+	var avail=maxf(500.0,get_viewport().get_visible_rect().size.x-430.0)
 	var w=2*R;var h=1.732*R;var gap=6.0
 	var cols=maxi(2,int((avail-w)/(w*.75+gap))+1)
 	var rows=ceili(float(ids.size())/cols)
