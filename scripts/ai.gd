@@ -21,8 +21,8 @@ static var CHARGE_W=.6
 static var BACK_W=.8
 # aspettare in guardia: nelle partite simulate solo una guardia su dieci arriva davvero a colpire,
 # perché nessuno si infila davanti a chi è in guardia. Vale poco: meglio muoversi e aggirare
-static var GUARD_WAIT=float(OS.get_environment("BM_GW")) if OS.get_environment("BM_GW")!="" else 5.0
-static var GUARD_GAIN=float(OS.get_environment("BM_GG")) if OS.get_environment("BM_GG")!="" else .7
+static var GUARD_WAIT=float(OS.get_environment("BM_GW")) if OS.get_environment("BM_GW")!="" else 2.0
+static var GUARD_GAIN=float(OS.get_environment("BM_GG")) if OS.get_environment("BM_GG")!="" else .3
 
 # ------------------------------------------------------------------ valutazioni di base
 static func _team(game: BloodRules,i: int) -> int:
