@@ -284,8 +284,11 @@ func _mount(model: Node3D,sk: Skeleton3D,kind: String,bone: String,name: String,
 		off=Vector3(-off.x,off.y,off.z);rot=f*rot*f
 	var bw: Transform3D=_to_model(model,sk)*sk.get_bone_global_rest(sk.find_bone(bone))
 	var local: Transform3D=bw.affine_inverse()*Transform3D(rot.scaled(Vector3.ONE*scale) if scale!=1.0 else rot,bw.origin+off)
-	if same_rig and not mirror:   # corpi montati come le armi d'origine: stessa presa rispetto all'osso
+	if same_rig:   # corpi montati come le armi d'origine: stessa presa rispetto all'osso (riflessa per la sinistra)
 		local=piece[4]
+		if mirror:
+			var fx=Basis(Vector3(-1,0,0),Vector3(0,1,0),Vector3(0,0,1))
+			local=Transform3D(fx*local.basis*fx,fx*local.origin)
 		if scale!=1.0:local.basis=local.basis.scaled(Vector3.ONE*scale)
 	var m: Node3D=piece[0].duplicate();m.name=name;m.transform=local;_hand(sk,bone).add_child(m)
 func _dress(model: Node3D,dr: Dictionary) -> void:
@@ -304,7 +307,7 @@ func _dress(model: Node3D,dr: Dictionary) -> void:
 		if native_shield:native_shield.scale=native_shield.scale*sc
 		else:_mount(model,sk,"scudo","LeftForeArm","Scudo",false,sc)
 	elif native_shield:_drop(model,"Scudo")
-	if off=="spada":_mount(model,sk,"pugnale" if weapon=="pugnale" else "spada","LeftHand","SpadaSinistra",true)
+	if off=="spada":_mount(model,sk,"pugnale" if weapon=="pugnale" else "spada","LeftHand","SpadaSinistra",true,1.0,body.begins_with("f_"))
 const FATIGUE_FULL=10.0
 func _set_status(i: int,hp: int,max_hp: int,alive: bool,fatigue:=-1) -> void:
 	var info=minis[i];var p=game.state.fighters[i]
@@ -546,6 +549,7 @@ func sync() -> void:
 			track.clip=_clip_for(i,"advance",bool(p.get("bow",false)));track.move="advance"
 		if id=="roll" and p.down:   # rotola restando a terra: disteso, scivola fino alla nuova cella senza rialzarsi
 			track.clip="A terra";track["lying"]=true;track["split"]=true;track["stay"]=true
+		if str(p.get("stepped",""))=="after" and str(was.cell)!=str(p.cell):track["step_after"]=true   # colpisce, poi il passo
 		var route: Array=p.get("path",[])
 		if route.size()>1 and str(route.back())==str(p.cell) and BloodRules.distance(str(was.cell),str(route[0]))==1:
 			track["path"]=route.map(func(c):return _spot(i,str(c)))   # segue il percorso vero, esagono per esagono
@@ -880,6 +884,11 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 			var d0=_run_track(up,info,fluid)
 			walk.from=t.from;walk.delay=t.delay+d0
 			return d0+_run_track(walk,info,fluid,forced)
+		if t.get("step_after",false):   # passo dopo l'azione: prima colpisce (o para) sul posto, poi si sposta
+			var first=t.duplicate();first.split=true;first.to=t.from;first.erase("path")
+			var a1=_run_track(first,info,fluid);t["impact_at"]=first.get("impact_at",-1.0)
+			walk.from=t.from;walk.delay=t.delay+a1
+			return a1+_run_track(walk,info,fluid,forced)
 		var d1=_run_track(walk,info,fluid,forced)
 		var act=t.duplicate();act.split=true;act.from=t.to;act.delay=t.delay+d1;act.erase("path")
 		var d2=_run_track(act,info,fluid);t["impact_at"]=act.get("impact_at",-1.0)

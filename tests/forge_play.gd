@@ -4,6 +4,8 @@ func _init() -> void:
 	for arma in BloodForge.ARMI:
 		for scudo in ["nessuno","grande"]:
 			var t=BloodForge.default_traits();t.arma=arma;t.scudo=scudo;t.id="forged_t_"+arma+scudo;t.name="Prova "+arma
+			if OS.get_environment("SPELLS")!="":   # con magie: Intelligenza 5 e quattro incantesimi di maghi diversi
+				t.INT=5;t.spells=["fireball","lightning","fear","wall"]
 			var d=BloodForge.build(t);BloodRules.extra_defs[d.id]=d
 			var r=BloodRules.new();r.house["arrows"]=true
 			r.new_game([{"character":d.id,"team":0,"controller":"ai"},{"character":"gascor","team":1,"controller":"ai"}],"libero",7,-1)

@@ -317,7 +317,9 @@ static func _choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 						if d==1:hit+=3.0
 					score=hit-2.0
 		elif m.get("attack")!=null and m.id!="charge":
-			if targets.is_empty():score=-20.0
+			var sp=_step_plan(game,i,m) if not m.get("green",[]).is_empty() else [0.0,"",false]
+			if targets.is_empty() and str(sp[1])!="" and not bool(sp[2]):score=float(sp[0])*.9-float(m.fatigue)*2.5   # un passo e poi il colpo
+			elif targets.is_empty():score=-20.0
 			else:
 				var top=-INF;var vals=[]
 				for k in targets:
@@ -329,6 +331,7 @@ static func _choose_move(game: BloodRules,i: int,difficulty: int=1) -> String:
 					for n in vals.size():top+=maxf(0.0,vals[n]-float(n)*4.0)
 				score=top-float(m.fatigue)*2.5+(float(m.imbalance)*.8 if m.get("imbalance")!=null else 0.0)
 				score-=float(adjacent-1)*1.5*(1.0-float(m.get("defense",0))/6.0)   # attaccare in mezzo a tanti nemici espone
+				if str(sp[1])!="":score+=maxf(0.0,float(sp[0]))*.5   # il passo (prima o dopo) migliora il colpo o la posizione
 		elif id in ["advance","run","float","charge","dodge","roll","rise","concentrate","load","teleport"] and not targets.is_empty():
 			var top=-INF
 			for k in targets:top=maxf(top,_move_score(game,i,k,m))
@@ -428,6 +431,13 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 		facing=bf
 	if m.id in ["dematerialize","weapon","roll","charge"]:facing=int(p.facing)   # la carica non ruota: colpisce davanti
 	if m.id.begins_with("parry"):facing=_parry_facing(game,i,m)   # gira il lato blu verso chi minaccia
+	var plan=_step_plan(game,i,m) if not m.id=="guard" else [0.0,"",false]
+	if str(plan[1])!="":
+		if m.get("attack")==null:return {"pass":true,"facing":facing,"step":plan[1]}
+		if bool(plan[2]) and not targets.is_empty():return {"target":selected,"facing":facing,"step":plan[1],"step_after":true}
+		if not bool(plan[2]):
+			var tgt=_attack_from(game,i,m,str(plan[1]))
+			if str(tgt[1])!="":return {"target":tgt[1],"facing":int(p.facing),"step":plan[1]}
 	if targets.is_empty():
 		if m.id=="guard":return {"wait":true,"facing":facing}
 		return {"pass":true,"facing":int(p.facing)}
@@ -436,6 +446,39 @@ static func command(game: BloodRules,i: int) -> Dictionary:
 	elif m.id in ["fireball","lightning"]:extra=clampi(int(p.magic)-int(m.cost)-3,0,3)
 	return {"target":selected,"facing":facing,"extra":extra}
 
+# --- passo prima o dopo l'azione (pedine d'attacco o di parata con lati verdi, eroi della forgia) ---
+static func _step_options(game: BloodRules,i: int,m: Dictionary) -> Array:
+	var p=game.state.fighters[i];var out=[]
+	if m.is_empty() or m.id in BloodRules.MOVE_IDS or m.get("green",[]).is_empty() or p.down or m.get("spell",false):return out
+	for g in m.green:
+		var k=BloodRules.neighbor(p.cell,int(p.facing)+int(g))
+		if game.cells.has(k) and not game.blocked(k,i):out.append(k)
+	return out
+static func _attack_from(game: BloodRules,i: int,m: Dictionary,c: String) -> Array:
+	# [valore del colpo migliore, cella del bersaglio] stando in c
+	var p=game.state.fighters[i];var keep=str(p.cell);p.cell=c
+	var best=[0.0,""]
+	for k in game.targets(i,m.id):
+		var j=game.at(k,i)
+		if j==-1 or int(game.state.fighters[j].team)==_team(game,i):continue
+		var v=_target_value(game,i,j,_expected_wounds(game,i,j,m,c))
+		if v>best[0]:best=[v,k]
+	p.cell=keep
+	return best
+static func _step_plan(game: BloodRules,i: int,m: Dictionary) -> Array:
+	# [guadagno, cella, dopo?]: passo che porta a un colpo migliore (prima) o via da una posizione cattiva (dopo)
+	var opts=_step_options(game,i,m)
+	if opts.is_empty():return [0.0,"",false]
+	var p=game.state.fighters[i];var atk=m.get("attack")!=null
+	var here_atk=_attack_from(game,i,m,p.cell)[0] if atk else 0.0
+	var here=_move_score(game,i,p.cell,{"id":"stay"})
+	var best=[0.0,"",false]
+	for c in opts:
+		var ms=_move_score(game,i,c,{"id":"stay"})-here
+		var before=(_attack_from(game,i,m,c)[0]-here_atk+ms*.3) if atk else ms*.6
+		if before>best[0]+.5:best=[before,c,false]
+		if atk and here_atk>0.0 and ms*.5>best[0]+.5:best=[ms*.5,c,true]
+	return best
 # parata: tra il fronte attuale e un lato in più a destra o a sinistra, quello che mette sotto i lati blu
 # i nemici adiacenti più pericolosi e non lascia scoperti fianchi e spalle
 static func _parry_facing(game: BloodRules,i: int,m: Dictionary) -> int:

@@ -9,9 +9,10 @@ func run() -> void:
 	await create_timer(1).timeout
 	scene._show_forge()
 	var f=scene.page.get_child(0)
-	if OS.get_environment("ARMA")!="":f._set_trait("arma",OS.get_environment("ARMA"))
+	if OS.get_environment("ARMA")!="":f._set_trait("arma",OS.get_environment("ARMA"),true)
 	if OS.get_environment("EDIT")=="1":
-		f._edit("cleave","fatigue",1);f._edit("cleave","attack",2);f._edit("thrust","defense",-1)
+		f._edit("cleave","fatigue",1);f._edit("cleave","attack",2);f._edit("thrust","defense",-1);f.brush="green";f._side("thrust",3)
+		f._set_trait("INT",3);f._toggle_spell("fireball",true);f._toggle_spell("shield",true);f._toggle_token("kick")
 	if OS.get_environment("SAVE")=="1":
 		f.traits.name="Brunilde";f.traits.title="La forgiata";f._fit_budget();f._save()
 	if OS.get_environment("TEST")=="1":

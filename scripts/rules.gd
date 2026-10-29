@@ -222,7 +222,7 @@ func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int
 	if not forged.is_empty():state.custom_defs=forged
 	for i in roster.size():
 		var cfg=roster[i];var d=catalog[cfg.character]
-		var p={"character":cfg.character,"name":cfg.get("name",d.name),"team":int(cfg.get("team",i%2)),"controller":cfg.get("controller","ai"),"seat":int(cfg.get("seat",i)),"cell":"","facing":0,"hp":int(d.hp),"max_hp":int(d.hp),"fatigue":0,"permanent":0,"magic":(5+die() if magic<0 else magic) if d.mage else 0,"current":"float" if d.kind=="ziggy" else "guard","previous":"","done":false,"alive":true,"lost":[],"unbalanced":false,"down":false,"frog":false,"pieces":false,"guarding":false,"loaded":false,"bow":false,"meditated":false,"burning":false,"plague":-1,"controller_by":-1,"sprint_mod":0,"owner":-1}
+		var p={"character":cfg.character,"name":cfg.get("name",d.name),"team":int(cfg.get("team",i%2)),"controller":cfg.get("controller","ai"),"seat":int(cfg.get("seat",i)),"cell":"","facing":0,"hp":int(d.hp),"max_hp":int(d.hp),"fatigue":0,"permanent":0,"magic":(int(d.get("magic_base",5))+die() if magic<0 else magic) if d.mage else 0,"current":"float" if d.kind=="ziggy" else "guard","previous":"","done":false,"alive":true,"lost":[],"unbalanced":false,"down":false,"frog":false,"pieces":false,"guarding":false,"loaded":false,"bow":false,"meditated":false,"burning":false,"plague":-1,"controller_by":-1,"sprint_mod":0,"owner":-1}
 		if d.kind=="ziggy":p.hp=die()*3;p.max_hp=p.hp
 		if d.kind=="skeleton":p.current="guard"
 		# regola modificata: le frecce sono contate, 5 + un dado per arciere
@@ -280,7 +280,7 @@ func begin_turn() -> void:
 		if rng.randi_range(0,int(state.peace_left))==0:state.war=true;note("GUERRA · ora è possibile attaccare.")
 		else:state.peace_left-=1;note("PACE · questo turno non si attacca.")
 	for p in state.fighters:
-		p.done=false;p.guarding=false
+		p.done=false;p.guarding=false;p.stepped="";p.step_after=""
 		if p.get("skip_next",false):p.done=true;p.skip_next=false
 		if p.alive and p.frog:_frog_turn(p)
 	note("Turno %d · scegliete le mosse in segreto." % state.turn)
@@ -479,6 +479,24 @@ func reaction_options(i: int,spell_value: int=0) -> Array:
 		if id.begins_with("parry") or id=="dematerialize":out.append(id)
 	return out
 
+# Pedine d'attacco o di parata con lati verdi (eroi della forgia): un esagono di passo, prima o dopo
+# l'azione, in una delle direzioni verdi rispetto al fronte. Le pedine di movimento usano i verdi come sempre.
+const MOVE_IDS=["advance","dodge","run","charge","float","load","concentrate","roll","rise"]
+func step_cells(i: int) -> Array:
+	var p=state.fighters[i];var m=move(p);var out=[]
+	if m.id in MOVE_IDS or m.get("green",[]).is_empty() or p.down or m.get("spell",false):return out
+	for g in m.green:
+		var k=neighbor(p.cell,int(p.facing)+int(g))
+		if cells.has(k) and not blocked(k,i):out.append(k)
+	return out
+func _do_step(i: int,k: String) -> bool:
+	# il passo: colpi di zona di controllo, effetti attraversati, zone di ristoro. Falso se l'ha fermato.
+	var p=state.fighters[i]
+	if _zoc_strikes(i,p.cell,k):return false
+	p.cell=k;_cross_effects(i)
+	if not p.alive:return false
+	_take_pickup(i);note("%s fa un passo."%p.name)
+	return not (p.down or p.unbalanced)
 # di quanti lati può ruotare chi agisce con la pedina attuale (0 = orientamento fisso)
 func max_rotation(i: int,wait:=false) -> int:
 	var m=move(state.fighters[i])
@@ -495,6 +513,15 @@ func act(command: Dictionary) -> bool:
 	if command.get("wait",false) and m.id=="guard":
 		p.facing=facing;p.guarding=true;state.phase="draw";state.active=-1;note(p.name+" resta in guardia, pronto a intervenire.");return true
 	if command.get("type","")=="regenerate":return regenerate(int(command.get("fighter",-1)))
+	p.stepped="";p.step_after=""
+	var pre=str(command.get("step",""))
+	if pre!="":
+		if not pre in step_cells(i):return false
+		if bool(command.get("step_after",false)):p.step_after=pre   # dopo l'azione (vedi _finish_action)
+		else:
+			p.path=[pre];p.stepped="before"
+			if not _do_step(i,pre):_finish_action(i,m,false,int(p.facing));return true
+			if not command.has("target"):k=p.cell
 	if command.get("pass",false):
 		_finish_action(i,m,false,facing);return true
 	if not k in targets(i):return false
@@ -514,7 +541,7 @@ func act(command: Dictionary) -> bool:
 		else:_cast_pending()
 		return true
 	var paths={}
-	if m.id in ["advance","dodge","run","charge","float","load","concentrate","roll","rise"]:
+	if m.id in MOVE_IDS:
 		var max_step=1
 		if m.id in ["run","charge","float"]:max_step=int(definition(p).sprint)
 		if m.id=="roll":max_step=2
@@ -723,6 +750,9 @@ func _knock(i: int,ground: bool,sized:=false) -> void:
 	p.done=true;p.guarding=false
 func _finish_action(i: int,m: Dictionary,attack_effect: bool,facing: int) -> void:
 	var p=state.fighters[i]
+	var after=str(p.get("step_after",""));p.step_after=""
+	if after!="" and p.alive and not p.down and not p.unbalanced and not blocked(after,i) and distance(p.cell,after)==1:
+		p.path=[after];p.stepped="after";_do_step(i,after)
 	p.fatigue+=int(m.fatigue)+int(p.get("pending_sprint_fatigue",0));p.pending_sprint_fatigue=0
 	if m.id!="meditate":p.meditated=false
 	if m.id!="load":p.loaded=false

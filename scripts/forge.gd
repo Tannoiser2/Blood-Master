@@ -8,8 +8,8 @@ extends RefCounted
 ## da questi due numeri. Esempio: Gascor ha D=+2 e A=5, Zenyo D=-2 e A=6, Ut D=+4 e A=8.
 
 # ------------------------------------------------------------------ scelte possibili
-const STAZZE = ["Minuta","Snella","Media","Robusta","Enorme"]          # stazza 2..6
-const LIVELLI = ["Scarsa","Normale","Grande"]                           # forza, agilità, resistenza 1..3
+const CARATTERISTICHE = [["FOR","Forza","Colpi più forti; con la Costituzione fa la stazza"],["DES","Destrezza","Difesa, sprint, equilibrio nelle corse, schivate e capriole"],
+	["COS","Costituzione","Ferite e recupero della fatica; con la Forza fa la stazza"],["INT","Intelligenza","Punti magia e quante magie puoi imparare (Intelligenza − 1)"]]
 const CARATTERI = {"equilibrato":"Equilibrato","aggressivo":"Aggressivo","prudente":"Prudente","astuto":"Astuto"}
 const ARMI = {"spada":"Spada","ascia":"Ascia a due mani","lancia":"Lancia","bastone":"Bastone (arti marziali)",
 	"pugnale":"Pugnale","due_armi":"Due armi","arco":"Arco (e pugnale)"}
@@ -17,59 +17,67 @@ const SCUDI = {"nessuno":"Nessuno","piccolo":"Scudo piccolo","grande":"Scudo gra
 const ARMATURE = {"nessuna":"Nessuna","leggera":"Leggera (cuoio)","media":"Media (maglia)","pesante":"Pesante (piastre)"}
 const ARMOR_RANGE = {"nessuna":[],"leggera":[2,3],"media":[1,4],"pesante":[3,6]}
 const NO_SHIELD = ["ascia","bastone","due_armi","arco"]   # armi a due mani: niente scudo
-# a chi somiglia (modello 3D, disegni delle pedine) secondo l'arma
-const LOOK = {"spada":"gascor","ascia":"ut","lancia":"shannon","bastone":"zenyo","pugnale":"kylvia","due_armi":"anteos","arco":"kylvia"}   # disegni delle pedine
-const ASPETTI = {"uomo":"Uomo","donna":"Donna"}
-# corpo 3D: armi a una mano (le clip impugnano con la destra, la sinistra libera o con lo scudo) o a due mani,
-# poi armatura e aspetto. L'arma vera viene montata in mano dopo (vedi board3d._dress).
-const ONE_HAND = ["spada","pugnale","due_armi"]
+# a chi somiglia (disegni delle pedine) secondo l'arma
+const LOOK = {"spada":"gascor","ascia":"ut","lancia":"shannon","bastone":"zenyo","pugnale":"kylvia","due_armi":"anteos","arco":"kylvia"}
+const ASPETTI = {"uomo":"Uomo"}   # per ora solo corpi maschili
 # corpi nuovi della forgia (uomini), uno per armatura: hanno sia le clip a una mano sia quelle a due mani
 const FORGE_BODIES={"nessuna":"f_barbaro","leggera":"f_nomade","media":"f_predone","pesante":"f_cavaliere"}
 const BODY_NAMES={"f_barbaro":"il barbaro delle steppe","f_nomade":"il nomade del deserto","f_predone":"il predone del nord","f_cavaliere":"il cavaliere nero"}
+const BASE_IDS=["advance","run","rise","unbalanced","down","dodge","roll","again","parry_r","parry_l"]   # sempre presenti
+# incantesimi dei quattro maghi che l'eroe può imparare
+const SPELL_FROM={"gandy":["firestaff","shield","vortex","sleep","fireball"],"thorn":["pustules","fear","age","summon","plague"],
+	"sanguinaria":["wall","teleport","transform","livingfire","abyss"],"ziggy":["shock","heal","drain","control","lightning"]}
 static func body_for(t: Dictionary) -> String:
-	var arma=str(t.arma);var arm=str(t.armatura);var donna=str(t.get("aspetto","uomo"))=="donna";var big=int(t.stazza)>=4
-	if arma=="arco":return "kylvia" if donna else "zak"
-	if not donna:return FORGE_BODIES.get(arm,"f_nomade")
-	if arma=="due_armi":return "kylvia" if donna else "zak"   # la sinistra libera (niente posa da scudo)
-	if arma in ONE_HAND:
-		if donna or arm in ["nessuna","leggera"]:return "kylvia" if donna else "zak"
-		return "anteos" if arm=="media" else "gascor"
-	if arm=="nessuna":return "shaara" if donna else ("nuchra" if big else "zenyo")
-	if arm=="leggera" or donna:return "shannon"
-	return "ramok" if arm=="media" else "ut"
+	if str(t.arma)=="arco":return "zak"   # le clip di tiro esistono solo sui corpi degli arcieri
+	return FORGE_BODIES.get(str(t.armatura),"f_nomade")
 ## come vestire il corpo: arma in mano, cosa nell'altra mano (scudo, seconda arma), scala dalla stazza
-static func dress_for(t: Dictionary,size: int,catalog_sizes: Dictionary={}) -> Dictionary:
+static func dress_for(t: Dictionary,size: int,_catalog_sizes: Dictionary={}) -> Dictionary:
 	var body=body_for(t);var arma=str(t.arma)
 	var off=""
 	if arma=="due_armi":off="spada"
 	elif str(t.scudo)!="nessuno" and not arma in NO_SHIELD:off="scudo_"+str(t.scudo)
-	var bsize={"f_barbaro":5,"f_nomade":3,"f_predone":4,"f_cavaliere":5,"zenyo":3,"shaara":3,"gascor":4,"anteos":4,"ut":6,"nuchra":6,"shannon":4,"ramok":4,"kylvia":2,"zak":2}.get(body,4)
+	var bsize={"f_barbaro":5,"f_nomade":3,"f_predone":4,"f_cavaliere":5,"zak":2}.get(body,4)
 	return {"body":body,"weapon":"spada" if arma=="due_armi" else arma,"off":off,"scale":clampf(1.0+.07*(size-bsize),.8,1.25)}
 
 const NAMES = {"guard":"In guardia","advance":"Avanzare","run":"Correre","rise":"Rialzarsi","roll":"Rotolare",
 	"unbalanced":"Sbilanciato","down":"A terra","parry_r":"Parata destra","parry_l":"Parata sinistra","dodge":"Schivare",
 	"charge":"Carica","right":"Colpo a destra","left":"Colpo a sinistra","thrust":"Affondo","again":"Ancora",
 	"cleave":"Fendente","sweep":"Spazzata","kick":"Calcio","spin":"Rotazione","meditate":"Meditare",
-	"shoot":"Tirare","load":"Incoccare","weapon":"Impugnare l'arma"}
+	"shoot":"Tirare","load":"Incoccare","weapon":"Impugnare l'arma","concentrate":"Concentrarsi"}
 
 static func default_traits() -> Dictionary:
-	return {"name":"Nuovo eroe","title":"Il forgiato","stazza":3,"forza":2,"agilita":2,"resistenza":2,
-		"carattere":"equilibrato","arma":"spada","scudo":"nessuno","armatura":"leggera","team":-1,"aspetto":"uomo"}
+	return {"name":"Nuovo eroe","title":"Il forgiato","FOR":3,"DES":3,"COS":3,"INT":1,
+		"carattere":"equilibrato","arma":"spada","scudo":"nessuno","armatura":"leggera","team":-1,"aspetto":"uomo","spells":[],"off":[]}
+## eroi salvati con la prima forgia (stazza, forza, agilità, resistenza da 1 a 3): stessi valori nella scala nuova
+static func migrate(t: Dictionary) -> Dictionary:
+	var o=t.duplicate(true)
+	if not o.has("FOR"):
+		o.FOR=clampi(int(o.get("forza",2))*2-1,1,5);o.DES=clampi(int(o.get("agilita",2))*2-1,1,5);o.COS=clampi(int(o.get("resistenza",2))*2-1,1,5);o.INT=1
+	if not o.has("spells"):o.spells=[]
+	if not o.has("off"):o.off=[]
+	o.aspetto="uomo"
+	return o
+static func stat(t: Dictionary,k: String) -> int:return clampi(int(t.get(k,3)),1,5)
+## stazza da Forza + Costituzione: 2 (minuta) .. 6 (enorme), come i personaggi ufficiali
+static func size_of(t: Dictionary) -> int:return clampi(int(round((stat(t,"FOR")+stat(t,"COS"))/2.0))+1,2,6)
 
 static func _tok(id: String,attack,defense: int,red: Array=[],green: Array=[],blue: Array=[],fatigue: int=0,imbalance=null,secondary=null,rest: bool=false) -> Dictionary:
 	return {"id":id,"name":NAMES.get(id,id),"attack":attack,"defense":defense,"red":red,"green":green,"blue":blue,
 		"fatigue":fatigue,"rest":rest,"imbalance":imbalance,"secondary":defense if secondary==null else secondary}
 
 # ------------------------------------------------------------------ dai tratti al personaggio
-static func build(t: Dictionary) -> Dictionary:
-	var size: int=clampi(int(t.stazza),1,5)+1               # 2..6 come i personaggi ufficiali
-	var str_: int=clampi(int(t.forza),1,3);var agi: int=clampi(int(t.agilita),1,3);var res: int=clampi(int(t.resistenza),1,3)
+## tutte le pedine possibili (anche quelle spente): base, d'arma e magie scelte
+static func build_all(t0: Dictionary) -> Dictionary:
+	var t=migrate(t0)
+	var size: int=size_of(t)
+	var F: int=stat(t,"FOR");var DX: int=stat(t,"DES");var C: int=stat(t,"COS");var I: int=stat(t,"INT")
+	var agi: int=(DX+1)/2   # 1..3 per le tabelle di sprint ed equilibrio
 	var arma: String=t.arma;var scudo: String="nessuno" if arma in NO_SHIELD else str(t.scudo);var arm: String=t.armatura
-	# scarto di difesa: un corpo grosso è un bersaglio facile, l'agilità lo rende sfuggente,
+	# scarto di difesa: un corpo grosso è un bersaglio facile, la destrezza lo rende sfuggente,
 	# un'armatura pesante rallenta (ma assorbe ferite col suo dado)
-	var D: int=int((size-4)*.5)+{"nessuna":0,"leggera":0,"media":2,"pesante":3}[arm]-(agi-2)*2
+	var D: int=int((size-4)*.5)+{"nessuna":0,"leggera":0,"media":2,"pesante":3}[arm]-(DX-3)
 	# attacco di base: stazza e forza
-	var A: int=size+str_-1
+	var A: int=size+int(F*.6)
 	var mv={}
 	var add=func(m):mv[m.id]=m
 	# pedine comuni a tutti
@@ -79,9 +87,9 @@ static func build(t: Dictionary) -> Dictionary:
 	add.call(_tok("unbalanced",null,D+4))
 	add.call(_tok("down",null,D+5,[],[],[],0,null,null,true))
 	add.call(_tok("dodge",null,D-2,[],[2,3,4] if size>=5 or arm=="pesante" else [1,2,3,4,5]))
-	if agi>=2 and size<=4 and arm!="pesante":add.call(_tok("roll",null,D+2,[],[1,2,4,5]))
+	if DX>=3 and size<=4 and arm!="pesante":add.call(_tok("roll",null,D+2,[],[1,2,4,5]))
 	add.call(_tok("again",null,0))
-	# parate (non con l'arco in mano; due armi: parata larga ma meno solida)
+	# parate (due armi: parata larga ma meno solida)
 	var pd=D-4;var ps=D-1;var br=[0,1];var bl=[5,0]
 	if arma=="due_armi":pd=D-3;br=[5,0,1];bl=[5,0,1]
 	if arma=="pugnale":pd=D-3
@@ -122,21 +130,47 @@ static func build(t: Dictionary) -> Dictionary:
 		if car=="prudente":mv[id].defense-=1;mv[id].secondary-=1
 	if car=="prudente":mv.guard.defense-=1;mv.guard.secondary-=1
 	if car=="astuto":mv.advance.green=[4,5,0,1,2]
+	var tex_from: String=LOOK[arma]
+	for m in mv.values():m.texture="res://assets/tokens/%s_%s.webp"%[tex_from,m.id]
+	# magie scelte (Intelligenza − 1 al massimo): stesse pedine dei maghi, difesa riportata sul corpo dell'eroe
+	var spells: Array=t.get("spells",[]).slice(0,maxi(0,I-1))
+	if not spells.is_empty():
+		var cat=_catalog()
+		add.call(_tok("concentrate",null,D+5,[],[0,1,2,3,4,5],[],0,null,null,true))
+		mv.concentrate.texture="res://assets/tokens/gandy_concentrate.webp"
+		for sid in spells:
+			for mage in SPELL_FROM:
+				if sid in SPELL_FROM[mage]:
+					var m=cat[mage].moves[sid].duplicate(true)
+					var base_d=int(cat[mage].moves.advance.defense) if cat[mage].moves.has("advance") else 0
+					m.defense=D+int(m.defense)-base_d;m.secondary=D+int(m.secondary)-base_d;m.name=str(m.name)
+					mv[sid]=m
 	# punti ferita, sprint, equilibrio, recupero
-	var hp: int=6*size+4*(res-2)+2
+	var hp: int=6*size+2*(C-3)+2
 	var sprint: int=clampi(2+agi-(1 if size>=5 else 0)-(1 if arm=="pesante" else 0)-(1 if scudo=="grande" else 0),1,6)
 	var sprints=[]
 	for k in range(1,sprint+1):
 		# [bonus d'attacco della carica, fatica, caduta con dado <=, sbilanciamento della carica]
 		sprints.append([int(floor(k*(size+agi)/5.0)),(k+2-agi)/2,maxi(0,k-agi+1),roundi(k*size*size/20.0)])
-	var rec=[[1,2,2,2,4,99],[1,1,2,3,3,99],[1,3,3,4,99,99]][res-1]
+	var rec=[[1,2,2,2,4,99],[1,2,2,2,4,99],[1,1,2,3,3,99],[1,3,3,4,99,99],[1,3,3,4,99,99]][C-1]
 	if arm=="pesante":rec=[1,1,1,2,2,4]
-	var tex_from: String=LOOK[arma]
-	for m in mv.values():m.texture="res://assets/tokens/%s_%s.webp"%[tex_from,m.id]
 	var id=str(t.get("id","")) if str(t.get("id",""))!="" else "forged_%d"%(abs(str(t.name).hash())%100000)
 	return {"id":id,"name":str(t.name),"title":str(t.title),"kind":"forged","team":int(t.get("team",-1)),"size":size,"hp":hp,
-		"sprint":sprint,"armor":ARMOR_RANGE[arm],"recovery":rec,"sprints":sprints,"card":"res://assets/cards/%s.webp"%(tex_from if body_for(t).begins_with("f_") else body_for(t)),
-		"mage":false,"look":body_for(t),"dress":dress_for(t,size),"reach":arma in ["lancia","bastone"],"traits":t.duplicate(),"moves":mv}
+		"sprint":sprint,"armor":ARMOR_RANGE[arm],"recovery":rec,"sprints":sprints,"card":"res://assets/cards/%s.webp"%tex_from,
+		"mage":not spells.is_empty(),"magic_base":I+1,"look":body_for(t),"dress":dress_for(t,size),"reach":arma in ["lancia","bastone"],"traits":t,"moves":mv}
+## il personaggio giocabile: senza le pedine spente
+static func build(t0: Dictionary) -> Dictionary:
+	var d=build_all(t0)
+	for id in d.traits.get("off",[]):
+		if not id in BASE_IDS:d.moves.erase(id)
+	return d
+static var _cat: Dictionary={}
+static func _catalog() -> Dictionary:
+	if _cat.is_empty():_cat=JSON.parse_string(FileAccess.get_file_as_string("res://data/characters.json"))
+	return _cat
+## pedine che si possono spegnere (tutte tranne le base)
+static func optional(def: Dictionary) -> Array:
+	return def.moves.keys().filter(func(k):return not k in BASE_IDS)
 
 # ------------------------------------------------------------------ valore in punti
 # Tutto si misura in ferite attese (stesso calcolo della partita: dado che esplode sul 6, posizionale,
@@ -148,7 +182,11 @@ const OFFICIAL=["zenyo","gascor","ut","shannon","kylvia","anteos","shaara","zak"
 # coefficienti (forza in scala logit per unità di caratteristica), tarati con le simulazioni
 # tarati su circa 20.000 duelli e 1.200 partite a squadre fra cast ufficiale, 60 varianti e 40 eroi forgiati
 # (correlazione 0,90 con la forza osservata; su eroi esclusi dalla taratura 0,86-0,94)
-static var COEF={"off":1.013,"hp":0.9122,"sub":-0.5209,"sprint":0.0,"size":0.1363,"fat":-0.756,"imb":0.3,"natk":0.0,"green":0.0,"shoot":1.2267,"best":-0.3212,"zero":-4.1831}
+static var COEF={"off":1.0107,"hp":0.9422,"sub":-0.4924,"sprint":0.0,"size":0.1286,"fat":-0.7116,"imb":0.3,"natk":0.0,"green":0.3,"shoot":1.1919,"best":-0.3314,"rest":1.0171,
+	"reach":1.0,"step":.03,"spells":.04,"zero":-4.5759}
+# stime, non dai dati (nelle partite simulate non variavano abbastanza o non esistevano):
+#  green .3 (lati verdi delle pedine di movimento), reach 1.0 (lati rossi), step .03 a lato (passo prima/dopo),
+#  spells .04 per punto di costo della magia, imb .3 (sbilanciamento)
 # imb: nelle simulazioni lo sbilanciamento pesa quasi zero; gli si dà comunque un piccolo prezzo, perché non sia gratis
 static var _die: Dictionary={}
 static var _ref_def: Array=[]
@@ -233,7 +271,16 @@ static func features(def: Dictionary,_catalog: Dictionary={}) -> Dictionary:
 		if m.attack==null and m.id!="load":best=minf(best,rc)   # la difesa migliore (parata o schivata)
 	sub/=maxf(1,toks.size())
 	var na=float(offs.size())
-	return {"off":top,"sub":sub,"hp":float(def.hp),"sprint":float(def.sprint),"size":float(def.size),
+	# lati rossi: quanto delle direzioni da cui arrivano i nemici copre ogni pedina d'attacco
+	var reach=0.0;var rest=0.0;var step=0.0;var spells=0.0
+	for m in toks:
+		if m.attack!=null:
+			for sd in m.red:reach+=float(SIDE_W.get(int(sd),0.0))
+		if m.get("rest",false):rest+=1.0
+		if not m.id in BloodRules.MOVE_IDS:step+=m.green.size()   # passo prima o dopo l'azione
+	for k in def.moves:
+		if def.moves[k].get("spell",false):spells+=float(def.moves[k].get("cost",1))
+	return {"reach":reach/maxf(1.0,na),"rest":rest/maxf(1.0,toks.size()),"step":step,"spells":spells,"off":top,"sub":sub,"hp":float(def.hp),"sprint":float(def.sprint),"size":float(def.size),
 		"fat":fat/maxf(1.0,na),"imb":imb/maxf(1.0,na),"natk":na,"green":green/maxf(1.0,toks.size()),
 		"shoot":1.0 if def.moves.has("shoot") else 0.0,"mage":1.0 if def.get("mage",false) else 0.0,
 		"best":best if best<INF else sub}
@@ -241,7 +288,7 @@ static func features(def: Dictionary,_catalog: Dictionary={}) -> Dictionary:
 static func logit(f: Dictionary) -> float:
 	var z=float(COEF.zero)
 	z+=float(COEF.off)*log(maxf(f.off,.05))+float(COEF.hp)*log(maxf(f.hp,1.0))+float(COEF.sub)*log(maxf(f.sub,.05))+float(COEF.best)*log(maxf(f.best,.05))
-	for k in ["sprint","size","fat","imb","natk","green","shoot"]:z+=float(COEF[k])*float(f[k])
+	for k in ["sprint","size","fat","imb","natk","green","shoot","reach","rest","step","spells"]:z+=float(COEF.get(k,0.0))*float(f.get(k,0.0))
 	return z
 ## valore in punti: 100 = la media dei guerrieri ufficiali; 10 punti ≈ 5 vittorie in più (o in meno) su 100
 static func points(def: Dictionary) -> float:
@@ -256,21 +303,30 @@ static func points(def: Dictionary) -> float:
 const BUDGET=100.0
 
 # ------------------------------------------------------------------ modifiche a mano e salvataggio
-## edits: {"hp":delta, "moves":{id:{"attack":d,"defense":d,"fatigue":d,"imbalance":d,"sides":[...]}}}
+## edits: {"hp":delta, "moves":{id:{"attack":d,"defense":d,"secondary":d,"fatigue":d,   (scarti)
+##          "imb":n o -1 (nessuno), "rest":bool, "red":[...], "green":[...], "blue":[...]}}}  (valori assoluti)
 static func apply_edits(def: Dictionary,edits: Dictionary) -> Dictionary:
 	var d=def.duplicate(true)
 	d.hp=maxi(4,int(d.hp)+int(edits.get("hp",0)))
 	var me: Dictionary=edits.get("moves",{})
 	for id in me:
 		if not d.moves.has(id):continue
-		var m=d.moves[id];var e=me[id]
+		var m=d.moves[id];var e=me[id];var had_blue=not m.blue.is_empty()
 		if m.attack!=null and e.has("attack"):m.attack=maxi(0,int(m.attack)+int(e.attack))
-		if e.has("defense"):m.defense=int(m.defense)+int(e.defense);m.secondary=int(m.secondary)+int(e.defense)
+		if e.has("defense"):
+			m.defense=int(m.defense)+int(e.defense)
+			if not had_blue:m.secondary=int(m.secondary)+int(e.defense)
 		if e.has("fatigue"):m.fatigue=clampi(int(m.fatigue)+int(e.fatigue),0,3)
-		if e.has("imbalance"):m.imbalance=clampi(int(m.imbalance if m.imbalance!=null else 0)+int(e.imbalance),0,6)
-		if e.has("sides"):
+		if e.has("imbalance"):m.imbalance=clampi(int(m.imbalance if m.imbalance!=null else 0)+int(e.imbalance),0,6)   # prima forgia
+		if e.has("imb"):m.imbalance=null if int(e.imb)<0 else clampi(int(e.imb),0,6)
+		if e.has("rest"):m.rest=bool(e.rest)
+		if e.has("sides"):   # prima forgia: un solo colore per pedina
 			var kind=side_kind(m)
 			if kind!="":m[kind]=e.sides.map(func(v):return int(v))
+		for c in ["red","green","blue"]:
+			if e.has(c):m[c]=e[c].map(func(v):return int(v))
+		if e.has("secondary") and not m.blue.is_empty():m.secondary=int(m.secondary)+int(e.secondary)
+		if m.blue.is_empty():m.secondary=m.defense   # senza lati blu la difesa è una sola
 	d.edits=edits.duplicate(true)
 	return d
 ## quale colore di lato si modifica su questa pedina: rosso (attacchi), verde (movimenti), blu (parate)
@@ -287,7 +343,8 @@ static func load_saved() -> Dictionary:
 	var out={}
 	for id in d:
 		var h=d[id]
-		if h is Dictionary and h.has("traits"):out[id]=apply_edits(build(h.traits),h.get("edits",{}))
+		if h is Dictionary and h.has("traits"):
+			var t=migrate(h.traits);t.id=id;out[id]=apply_edits(build(t),h.get("edits",{}))
 	return out
 static func save_hero(def: Dictionary) -> void:
 	var all={}

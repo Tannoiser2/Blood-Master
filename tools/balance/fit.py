@@ -70,9 +70,9 @@ for v in vids:
         base = {'spada': 'gascor', 'ascia': 'ut', 'lancia': 'shannon', 'bastone': 'zenyo', 'pugnale': 'gascor', 'due': 'gascor', 'arco': 'kylvia'}[v.split('_')[2]]
     rows.append((v, feat[v], logit(p) + TEAM_SHARE * team_adj[base], 1.0))
 
-KEYS = ['off', 'hp', 'sub', 'sprint', 'size', 'fat', 'imb', 'shoot', 'best', 'natk', 'green']
+KEYS = ['off', 'hp', 'sub', 'sprint', 'size', 'fat', 'imb', 'shoot', 'best', 'natk', 'green', 'reach', 'rest']
 def x_of(f):
-    return [math.log(max(f['off'], .05)), math.log(max(f['hp'], 1)), math.log(max(f['sub'], .05)), f['sprint'], f['size'], f['fat'], f['imb'], f['shoot'], math.log(max(f.get('best', f['sub']), .05)), f['natk'], f['green'], 1.0]
+    return [math.log(max(f['off'], .05)), math.log(max(f['hp'], 1)), math.log(max(f['sub'], .05)), f['sprint'], f['size'], f['fat'], f['imb'], f['shoot'], math.log(max(f.get('best', f['sub']), .05)), f['natk'], f['green'], f.get('reach', 0), f.get('rest', 0), 1.0]
 import os
 hold = os.environ.get('HOLD', '')
 test = [r for r in rows if hold and r[0].startswith(hold)]

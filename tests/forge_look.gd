@@ -13,13 +13,13 @@ func run():
 		["Lancia e scudo",{"arma":"lancia","scudo":"piccolo","armatura":"media","stazza":3}],["Bastone (donna)",{"arma":"bastone","armatura":"nessuna","stazza":2,"aspetto":"donna"}],
 		["Ascia pesante",{"arma":"ascia","armatura":"pesante","stazza":4}],["Spada minuta",{"arma":"spada","armatura":"leggera","stazza":1,"aspetto":"donna","scudo":"piccolo"}]]
 	if OS.get_environment("NEW")!="":   # i quattro corpi nuovi con armi diverse
-		sets=[["Barbaro · ascia",{"arma":"ascia","armatura":"nessuna","stazza":5}],["Barbaro · due spade",{"arma":"due_armi","armatura":"nessuna","stazza":4}],
-			["Nomade · pugnale",{"arma":"pugnale","armatura":"leggera","stazza":2}],["Nomade · lancia",{"arma":"lancia","armatura":"leggera","stazza":3}],
-			["Predone · spada e scudo",{"arma":"spada","scudo":"grande","armatura":"media","stazza":3}],["Predone · bastone",{"arma":"bastone","armatura":"media","stazza":3}],
-			["Cavaliere · spada",{"arma":"spada","scudo":"piccolo","armatura":"pesante","stazza":4}],["Cavaliere · ascia",{"arma":"ascia","armatura":"pesante","stazza":4}]]
-	if OS.get_environment("SIZES")!="":   # la stessa lancia con le cinque stazze
+		sets=[["Barbaro · ascia",{"arma":"ascia","armatura":"nessuna","FOR":5,"COS":4}],["Barbaro · due spade",{"arma":"due_armi","armatura":"nessuna","FOR":4,"COS":4}],
+			["Nomade · pugnale",{"arma":"pugnale","armatura":"leggera","FOR":2,"COS":2}],["Nomade · lancia",{"arma":"lancia","armatura":"leggera"}],
+			["Predone · spada e scudo",{"arma":"spada","scudo":"grande","armatura":"media"}],["Predone · bastone",{"arma":"bastone","armatura":"media"}],
+			["Cavaliere · spada",{"arma":"spada","scudo":"piccolo","armatura":"pesante","FOR":4}],["Cavaliere · ascia",{"arma":"ascia","armatura":"pesante","FOR":4,"COS":4}]]
+	if OS.get_environment("SIZES")!="":   # la stessa lancia con stazze diverse
 		sets=[]
-		for k in 5:sets.append([BloodForge.STAZZE[k],{"arma":"lancia","armatura":"leggera","stazza":k+1}])
+		for k in 5:sets.append(["FOR e COS %d"%(k+1),{"arma":"lancia","armatura":"leggera","FOR":k+1,"COS":k+1}])
 	if OS.get_environment("SET")!="":sets=sets.slice(int(OS.get_environment("SET")),int(OS.get_environment("SET"))+1)
 	root.size=Vector2i(maxi(520,260*sets.size()),640)
 	var world=Node3D.new();root.add_child(world)
