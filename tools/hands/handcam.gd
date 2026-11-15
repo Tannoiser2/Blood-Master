@@ -3,7 +3,7 @@ extends SceneTree
 # xvfb-run godot --rendering-driver opengl3 --path . -s tools/hands/handcam.gd   ONLY=gascor,ut  OUT=res://tmp/handcam
 func _init():call_deferred("run")
 func run():
-	root.size=Vector2i(360,240)
+	root.size=Vector2i(int(OS.get_environment("PX")) if OS.get_environment("PX")!="" else 360,(int(OS.get_environment("PX")) if OS.get_environment("PX")!="" else 360)*2/3)
 	var out=OS.get_environment("OUT") if OS.get_environment("OUT")!="" else "res://tmp/handcam";DirAccess.make_dir_recursive_absolute(out)
 	var world=Node3D.new();root.add_child(world)
 	var env=WorldEnvironment.new();var e=Environment.new();e.background_mode=Environment.BG_COLOR;e.background_color=Color(.2,.22,.25);e.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;e.ambient_light_color=Color(.6,.6,.62);e.ambient_light_energy=.6;env.environment=e;world.add_child(env)
