@@ -37,6 +37,7 @@ func run():
 		var ap: AnimationPlayer=_find(m,"AnimationPlayer")
 		if OS.get_environment("KIND")!="":   # clip costruite (scripts/gestures.gd): KIND=one|shield|dual|two|none, SFX=" 2h"
 			var gs=load("res://scripts/gestures.gd").new();var sfx=OS.get_environment("SFX")
+			gs.guard_ctrl=b3.GUARD_POSE.get(cid,{})
 			if gs.setup(m,ap,OS.get_environment("KIND"),"In guardia"+sfx):gs.build(ap,90.0,sfx);print(cid," tipo ",gs.kind," asse ",gs.axisR," ",gs.axisL)
 			else:print("niente gesti per ",cid)
 		if OS.get_environment("LIST")!="":print(cid," CLIPS ",ap.get_animation_list())

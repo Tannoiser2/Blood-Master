@@ -28,6 +28,7 @@ var chest:=Vector3.ZERO             # centro delle spalle nella posa di guardia
 var axisR:=Vector3.ZERO             # direzione della lama nell'osso della mano destra (zero: mano vuota)
 var axisL:=Vector3.ZERO
 var kind:="one"                     # one, shield, dual, two, none
+var guard_ctrl:={}                  # guardia ridisegnata (comandi come in solve); vuoto: quella della clip di libreria
 var guard:=[]                       # posa di guardia (trasformazioni locali)
 var guard_g:=[]                     # la stessa, globale
 var left_rel:=Transform3D()         # mano sinistra rispetto alla destra (armi a due mani: resta sull'asta)
@@ -54,6 +55,8 @@ func setup(model: Node3D,ap: AnimationPlayer,weapon_kind: String,guard_clip: Str
 	if kind in ["one","shield","two","dual"] and axisR==Vector3.ZERO:kind="none"
 	if kind=="dual" and axisL==Vector3.ZERO:kind="one"
 	left_rel=guard_g[idx.RightHand].affine_inverse()*guard_g[idx.LeftHand]
+	if not guard_ctrl.is_empty():   # la presa a due mani resta misurata sulla clip; la guardia diventa quella ridisegnata
+		guard=solve(guard,guard_ctrl);guard_g=globals(guard)
 	return true
 
 ## direzione dell'arma nello spazio dell'osso che la tiene (dall'impugnatura verso la punta)
@@ -510,6 +513,8 @@ func build(ap: AnimationPlayer,step_dist: float,sfx:="") -> void:
 	var lib=AnimationLibrary.new()
 	var add=func(name: String,a: Animation):lib.add_animation(name,a)
 	var armed=kind in ["one","shield","dual","two"]
+	if not guard_ctrl.is_empty():   # guardia ridisegnata, con un respiro appena accennato
+		add.call("In guardia",bake([[0.0,{"hips":Vector3.ZERO}],[.5,{"hips":Vector3(0,-.012,0),"lean":1.5}],[1.0,{"hips":Vector3.ZERO}]],2.4,{},true))
 	if armed:
 		var cut=k_cut_right()
 		add.call("Colpo destro",bake(cut,CUT_LEN,{"impact":CUT_LEN*.5,"sweep":[CUT_LEN*.36,CUT_LEN*.62],"side":-1.0}))

@@ -56,6 +56,9 @@ const KICKS=["Calcio","Sgambetto","Calcio volante"]
 # come combatte ogni corpo: una mano, con lo scudo, due armi, arma a due mani, mani nude
 const KIND_BY_LOOK={"gascor":"shield","anteos":"shield","skelos":"shield","sketos":"shield","ut":"two","nuchra":"two","shannon":"two","ramok":"two","zenyo":"two",
 	"kylvia":"one","zak":"one","gandy":"one","sanguinaria":"one","shaara":"none","thorn":"none"}
+# guardie ridisegnate. Nuchra: l'ascia in una mano sola, testa in alto sopra la spalla destra, la sinistra libera
+# e avanzata (la guardia di libreria la stringeva al petto con due mani); per colpire la riprende a due mani.
+const GUARD_POSE={"nuchra":{"twist":12.0,"R":[72.0,.52,-.52,100.0,66.0],"L":[-30.0,.58,-.72,-10.0,-40.0]}}
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","parry_counter","dodge","guard"]
@@ -472,6 +475,7 @@ func build_gestures(info: Dictionary,def: Dictionary) -> void:
 	if kind=="" or ap==null or info.get("spirit",false) or info.get("model")==null:return
 	var sfx=str(info.get("sfx",""))
 	var g=Gestures.new()
+	g.guard_ctrl=GUARD_POSE.get(str(def.get("look",def.get("id",""))),{})
 	if not g.setup(info.model,ap,kind,"In guardia"+sfx if ap.has_animation("In guardia"+sfx) else "In guardia"):return
 	var unit=g.sk.global_transform.basis.get_scale().y if g.sk.is_inside_tree() else .0058
 	g.build(ap,hex_step()/maxf(unit,.0001)*.5,sfx)
