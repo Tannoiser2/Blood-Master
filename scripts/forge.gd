@@ -146,7 +146,7 @@ static func build_all(t0: Dictionary) -> Dictionary:
 	if car=="prudente":mv.guard.defense-=1;mv.guard.secondary-=1
 	if car=="astuto":mv.advance.green=[4,5,0,1,2]
 	var tex_from: String=LOOK[arma]
-	for m in mv.values():m.texture="res://assets/tokens/%s_%s.webp"%[tex_from,m.id]
+	for m in mv.values():m.texture=token_art(tex_from,str(m.id));m.drawn=true   # i valori sono i suoi, non quelli stampati: la pedina si disegna
 	# magie scelte (Intelligenza − 1 al massimo): stesse pedine dei maghi, difesa riportata sul corpo dell'eroe
 	var spells: Array=t.get("spells",[]).slice(0,maxi(0,I-1))
 	if not spells.is_empty():
@@ -173,6 +173,19 @@ static func build_all(t0: Dictionary) -> Dictionary:
 	return {"id":id,"name":str(t.name),"title":str(t.title),"kind":"forged","team":int(t.get("team",-1)),"size":size,"hp":hp,
 		"sprint":sprint,"armor":ARMOR_RANGE[arm],"recovery":rec,"sprints":sprints,"card":"res://assets/cards/%s.webp"%tex_from,
 		"mage":not spells.is_empty(),"magic_base":I+1,"look":body_for(t),"dress":dress_for(t,size),"reach":arma in ["lancia","bastone"],"traits":t,"moves":mv}
+## disegno della pedina: quello del personaggio a cui somiglia; se non ha quella pedina (doppio colpo, finta,
+## contrattacco, sgambetto, colpo di scudo, rotazione...) quello di un altro personaggio, o della mossa più vicina.
+## Prima queste pedine restavano senza immagine: in partita il loro posto nel nido d'ape era vuoto.
+const ART_NEAR={"double":["right","thrust"],"parry_counter":["parry_r"],"feint":["thrust","right"],"trip":["kick","sweep"],"bash":["kick","charge"],"spin":["sweep","right"],"sweep":["right"],"meditate":["guard"]}
+static func token_art(look: String,id: String) -> String:
+	var tries=[look+"_"+id]
+	for other in OFFICIAL:tries.append(other+"_"+id)
+	for near in ART_NEAR.get(id,[]):tries.append(look+"_"+near)
+	tries.append(look+"_guard")
+	for t in tries:
+		var p="res://assets/tokens/%s.webp"%t
+		if ResourceLoader.exists(p):return p
+	return "res://assets/tokens/%s_guard.webp"%look
 ## il personaggio giocabile: senza le pedine spente
 static func build(t0: Dictionary) -> Dictionary:
 	var d=build_all(t0)
@@ -339,7 +352,8 @@ static func points(def: Dictionary) -> float:
 	var sp=0.0
 	for k in def.moves:
 		if def.moves[k].get("spell",false):sp+=float(SPELL_POINTS.get(k,10))
-	return 100.0+50.0*(logit(features(def))-_base_logit)+(sp if def.get("kind","")=="forged" else 0.0)
+	# un eroe debolissimo (tutte le caratteristiche a 1) scendeva sotto zero: il valore non va mai sotto 1 punto
+	return maxf(1.0,100.0+50.0*(logit(features(def))-_base_logit)+(sp if def.get("kind","")=="forged" else 0.0))
 const BUDGET=100.0
 
 # ------------------------------------------------------------------ modifiche a mano e salvataggio
@@ -347,7 +361,8 @@ const BUDGET=100.0
 ##          "imb":n o -1 (nessuno), "rest":bool, "red":[...], "green":[...], "blue":[...]}}}  (valori assoluti)
 static func apply_edits(def: Dictionary,edits: Dictionary) -> Dictionary:
 	var d=def.duplicate(true)
-	d.hp=maxi(4,int(d.hp)+int(edits.get("hp",0)))
+	d.hp=int(d.hp)+int(edits.get("hp",0))
+	if int(edits.get("hp",0))!=0 or str(d.get("kind",""))=="forged":d.hp=maxi(4,int(d.hp))   # lo spirito (ferite a dado) resta com'è
 	var me: Dictionary=edits.get("moves",{})
 	for id in me:
 		if not d.moves.has(id):continue
@@ -371,12 +386,87 @@ static func apply_edits(def: Dictionary,edits: Dictionary) -> Dictionary:
 				if c=="blue" and had_blue:m.defense=int(m.defense)+diff
 				m[c]=nw
 		if e.has("multi") and m.attack!=null:m.multi=bool(e.multi)
+		if e.has("off") and bool(e.off):d.moves.erase(id);continue   # pedina tolta (varianti dei personaggi del gioco)
 		if e.has("riposte") and int(m.get("riposte",0))>0:m.riposte=maxi(1,int(m.riposte)+int(e.riposte))
 		if e.has("secondary") and not m.blue.is_empty():m.secondary=int(m.secondary)+int(e.secondary)
 		if m.blue.is_empty():m.secondary=m.defense   # senza lati blu la difesa è una sola
 		if int(m.fatigue)>0:m.rest=false   # col pallino nero (fatica) niente pallino bianco (riposo)
 	d.edits=edits.duplicate(true)
 	return d
+# ------------------------------------------------------------------ regole di costruzione delle pedine
+## Controlla che ogni pedina rispetti le regole con cui sono fatte quelle originali. Restituisce l'elenco dei problemi
+## (vuoto se è tutto a posto): la forgia lo mostra e i test lo applicano al cast ufficiale e a tutti gli eroi possibili.
+##  · lati fra 0 e 5, ognuno una volta sola per colore
+##  · un attacco ha almeno un lato rosso (da dove colpisce) e un valore d'attacco; chi non attacca non ha lati rossi
+##  · una parata ha almeno un lato blu; senza lati blu la difesa è una sola (uguale su tutti i lati)
+##  · sui lati blu la difesa è migliore (più bassa) o uguale a quella degli altri lati
+##  · fatica da 0 a 3, e mai insieme al riposo (pallino nero e pallino bianco non stanno sulla stessa pedina)
+##  · sbilanciamento solo sugli attacchi, da 0 a 6
+##  · avanzare, correre e caricare hanno lati verdi; colpo destro/sinistro e parata destra/sinistra sono speculari
+##  · il contrattacco ha lati blu; il doppio colpo vuole due armi; il colpo di scudo vuole lo scudo
+static func validate(def: Dictionary) -> Array:
+	var out=[];var mv: Dictionary=def.moves
+	var mir=func(l: Array):
+		var r=l.map(func(v):return posmod(6-int(v),6));r.sort();return r
+	for id in mv:
+		var m=mv[id];var nm=str(m.get("name",id));var spell=bool(m.get("spell",false))
+		for c in ["red","green","blue"]:
+			var seen={}
+			for s in m.get(c,[]):
+				if int(s)<0 or int(s)>5:out.append("%s: lato %d fuori dall'esagono"%[nm,int(s)])
+				if seen.has(int(s)):out.append("%s: lato %d ripetuto"%[nm,int(s)])
+				seen[int(s)]=true
+		if spell:continue
+		if m.attack!=null and m.red.is_empty():out.append("%s: attacca ma non ha lati rossi"%nm)
+		if m.attack==null and not m.red.is_empty():out.append("%s: ha lati rossi ma nessun valore d'attacco"%nm)
+		if m.blue.is_empty() and int(m.secondary)!=int(m.defense):out.append("%s: senza lati blu la difesa dev'essere una sola"%nm)
+		if not m.blue.is_empty() and int(m.secondary)<int(m.defense):out.append("%s: sui lati blu para peggio che sugli altri"%nm)
+		if str(id).begins_with("parry") and m.blue.is_empty():out.append("%s: una parata ha bisogno di almeno un lato blu"%nm)
+		if int(m.fatigue)<0 or int(m.fatigue)>3:out.append("%s: fatica fuori scala"%nm)
+		if int(m.fatigue)>0 and bool(m.get("rest",false)):out.append("%s: fatica e riposo sulla stessa pedina"%nm)
+		if m.get("imbalance")!=null and m.attack==null:out.append("%s: sbilancia senza attaccare"%nm)
+		if m.get("imbalance")!=null and (int(m.imbalance)<0 or int(m.imbalance)>6):out.append("%s: sbilanciamento fuori scala"%nm)
+		if id in ["advance","run","charge"] and m.green.is_empty():out.append("%s: senza lati verdi non si muove"%nm)
+		if int(m.get("riposte",0))>0 and m.blue.is_empty():out.append("%s: il contrattacco scatta solo dai lati blu"%nm)
+	for pair in [["right","left"],["parry_r","parry_l"]]:
+		if mv.has(pair[0]) and mv.has(pair[1]):
+			var a=mv[pair[0]];var b=mv[pair[1]]
+			for c in ["red","blue","green"]:
+				var bs=b[c].map(func(v):return int(v));bs.sort()
+				if mir.call(a[c])!=bs:out.append("%s e %s non sono speculari (lati %s)"%[str(a.name),str(b.name),{"red":"rossi","blue":"blu","green":"verdi"}[c]])
+	var dr: Dictionary=def.get("dress",{})
+	if mv.has("double") and not dr.is_empty() and str(dr.get("off",""))!="spada":out.append("Doppio colpo: servono due armi")
+	if mv.has("bash") and not dr.is_empty() and not str(dr.get("off","")).begins_with("scudo"):out.append("Colpo di scudo: serve lo scudo")
+	return out
+
+# ------------------------------------------------------------------ varianti dei personaggi del gioco
+## Una versione alternativa di un personaggio ufficiale: stesse pedine, stesso corpo e stesse regole speciali,
+## con i ritocchi fatti nella forgia. Si salva accanto agli eroi forgiati e si sceglie come loro.
+static func official(base_id: String) -> Dictionary:
+	var d=_catalog().get(base_id,{}).duplicate(true)
+	if d.is_empty():return d
+	for m in d.moves.values():
+		for f in ["red","green","blue"]:m[f]=m[f].map(func(v):return int(v))
+		for f in ["defense","secondary","fatigue"]:m[f]=int(m[f])
+		if m.attack!=null:m.attack=int(m.attack)
+		if m.get("imbalance")!=null:m.imbalance=int(m.imbalance)
+	d.hp=int(d.hp);d.size=int(d.size);d.sprint=int(d.sprint)
+	return d
+static func build_variant(base_id: String,info: Dictionary,edits: Dictionary) -> Dictionary:
+	var base=official(base_id)
+	if base.is_empty():return base
+	var d=apply_edits(base,edits)
+	d.id=str(info.get("id","")) if str(info.get("id",""))!="" else "var_%s"%base_id
+	d.name=str(info.get("name",base.name));d.title=str(info.get("title",base.title))
+	d.variant_of=base_id;d.look=base_id;d.custom=true
+	if base_id in BloodRules.SPEARS:d.reach=true   # l'arma lunga resta lunga anche col nome nuovo
+	var changed: Dictionary=edits.get("moves",{})
+	for id in d.moves:
+		if changed.has(id):d.moves[id].drawn=true   # valori diversi da quelli stampati: pedina disegnata
+	return d
+static func is_custom(def: Dictionary) -> bool:
+	return str(def.get("kind",""))=="forged" or bool(def.get("custom",false))
+
 ## quale colore di lato si modifica su questa pedina: rosso (attacchi), verde (movimenti), blu (parate)
 static func side_kind(m: Dictionary) -> String:
 	if not m.blue.is_empty():return "blue"
@@ -391,7 +481,10 @@ static func load_saved() -> Dictionary:
 	var out={}
 	for id in d:
 		var h=d[id]
-		if h is Dictionary and h.has("traits"):
+		if h is Dictionary and h.has("base"):   # variante di un personaggio del gioco
+			var v=build_variant(str(h.base),{"id":id,"name":h.get("name",""),"title":h.get("title","")},h.get("edits",{}))
+			if not v.is_empty():out[id]=v
+		elif h is Dictionary and h.has("traits"):
 			var t=migrate(h.traits);t.id=id;out[id]=apply_edits(build(t),h.get("edits",{}))
 	return out
 static func save_hero(def: Dictionary) -> void:
@@ -399,7 +492,8 @@ static func save_hero(def: Dictionary) -> void:
 	if FileAccess.file_exists(SAVE):
 		var d=JSON.parse_string(FileAccess.get_file_as_string(SAVE))
 		if d is Dictionary:all=d
-	all[def.id]={"traits":def.traits,"edits":def.get("edits",{})}
+	if def.has("variant_of"):all[def.id]={"base":def.variant_of,"name":def.name,"title":def.title,"edits":def.get("edits",{})}
+	else:all[def.id]={"traits":def.traits,"edits":def.get("edits",{})}
 	var f=FileAccess.open(SAVE,FileAccess.WRITE)
 	if f:f.store_string(JSON.stringify(all))
 static func delete_hero(id: String) -> void:

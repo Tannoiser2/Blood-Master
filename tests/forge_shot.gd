@@ -1,5 +1,6 @@
 extends SceneTree
-# Schermata della forgia: W e H dall'ambiente; ARMA, EDIT=1 per qualche ritocco, MENU=1 per il menu con un eroe salvato
+# Schermata della forgia: W e H dall'ambiente; ARMA, EDIT=1 per qualche ritocco, MENU=1 per il menu con un eroe salvato;
+# BASE=gascor apre un personaggio del gioco (pedine e valori), VAR=1 lo ritocca e salva la variante
 func _init() -> void:call_deferred("run")
 func run() -> void:
 	var w=int(OS.get_environment("W")) if OS.get_environment("W")!="" else 1440
@@ -7,8 +8,10 @@ func run() -> void:
 	root.size=Vector2i(w,h)
 	var scene=load("res://scenes/main.tscn").instantiate();root.add_child(scene)
 	await create_timer(1).timeout
-	scene._show_forge()
+	scene._show_forge(OS.get_environment("BASE"))
 	var f=scene.page.get_child(0)
+	if OS.get_environment("VAR")=="1":
+		f._edit("thrust","attack",2);f._edit("parry_r","defense",-1);f._toggle_token("kick");f.var_info.name="Gascor il Rosso";f._rebuild(true);f._save()
 	if OS.get_environment("ARMA")!="":f._set_trait("arma",OS.get_environment("ARMA"),true)
 	if OS.get_environment("EDIT")=="1":
 		f._edit("cleave","fatigue",1);f._edit("cleave","attack",2);f._edit("thrust","defense",-1);f.brush="green";f._side("thrust",3)

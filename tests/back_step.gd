@@ -1,5 +1,5 @@
 extends SceneTree
-# Schivata all'indietro: il corpo resta rivolto in avanti e la camminata va a ritroso
+# Passo all'indietro: il corpo resta rivolto in avanti e fa il passo indietro costruito (g/Passo 3), senza voltarsi
 func _init():call_deferred("run")
 func run():
 	var main=load("res://scenes/main.tscn").instantiate();root.add_child(main)
@@ -19,9 +19,9 @@ func run():
 	var neg=0;var maxturn=0.0
 	for k in 12:
 		await create_timer(dur/12.0).timeout
-		if info.ap.speed_scale<0:neg+=1
+		if str(info.ap.current_animation)=="g/Passo 3":neg+=1
 		maxturn=maxf(maxturn,absf(angle_difference(y0,info.pivot.rotation.y)))
-	print("campioni all'indietro ",neg,"/12  rotazione massima ",snappedf(rad_to_deg(maxturn),1)," gradi")
-	assert(neg>=6 and rad_to_deg(maxturn)<20,"non cammina all'indietro")
-	print("BACK STEP OK")
-	quit()
+	print("campioni col passo indietro ",neg,"/12  rotazione massima ",snappedf(rad_to_deg(maxturn),1)," gradi")
+	var good=neg>=6 and rad_to_deg(maxturn)<20
+	print("BACK STEP OK" if good else "FALLITO: non fa il passo all'indietro")
+	quit(0 if good else 1)

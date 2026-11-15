@@ -26,6 +26,8 @@ jobs:
         run: |
           /tmp/godot-bin/Godot_v4.7-stable_linux.x86_64 --headless --path . --editor --import --quit
           /tmp/godot-bin/Godot_v4.7-stable_linux.x86_64 --headless --path . --script tests/rules_test.gd
+          /tmp/godot-bin/Godot_v4.7-stable_linux.x86_64 --headless --path . --script tests/forge_rules.gd
+          pip install --quiet fonttools && python3 tools/check_glyphs.py
           mkdir -p build/web
           /tmp/godot-bin/Godot_v4.7-stable_linux.x86_64 --headless --path . --export-release Web build/web/index.html
           test -s build/web/index.pck

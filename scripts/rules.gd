@@ -218,7 +218,7 @@ func new_game(roster: Array,scenario: String="frontale",seed_n: int=1,magic: int
 	# eroi forgiati: la loro scheda viaggia con la partita (salvataggi, partite online)
 	var forged={}
 	for cfg in roster:
-		if catalog.has(cfg.character) and str(catalog[cfg.character].get("kind",""))=="forged":forged[cfg.character]=catalog[cfg.character].duplicate(true)
+		if catalog.has(cfg.character) and BloodForge.is_custom(catalog[cfg.character]):forged[cfg.character]=catalog[cfg.character].duplicate(true)   # eroi forgiati e varianti
 	if not forged.is_empty():state.custom_defs=forged
 	for i in roster.size():
 		var cfg=roster[i];var d=catalog[cfg.character]

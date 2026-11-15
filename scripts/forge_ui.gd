@@ -59,20 +59,28 @@ var test_label: Label
 var testing:=false
 var brush:="red"
 var on_close: Callable
+var base_id:=""                 # personaggio del gioco aperto nella forgia: si guardano le sue pedine e se ne salva una variante
+var var_info:={}                # nome, titolo e id della variante
 const HIDDEN=["again","unbalanced","down","rise"]   # pedine di stato: non si modificano
 
 func setup(main_ui,hero_id: String="") -> void:
 	ui=main_ui
 	traits=BloodForge.default_traits()
-	if hero_id!="" and ui.game.catalog.has(hero_id) and ui.game.catalog[hero_id].has("traits"):
-		traits=BloodForge.migrate(ui.game.catalog[hero_id].traits);traits.id=hero_id
-		edits=ui.game.catalog[hero_id].get("edits",{"hp":0,"moves":{}}).duplicate(true)
+	_load_hero(hero_id)
 	size_flags_vertical=Control.SIZE_EXPAND_FILL;size_flags_horizontal=Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation",8)
 	var head=HBoxContainer.new();add_child(head)
-	head.add_child(ui.button("‹ Indietro",func():on_close.call()))
+	head.add_child(ui.button("Indietro",func():on_close.call()))
 	head.add_child(ui.label("LA FORGIA DEGLI EROI",22,ui.GOLD))
-	var sub=ui.label("Le caratteristiche calcolano le pedine; poi ritocca ogni valore e ogni lato, restando nel budget.",13,ui.MUTED);head.add_child(sub)
+	head.add_child(ui.spacer())
+	# i personaggi del gioco: si aprono per vedere ogni pedina con i suoi valori e il valore totale, e per farne una variante
+	var pick=OptionButton.new();pick.add_theme_font_size_override("font_size",13);pick.add_item("Apri un personaggio del gioco")
+	var officials=ui.game.catalog.keys().filter(func(k):return not BloodForge.is_custom(ui.game.catalog[k]) and not str(ui.game.catalog[k].kind) in ["golem","skeleton"])
+	for id in officials:pick.add_item("%s · %s"%[str(ui.game.catalog[id].name),str(ui.game.catalog[id].title)])
+	pick.item_selected.connect(func(n):
+		if n>0:_load_hero(officials[n-1]);_rebuild(true))
+	pick.tooltip_text="Mostra le pedine di un personaggio del gioco con tutti i valori; ritoccale e salva una variante";head.add_child(pick)
+	head.add_child(ui._bar_button("Nuovo eroe",func():_load_hero("");traits=BloodForge.default_traits();_rebuild(true),"Ricomincia da un eroe nuovo, costruito dalle caratteristiche"))
 	var cols=HBoxContainer.new();cols.size_flags_vertical=Control.SIZE_EXPAND_FILL;cols.add_theme_constant_override("separation",10);add_child(cols)
 	var lv=ui.panel_content(cols,10);lv.get_parent().get_parent().custom_minimum_size.x=340
 	_make_preview(lv)
@@ -82,6 +90,21 @@ func setup(main_ui,hero_id: String="") -> void:
 	var bp=ui.panel_content(self,8);band=HBoxContainer.new();band.add_theme_constant_override("separation",14);bp.add_child(band)
 	_rebuild(true)
 
+## apre un eroe forgiato, una variante salvata o un personaggio del gioco (vuoto: eroe nuovo)
+func _load_hero(hero_id: String) -> void:
+	base_id="";var_info={};edits={"hp":0,"moves":{}};selected_id="guard"
+	if hero_id=="" or not ui.game.catalog.has(hero_id):return
+	var c: Dictionary=ui.game.catalog[hero_id]
+	if c.has("traits"):
+		traits=BloodForge.migrate(c.traits);traits.id=hero_id
+		edits=c.get("edits",{"hp":0,"moves":{}}).duplicate(true)
+	elif c.has("variant_of"):
+		base_id=str(c.variant_of);var_info={"id":hero_id,"name":str(c.name),"title":str(c.title)}
+		edits=c.get("edits",{"hp":0,"moves":{}}).duplicate(true)
+	elif not str(c.kind) in ["golem","skeleton"]:
+		base_id=hero_id;var_info={"id":"","name":str(c.name)+" II","title":str(c.title)}
+	if not edits.has("moves"):edits["moves"]={}
+	if not edits.has("hp"):edits["hp"]=0
 func _scroll_panel(parent: Node,width: float) -> VBoxContainer:
 	var v=ui.panel_content(parent,10)
 	var panel=v.get_parent().get_parent()
@@ -101,8 +124,47 @@ func _set_trait(k: String,v,reset_edits:=false) -> void:
 	traits[k]=v
 	if reset_edits:edits={"hp":0,"moves":{}}   # arma nuova: le pedine ripartono da quelle calcolate
 	_rebuild(true)
+func _sheet_base() -> void:
+	# personaggio del gioco: nome della variante, i suoi numeri e, in chiaro, tutte le pedine con ogni valore
+	var b: Dictionary=BloodForge.official(base_id)
+	var top=HBoxContainer.new();sheet.add_child(top)
+	var names=VBoxContainer.new();names.size_flags_horizontal=Control.SIZE_EXPAND_FILL;top.add_child(names)
+	names.add_child(ui.label("NOME DELLA VARIANTE",11,ui.GOLD))
+	var nm=LineEdit.new();nm.text=str(var_info.get("name",""));nm.text_changed.connect(func(t):var_info.name=t);names.add_child(nm)
+	names.add_child(ui.label("TITOLO",11,ui.GOLD))
+	var tt=LineEdit.new();tt.text=str(var_info.get("title",""));tt.text_changed.connect(func(t):var_info.title=t);names.add_child(tt)
+	var fp="res://assets/ui/faces/%s.webp"%base_id
+	var fr=PanelContainer.new();var fs=ui.box(Color(0,0,0,.4),4);fs.set_border_width_all(2);fs.border_color=ui.GOLD.darkened(.2);fr.add_theme_stylebox_override("panel",fs);top.add_child(fr)
+	var face=TextureRect.new();face.texture=load(fp) if ResourceLoader.exists(fp) else null;face.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;face.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;face.custom_minimum_size=Vector2(92,92);fr.add_child(face)
+	sheet.add_child(ui.wrap_label("%s · %s è un personaggio del gioco. Qui a destra ci sono tutte le sue pedine con ogni valore; ritocca quello che vuoi e salva una variante: l'originale non cambia mai."%[str(b.name),str(b.title)],13,ui.MUTED,280))
+	var orig=BloodForge.points(b);var now=BloodForge.points(def)
+	sheet.add_child(ui.label("VALORE TOTALE",12,ui.GOLD))
+	sheet.add_child(ui.wrap_label("%s originale: %d punti%s  ·  100 è la media dei guerrieri del gioco"%[str(b.name),roundi(orig),("  ·  questa variante: %d punti (%+d)"%[roundi(now),roundi(now)-roundi(orig)]) if absf(now-orig)>.5 else ""],13,ui.INK,280))
+	sheet.add_child(ui.label("IL PERSONAGGIO",12,ui.GOLD))
+	sheet.add_child(ui.wrap_label("Stazza %d · Ferite %d · Sprint %d · Armatura %s%s"%[int(def.size),int(def.hp),int(def.sprint),("%d-%d"%[def.armor[0],def.armor[1]]) if not def.armor.is_empty() else "nessuna",(" · Mago, magia iniziale 5 + un dado") if bool(def.get("mage",false)) else ""],13,ui.INK,280))
+	# tutte le pedine in tabella: attacco, difesa (lati blu / altri lati), fatica, sbilanciamento, riposo, lati
+	sheet.add_child(ui.label("TUTTE LE PEDINE · %d"%def.moves.size(),12,ui.GOLD))
+	var g=GridContainer.new();g.columns=5;g.add_theme_constant_override("h_separation",8);g.add_theme_constant_override("v_separation",1);sheet.add_child(g)
+	for h in ["Pedina","Att.","Dif.","Fat.","Sbil."]:g.add_child(ui.label(h,11,ui.MUTED))
+	var side_txt=func(l: Array):return ",".join(l.map(func(x):return ["fronte","fronte-destra","dietro-destra","dietro","dietro-sinistra","fronte-sinistra"][int(x)]))
+	for id in def.moves:
+		var m: Dictionary=def.moves[id]
+		var changed=edits.get("moves",{}).has(id)
+		var nl=ui.label(str(m.name),12,ui.GOLD if changed else ui.INK);nl.clip_text=true;nl.custom_minimum_size.x=124
+		var tip=[]
+		if not m.red.is_empty():tip.append("Colpisce: "+side_txt.call(m.red))
+		if not m.green.is_empty():tip.append("Si muove: "+side_txt.call(m.green))
+		if not m.blue.is_empty():tip.append("Para: "+side_txt.call(m.blue))
+		if bool(m.get("rest",false)):tip.append("Recupera fatica a fine turno")
+		if m.get("spell",false):tip.append("Magia: valore %d, costo %d"%[int(m.get("value",0)),int(m.get("cost",0))])
+		nl.tooltip_text="\n".join(tip);nl.mouse_filter=Control.MOUSE_FILTER_PASS;g.add_child(nl)
+		g.add_child(ui.label(str(int(m.attack)) if m.attack!=null else "/",12,ui.INK))
+		g.add_child(ui.label(("%d/%d"%[int(m.defense),int(m.secondary)]) if not m.blue.is_empty() else str(int(m.defense)),12,ui.INK))
+		g.add_child(ui.label(str(int(m.fatigue)),12,ui.INK))
+		g.add_child(ui.label(("+%d"%int(m.imbalance)) if m.get("imbalance")!=null else "no",12,ui.INK))
 func _sheet() -> void:
 	ui.clear(sheet)
+	if base_id!="":_sheet_base();return
 	var top=HBoxContainer.new();sheet.add_child(top)
 	var names=VBoxContainer.new();names.size_flags_horizontal=Control.SIZE_EXPAND_FILL;top.add_child(names)
 	names.add_child(ui.label("NOME",11,ui.GOLD))
@@ -167,6 +229,14 @@ func _toggle_spell(sid: String,v: bool) -> void:
 
 # ------------------------------------------------------------------ pedine a nido d'ape
 func _rebuild(full: bool) -> void:
+	if base_id!="":   # variante di un personaggio del gioco
+		def=BloodForge.build_variant(base_id,var_info,edits)
+		var keep=edits.duplicate(true)
+		for id in keep.moves:keep.moves[id].erase("off")
+		all_def=BloodForge.build_variant(base_id,var_info,keep)   # con anche le pedine tolte (si possono rimettere)
+		base_points=BloodForge.points(BloodForge.official(base_id))
+		if full or true:_sheet()
+		_comb();_band();_update_preview();return
 	var base=BloodForge.build(traits)
 	base_points=BloodForge.points(base)
 	def=BloodForge.apply_edits(base,edits)
@@ -175,7 +245,9 @@ func _rebuild(full: bool) -> void:
 	_comb();_band();_update_preview()
 func _edit(id: String,field: String,value,absolute:=false) -> void:
 	var me: Dictionary=edits.get("moves",{});var e: Dictionary=me.get(id,{})
-	if absolute:e[field]=value
+	if absolute:
+		e[field]=value
+		if field=="off" and not bool(value):e.erase(field)
 	else:
 		e[field]=int(e.get(field,0))+int(value)
 		if int(e[field])==0:e.erase(field)
@@ -188,6 +260,8 @@ func _side(id: String,s: int) -> void:
 	else:list.append(s)
 	list.sort();_edit(id,brush,list,true)
 func _toggle_token(id: String) -> void:
+	if base_id!="":   # personaggio del gioco: la pedina si toglie (o si rimette) nella variante
+		_edit(id,"off",not bool(edits.get("moves",{}).get(id,{}).get("off",false)),true);return
 	if id in BloodForge.EXTRA_IDS and not all_def.moves[id].get("native",false):   # pedine in più: spente finché non le accendi
 		var on_list: Array=traits.get("on",[]).duplicate()
 		if id in on_list:on_list.erase(id)
@@ -223,13 +297,14 @@ func _cell(parent: Node,label: String,value: String,minus: Callable,plus: Callab
 	var c=VBoxContainer.new();c.add_theme_constant_override("separation",-2);c.tooltip_text=tip;c.mouse_filter=Control.MOUSE_FILTER_PASS;parent.add_child(c)
 	var l=ui.label(label,9,ui.MUTED);l.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;c.add_child(l)
 	var r=HBoxContainer.new();r.add_theme_constant_override("separation",1);r.alignment=BoxContainer.ALIGNMENT_CENTER;c.add_child(r)
-	r.add_child(_tiny("−",minus,tip))
+	r.add_child(_tiny("-",minus,tip))
 	var v=ui.label(value,17,ui.INK);v.custom_minimum_size.x=24;v.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;r.add_child(v)
 	r.add_child(_tiny("+",plus,tip))
 func _line(parent: Node) -> HBoxContainer:
 	var h=HBoxContainer.new();h.alignment=BoxContainer.ALIGNMENT_CENTER;h.add_theme_constant_override("separation",5);parent.add_child(h);return h
 func _hex_for(id: String,R: float) -> Control:
 	var m: Dictionary=all_def.moves[id];var opt=not id in BloodForge.BASE_IDS;var on=BloodForge.is_on(traits,id) or bool(m.get("native",false)) and not id in traits.get("off",[])
+	if base_id!="":on=def.moves.has(id);opt=not id in ["advance","guard"]
 	var hx=TokenHex.new(R);hx.m=m;hx.on=on
 	hx.side_clicked.connect(func(s):_side(id,s))
 	hx.selected=id==selected_id;hx.picked.connect(func():_pick(id))
@@ -237,19 +312,23 @@ func _hex_for(id: String,R: float) -> Control:
 	hx.set_content(v)
 	var title=_line(v)
 	var nm=ui.label(str(m.name),11,ui.GOLD if on else ui.MUTED);nm.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;title.add_child(nm)
-	if opt:title.add_child(_tiny("✓" if on else "+",func():_toggle_token(id),"Pedina attiva: clic per toglierla" if on else "Pedina spenta: clic per aggiungerla"))
+	if opt:   # spunta disegnata se la pedina c'è, più se è spenta
+		var tg=_tiny("",func():_toggle_token(id),"Pedina attiva: tocca per toglierla" if on else "Pedina spenta: tocca per aggiungerla");tg.custom_minimum_size=Vector2(17,17)
+		tg.draw.connect(func():ui._draw_icon(tg,"check" if on else "plus",ui.INK));title.add_child(tg)
 	if on:
 		var blue=not m.blue.is_empty()
 		var l1=_line(v)
+		if m.get("spell",false):
+			var sl=ui.label("magia %d · costo %d"%[int(m.get("value",0)),int(m.get("cost",0))],10,Color("8fb8ff"));sl.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;v.add_child(sl)
 		if m.attack!=null and id!="shoot":_cell(l1,"ATTACCO",str(m.attack),func():_edit(id,"attack",-1),func():_edit(id,"attack",1),"Valore d'attacco (ogni lato rosso in più lo abbassa di 1)")
 		_cell(l1,"DIFESA BLU" if blue else "DIFESA",str(m.defense),func():_edit(id,"defense",-1),func():_edit(id,"defense",1),"Difesa: più bassa è meglio"+(" (sui lati blu; ogni lato blu in più la peggiora di 1)" if blue else ""))
 		if blue:_cell(l1 if m.attack==null or id=="shoot" else _line(v),"ALTRI LATI",str(m.secondary),func():_edit(id,"secondary",-1),func():_edit(id,"secondary",1),"Difesa sugli altri lati")
 		if int(m.get("riposte",0))>0:_cell(_line(v),"CONTRATTACCO",str(m.riposte),func():_edit(id,"riposte",-1),func():_edit(id,"riposte",1),"Dopo aver parato colpisce l'attaccante con questo valore")
 		if m.attack!=null:
 			var l2=_line(v)
-			_cell(l2,"FATICA","●".repeat(int(m.fatigue)) if int(m.fatigue)>0 else "0",func():_edit(id,"fatigue",-1),func():_edit(id,"fatigue",1),"Pallini neri: il colpo stanca, ogni punto di fatica toglie 1 all'attacco e alla difesa finché non si riposa")
+			_cell(l2,"FATICA",str(int(m.fatigue)),func():_edit(id,"fatigue",-1),func():_edit(id,"fatigue",1),"Pallini neri: il colpo stanca, ogni punto di fatica toglie 1 all'attacco e alla difesa finché non si riposa")
 			var iv=int(m.imbalance) if m.imbalance!=null else -1
-			_cell(l2,"SBILANCIA",str(iv) if iv>=0 else "–",func():_edit(id,"imb",maxi(-1,iv-1),true),func():_edit(id,"imb",mini(6,iv+1),true),"Sbilanciamento: modificatore sulla tabella (con la stazza)")
+			_cell(l2,"SBILANCIA",str(iv) if iv>=0 else "no",func():_edit(id,"imb",maxi(-1,iv-1),true),func():_edit(id,"imb",mini(6,iv+1),true),"Sbilanciamento: modificatore sulla tabella (con la stazza)")
 		var l3=_line(v)
 		var rest=bool(m.get("rest",false));var tired=int(m.fatigue)>0
 		l3.add_child(_flag("riposo",rest,func():_edit(id,"rest",not rest,true),"Pallino bianco (riposo): a fine turno con questa pedina si recupera fatica" if not tired else "Con il pallino nero (fatica) il riposo non è possibile",tired))
@@ -278,17 +357,18 @@ func _comb() -> void:
 	var sorted_ids=[]
 	for g in 4:sorted_ids+=ids.filter(func(k):return order.call(k)==g)   # base, arma, in più, magie (ordine stabile)
 	ids=sorted_ids
-	comb.add_child(_honeycomb(ids,82.0))
+	comb.add_child(_honeycomb(ids,86.0))
 func _honeycomb(ids: Array,R: float) -> Control:
-	# colonne sfalsate di mezza altezza (esagoni coi lati piatti in alto e in basso)
-	var avail=maxf(460.0,get_viewport().get_visible_rect().size.x-420.0)
-	var w=2*R;var h=1.732*R;var gap=7.0
-	var cols=maxi(2,int((avail-w)/(w*.75+gap))+1)
+	# griglia ordinata, un esagono accanto all'altro senza incastri: a nido d'ape i valori di una pedina finivano
+	# sopra gli angoli delle vicine (riquadri sovrapposti)
+	var avail=maxf(460.0,get_viewport().get_visible_rect().size.x-440.0)
+	var w=2*R;var h=1.732*R;var gap=8.0
+	var cols=maxi(2,int((avail+gap)/(w+gap)))
 	var rows=ceili(float(ids.size())/cols)
-	var c=Control.new();c.custom_minimum_size=Vector2(w+(mini(cols,ids.size())-1)*(w*.75+gap),rows*(h+gap)+h*.5+4)
+	var c=Control.new();c.custom_minimum_size=Vector2(mini(cols,ids.size())*(w+gap)-gap,rows*(h+gap))
 	for k in ids.size():
 		var col=k%cols;var row=k/cols
-		var hx=_hex_for(ids[k],R);hx.position=Vector2(col*(w*.75+gap),row*(h+gap)+((h+gap)*.5 if col%2==1 else 0.0));c.add_child(hx)
+		var hx=_hex_for(ids[k],R);hx.position=Vector2(col*(w+gap),row*(h+gap));c.add_child(hx)
 	return c
 
 # ------------------------------------------------------------------ fascia del valore, collaudo, salvataggio
@@ -301,32 +381,37 @@ func _band() -> void:
 	var mid=VBoxContainer.new();mid.size_flags_horizontal=Control.SIZE_EXPAND_FILL;mid.add_theme_constant_override("separation",2);band.add_child(mid)
 	var bar=ProgressBar.new();bar.min_value=0;bar.max_value=160;bar.value=pts;bar.show_percentage=false;bar.custom_minimum_size.y=10;mid.add_child(bar)
 	var f=BloodForge.features(def)
-	var msg=("Dentro il budget: restano %d punti."%roundi(-over)) if over<=.5 else ("Oltre il budget di %d punti: togli qualcosa."%roundi(over))
+	var msg=("Dentro il budget: restano %d punti."%roundi(-over)) if over<=.5 else ("Oltre il budget di %d punti: più forte della media. Si può salvare lo stesso."%roundi(over))
+	if base_id!="":msg="Originale %d punti, ora %d."%[roundi(base_points),roundi(pts)]
+	var problems: Array=BloodForge.validate(def)
 	var l=ui.label(msg+"  ·  colpo %.1f ferite · subisce %.1f a colpo · %d ferite · budget = media dei personaggi ufficiali, 10 punti ≈ 5 vittorie su 100"%[f.off,f.sub,int(f.hp)],12,Color("8fd08a") if over<=.5 else Color("e86a5a"))
-	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;mid.add_child(l)
-	test_label=ui.label("",12,ui.INK);test_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;mid.add_child(test_label)
+	l.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;l.custom_minimum_size.x=240;mid.add_child(l)
+	if not problems.is_empty():   # regole di costruzione delle pedine non rispettate: finché restano non si salva
+		mid.add_child(ui.wrap_label("Pedine da sistemare prima di salvare: "+" · ".join(problems.slice(0,4))+(" · e altre %d"%(problems.size()-4) if problems.size()>4 else ""),12,Color("ff8a70"),240))
+	test_label=ui.label("",12,ui.INK);test_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;test_label.custom_minimum_size.x=240;mid.add_child(test_label)
 	var hp=HBoxContainer.new();hp.add_theme_constant_override("separation",3);hp.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(hp)
 	hp.add_child(ui.label("Ferite",12,ui.MUTED))
-	hp.add_child(_mini("−",func():edits.hp=int(edits.get("hp",0))-1;_rebuild(false),"Una ferita in meno"))
+	hp.add_child(_mini("-",func():edits.hp=int(edits.get("hp",0))-1;_rebuild(false),"Una ferita in meno"))
 	hp.add_child(ui.label(str(int(def.hp)),15,ui.INK))
 	hp.add_child(_mini("+",func():edits.hp=int(edits.get("hp",0))+1;_rebuild(false),"Una ferita in più"))
 	var fb=ui._bar_button("Adatta al budget",_fit_budget,"Porta il valore a 100 cambiando le ferite");fb.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(fb)
 	var tb=ui._bar_button("Collaudo",_run_test,"36 duelli simulati contro il cast ufficiale");tb.disabled=testing;tb.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(tb)
-	var save=ui.button("Salva l'eroe",_save,true);save.disabled=over>.5;save.tooltip_text="Si può salvare solo dentro il budget" if over>.5 else "";save.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(save)
+	var save=ui.button("Salva la variante" if base_id!="" else "Salva l'eroe",_save,true);save.disabled=not problems.is_empty()
+	save.tooltip_text="Prima sistema le pedine segnalate" if not problems.is_empty() else ("Oltre i %d punti: si salva lo stesso, come eroe fuori budget"%int(BloodForge.BUDGET) if over>.5 else "");save.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(save)
 	var saved=BloodForge.load_saved()
 	if not saved.is_empty():
-		var ob=OptionButton.new();ob.add_item("Eroi salvati…");ob.add_theme_font_size_override("font_size",13)
+		var ob=OptionButton.new();ob.add_item("Eroi e varianti salvati");ob.add_theme_font_size_override("font_size",13)
 		var ids=saved.keys()
 		for id in ids:ob.add_item(str(saved[id].name))
 		ob.item_selected.connect(func(n):if n>0:_open(ids[n-1]));ob.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(ob)
-		if str(traits.get("id",""))!="" and saved.has(str(traits.id)):
-			var cur=str(traits.id)
-			band.add_child(ui._bar_button("✕ Elimina",func():BloodForge.delete_hero(cur);ui.game.catalog.erase(cur);BloodRules.extra_defs.erase(cur);traits.erase("id");_rebuild(false),"Elimina questo eroe salvato"))
+		var cur=str(var_info.get("id","")) if base_id!="" else str(traits.get("id",""))
+		if cur!="" and saved.has(cur):
+			band.add_child(ui._bar_button("Elimina",func():BloodForge.delete_hero(cur);ui.game.catalog.erase(cur);BloodRules.extra_defs.erase(cur);traits.erase("id");var_info["id"]="";_rebuild(false),"Elimina questo salvataggio"))
 func _open(id: String) -> void:
 	var saved=BloodForge.load_saved()
 	if not saved.has(id):return
-	traits=BloodForge.migrate(saved[id].traits);traits.id=id
-	edits=saved[id].get("edits",{"hp":0,"moves":{}}).duplicate(true);_rebuild(true)
+	if not ui.game.catalog.has(id):BloodRules.extra_defs[id]=saved[id];ui.game.add_definition(saved[id])
+	_load_hero(id);_rebuild(true)
 func _fit_budget() -> void:
 	# porta il valore al budget cambiando le ferite (la cosa più neutra da ritoccare)
 	for n in 80:
@@ -334,10 +419,16 @@ func _fit_budget() -> void:
 		if pts>BloodForge.BUDGET+.5:edits.hp=int(edits.get("hp",0))-1
 		elif pts<BloodForge.BUDGET-3.0:edits.hp=int(edits.get("hp",0))+1
 		else:break
-		def=BloodForge.apply_edits(BloodForge.build(traits),edits)
+		def=BloodForge.build_variant(base_id,var_info,edits) if base_id!="" else BloodForge.apply_edits(BloodForge.build(traits),edits)
 		if int(def.hp)<=4:break
 	_rebuild(false)
 func _save() -> void:
+	if base_id!="":
+		if str(var_info.get("id",""))=="":var_info["id"]="var_%s_%d"%[base_id,Time.get_ticks_usec()%10000000]
+		if str(var_info.get("name","")).strip_edges()=="":var_info["name"]=str(BloodForge.official(base_id).name)+" II"
+		def=BloodForge.build_variant(base_id,var_info,edits)
+		BloodForge.save_hero(def);BloodRules.extra_defs[def.id]=def;ui.game.add_definition(def)
+		_band();test_label.text="Salvata: %s è nella scelta dei personaggi, fra gli eroi forgiati. L'originale resta com'era."%def.name;return
 	if str(traits.get("id",""))=="":traits.id="forged_%d"%(Time.get_ticks_usec()%10000000)
 	def=BloodForge.apply_edits(BloodForge.build(traits),edits)
 	BloodForge.save_hero(def);BloodRules.extra_defs[def.id]=def;ui.game.add_definition(def)
@@ -403,6 +494,7 @@ var pv_key:=""
 var pv_label: Label
 var pv_b3
 var selected_id:="guard"
+var pv_info:={}
 func _make_preview(parent: Node) -> void:
 	pv_b3=load("res://scripts/board3d.gd").new()   # solo per vestire il corpo (armi, scudo) come in partita
 	var svc=SubViewportContainer.new();svc.stretch=true;svc.custom_minimum_size=Vector2(318,250);parent.add_child(svc)
@@ -433,16 +525,19 @@ func _update_preview() -> void:
 		var path=str(pv_b3.MODELS.get(body,""))
 		if path!="" and ResourceLoader.exists(path):
 			pv_model=load(path).instantiate();pv_root.add_child(pv_model)
-			pv_b3._dress(pv_model,dr)
+			if dr.is_empty():pv_model.scale=Vector3.ONE*.58   # personaggio del gioco: armi e scudo sono già i suoi
+			else:pv_b3._dress(pv_model,dr)
 			pv_model.scale*=1.3   # più grande che sulla mappa: riempie l'anteprima
 			var aps=pv_model.find_children("*","AnimationPlayer",true,false)
 			if not aps.is_empty():
 				pv_ap=aps[0]
-				pv_b3._extract_root_motion({"model":pv_model,"root":pv_root,"ap":pv_ap})   # il bacino resta sopra la basetta, come in partita
+				pv_info={"model":pv_model,"root":pv_root,"ap":pv_ap,"sfx":{"lancia":" lancia","bastone":" lancia","ascia":" 2h"}.get(str(dr.get("weapon","")),"")}
+				pv_b3._extract_root_motion(pv_info)   # il bacino resta sopra la basetta, come in partita
+				pv_b3.build_gestures(pv_info,def)       # gli stessi gesti della partita: colpi e parate dal lato giusto, seconda lama
 				pv_ap.animation_finished.connect(func(n):   # la mossa si ripete, con una breve pausa
 					if is_inside_tree():get_tree().create_timer(.6).timeout.connect(func():if is_instance_valid(pv_ap) and pv_ap.assigned_animation==n:pv_ap.play(n)))
 	if pv_ap==null:pv_label.text="";return
-	if not all_def.moves.has(selected_id) or not BloodForge.is_on(traits,selected_id) and not all_def.moves[selected_id].get("native",false):selected_id="guard"
+	if not all_def.moves.has(selected_id) or (base_id=="" and not BloodForge.is_on(traits,selected_id) and not all_def.moves[selected_id].get("native",false)):selected_id="guard" if all_def.moves.has("guard") else str(all_def.moves.keys()[0])
 	var bow=selected_id in ["shoot","load"]
 	for n in ["Arco","FrecciaIncoccata"]:
 		var g=pv_model.find_child(n,true,false)
@@ -457,11 +552,14 @@ func _preview_clip(id: String,bow: bool) -> String:
 	var m=all_def.moves.get(id,{})
 	var base=str(pv_b3.CLIP.get(id,"In guardia"))
 	var cands=[base]+Array(pv_b3.CLIP_FALLBACK.get(base,[]))
-	if m.get("spell",false):cands=["Affondo"]
+	var own=str(pv_b3.OWN_CLIP.get(id,""))
+	if own!="" and pv_ap.has_animation(own):return own   # mosse proprie del modello (Shaara)
+	if m.get("spell",false) and not pv_ap.has_animation(base):cands=["Affondo"]   # i maghi hanno la clip di ogni incantesimo
 	if id=="concentrate":cands=["Riposo","In guardia"]
 	if bow:cands=[base+" arco",base]
-	var sfx={"lancia":" lancia","bastone":" lancia","ascia":" 2h"}.get(str(def.get("dress",{}).get("weapon","")),"")
+	var gen=str(pv_b3.GEN_CLIP.get(id,""))
+	if not bow and gen!="" and pv_ap.has_animation("g/"+gen):return "g/"+gen
 	for c in cands:
-		if sfx!="" and pv_ap.has_animation(c+sfx):return c+sfx
-		if pv_ap.has_animation(c):return c
-	return "In guardia"
+		var nm=str(pv_b3._anim(pv_info,c))
+		if pv_ap.has_animation(nm):return nm
+	return str(pv_b3._anim(pv_info,"In guardia"))

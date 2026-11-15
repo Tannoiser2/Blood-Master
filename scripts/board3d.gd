@@ -48,6 +48,14 @@ const TWIST={"Taglio Dx":58.0,"Taglio Sx":-58.0,"Parata Sx":60.0,"Parata Dx":-60
 # lato dei gesti laterali (+1 = sinistra del personaggio, -1 = destra) e tipo: arco di luce che lo rende evidente
 # (le clip "Taglio" di Meshy hanno i nomi scambiati: "Taglio Dx" è il taglio sinistro del gioco)
 const SIDE_FX={"Taglio Dx":[1.0,"colpo"],"Taglio Sx":[-1.0,"colpo"],"Parata Sx":[1.0,"parata"],"Parata Dx":[-1.0,"parata"],"Pugno Sx":[1.0,"colpo"],"Pugno Dx":[-1.0,"colpo"]}
+# Gesti costruiti a mano (scripts/gestures.gd): colpi e parate a destra e a sinistra sono lo specchio esatto
+# l'uno dell'altro, con l'arma che spazza davvero il lato giusto. Stanno nella libreria "g" di ogni miniatura.
+const Gestures=preload("res://scripts/gestures.gd")
+const GEN_CLIP={"right":"Colpo destro","left":"Colpo sinistro","parry_r":"Para destra","parry_l":"Para sinistra","sweep":"Spazzata"}
+const KICKS=["Calcio","Sgambetto","Calcio volante"]
+# come combatte ogni corpo: una mano, con lo scudo, due armi, arma a due mani, mani nude
+const KIND_BY_LOOK={"gascor":"shield","anteos":"shield","skelos":"shield","sketos":"shield","ut":"two","nuchra":"two","shannon":"two","ramok":"two","zenyo":"two",
+	"kylvia":"one","zak":"one","gandy":"one","sanguinaria":"one","shaara":"none","thorn":"none"}
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","parry_counter","dodge","guard"]
@@ -206,6 +214,9 @@ func _mini(i: int) -> Dictionary:
 			var sfx_now=str(info.get("sfx",""))
 			info.ap.animation_started.connect(func(full):
 				var n=str(full).trim_suffix(sfx_now) if sfx_now!="" else str(full)
+				if n.begins_with("g/") and apx.has_animation(str(full)):   # gesto costruito: il corpo si gira da solo, resta l'arco di luce sul lato
+					var ga: Animation=apx.get_animation(str(full))
+					if ga.has_meta("side"):_side_fx(pivot,float(ga.get_meta("side")),ga.has_meta("block"),ga.length/maxf(absf(apx.speed_scale),.1),ga)
 				var yaw=TWIST.get(n,0.0)
 				var tw=create_tween();tw.tween_property(mdl,"rotation:y",deg_to_rad(yaw),.18 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE)
 				var lean=create_tween();lean.tween_property(mdl,"rotation:z",deg_to_rad(-yaw*.14),.2 if yaw!=0.0 else .3).set_trans(Tween.TRANS_SINE)   # si piega verso il lato
@@ -221,6 +232,7 @@ func _mini(i: int) -> Dictionary:
 		for n in ["In guardia","Riposo","Avanzare","Correre","Carica"]:
 			for sfx in [""," lancia"," 2h"]:
 				if info.ap and info.ap.has_animation(n+sfx):info.ap.get_animation(n+sfx).loop_mode=Animation.LOOP_LINEAR
+		build_gestures(info,game.definition(p))
 		if info.ap:info.ap.play(_anim(info,"In guardia"))
 	else:
 		# personaggio senza modello 3D: pedina in piedi con il disegno della mossa corrente
@@ -437,8 +449,77 @@ const CLIP_FALLBACK={"Rotazione":["Taglio Dx"],"Doppio colpo":["Taglio Sx"],"Con
 ## nome vero della clip da suonare su questa miniatura (variante a due mani dei corpi della forgia)
 func _anim(info: Dictionary,name: String) -> String:
 	var sfx=str(info.get("sfx",""));var ap: AnimationPlayer=info.get("ap")
+	if ap!=null and not name.begins_with("g/") and ap.has_animation("g/"+name):return "g/"+name   # versione costruita (o ricalcata per la seconda arma)
 	if sfx!="" and ap!=null and ap.has_animation(name+sfx):return name+sfx
 	return name
+static func weapon_kind(def: Dictionary) -> String:
+	var dr: Dictionary=def.get("dress",{})
+	if dr.is_empty():return str(KIND_BY_LOOK.get(str(def.get("look",def.get("id",""))),""))
+	if str(dr.get("off",""))=="spada":return "dual"
+	if str(dr.get("weapon","")) in ["ascia","lancia","bastone"]:return "two"
+	if str(dr.get("off","")).begins_with("scudo"):return "shield"
+	return "one"
+## distanza fra i centri di due esagoni vicini (metri)
+func hex_step() -> float:
+	if game!=null:
+		for k in game.cells:
+			var nb=BloodRules.neighbor(k,0)
+			if game.cells.has(nb):return cell_pos(k).distance_to(cell_pos(nb))
+	return 1.04
+## costruisce i gesti della miniatura (info: model, ap, sfx) secondo le armi che porta
+func build_gestures(info: Dictionary,def: Dictionary) -> void:
+	var kind=weapon_kind(def);var ap: AnimationPlayer=info.get("ap")
+	if kind=="" or ap==null or info.get("spirit",false) or info.get("model")==null:return
+	var sfx=str(info.get("sfx",""))
+	var g=Gestures.new()
+	if not g.setup(info.model,ap,kind,"In guardia"+sfx if ap.has_animation("In guardia"+sfx) else "In guardia"):return
+	var unit=g.sk.global_transform.basis.get_scale().y if g.sk.is_inside_tree() else .0058
+	g.build(ap,hex_step()/maxf(unit,.0001)*.5,sfx)
+	info["gest"]=g
+	for name in ap.get_animation_library(Gestures.LIB).get_animation_list():   # clip ricalcate: stesso tragitto dell'originale
+		var src=str(name)+sfx
+		if ap.has_animation(src) and _motion.has(ap.get_animation(src).get_instance_id()):
+			_motion[ap.get_animation("g/"+str(name)).get_instance_id()]=_motion[ap.get_animation(src).get_instance_id()]
+## secondi dall'inizio della clip all'istante in cui il colpo arriva davvero sul bersaglio
+func _impact_of(info: Dictionary,clip: String,rate:=1.0) -> float:
+	var ap: AnimationPlayer=info.get("ap");var name=_anim(info,clip)
+	if ap==null or not ap.has_animation(name):return .5
+	var a: Animation=ap.get_animation(name)
+	if a.has_meta("impact"):return float(a.get_meta("impact"))/rate
+	if clip in WALK_CLIPS or clip=="Carica":return a.length*.45/rate   # clip di corsa: non hanno un vero momento del colpo
+	var g=info.get("gest")
+	if g!=null:return g.impact_time(a,clip in KICKS)/rate
+	return a.length*.45/rate
+## secondi dall'inizio della parata a quando l'arma (o lo scudo) è in posizione
+func _block_of(info: Dictionary,clip: String) -> float:
+	var ap: AnimationPlayer=info.get("ap");var name=_anim(info,clip)
+	if ap!=null and ap.has_animation(name) and ap.get_animation(name).has_meta("block"):return float(ap.get_animation(name).get_meta("block"))
+	return .35
+## da che parte arriva il colpo, visto da chi si difende: -1 a destra, +1 a sinistra, 0 dritto di fronte
+func _blow_side(def_i: int,att_i: int,att_move: String) -> float:
+	var d=game.state.fighters[def_i];var a=game.state.fighters[att_i]
+	if not game.cells.has(str(d.cell)) or not game.cells.has(str(a.cell)):return 0.0
+	var v: Vector3=cell_pos(str(a.cell))-cell_pos(str(d.cell));v.y=0
+	if v.length()<.01:return 0.0
+	var deg=rad_to_deg(angle_difference(facing_yaw(int(d.facing)),atan2(v.x,v.z)))   # dove sta l'attaccante rispetto al fronte di chi para
+	if absf(deg)>25.0 and absf(deg)<155.0:return 1.0 if deg>0 else -1.0
+	var s=-1.0 if att_move=="right" else (1.0 if att_move=="left" else 0.0)   # da che parte spazza l'arma dell'attaccante
+	if s==0.0:return 0.0
+	# uno di fronte all'altro: la destra dell'attaccante è la sinistra di chi para
+	return -s if absf(angle_difference(facing_yaw(int(a.facing)),facing_yaw(int(d.facing))))>PI*.5 else s
+## la parata che si vede: dal lato da cui arriva davvero il colpo. Restituisce [clip, lato]
+func _parry_clip(def_i: int,att_i: int,att_move: String) -> Array:
+	var fq=game.state.fighters[def_i];var bow=bool(fq.get("bow",false));var info=minis.get(def_i,{})
+	if fq.current in ["dodge","roll"]:return [_clip_for(def_i,"dodge",bow),0.0]
+	if fq.current=="parry_counter":return [_clip_for(def_i,"parry_counter",bow),0.0]
+	var s=_blow_side(def_i,att_i,att_move)
+	if s==0.0:
+		if fq.current=="parry_l":s=1.0
+		elif fq.current=="parry_r":s=-1.0
+		else:s=1.0 if info.get("gest")!=null and info.gest.kind=="shield" else -1.0   # lo scudo sta a sinistra
+	var clip=_clip_for(def_i,"parry_l" if s>0 else "parry_r",bow)
+	if info.get("ap")==null or not info.ap.has_animation(_anim(info,clip)):clip=_clip_for(def_i,"guard",bow)
+	return [clip,s]
 func _clip_for(i: int,id: String,bow: bool) -> String:
 	# arcieri: in modalità arco le clip "… arco" (guardia, avanzata, corsa, sbilanciato)
 	var base=CLIP.get(id,"In guardia")
@@ -449,6 +530,8 @@ func _clip_for(i: int,id: String,bow: bool) -> String:
 	# mosse proprie del modello, se le ha (Shaara: calcio volante, pugni, spazzata, meditazione)
 	var own=OWN_CLIP.get(id,"")
 	if own!="" and info.get("ap")!=null and info.ap.has_animation(own):return own
+	var gen=str(GEN_CLIP.get(id,""))
+	if gen!="" and not bow and info.get("ap")!=null and info.ap.has_animation("g/"+gen):return "g/"+gen
 	# eroi della forgia su un corpo che non ha quella clip (es. Fendente sul corpo di un arciere)
 	if info.get("ap")!=null and not info.ap.has_animation(base):
 		for alt in CLIP_FALLBACK.get(base,[]):
@@ -552,6 +635,8 @@ func sync() -> void:
 			# all'istante dell'impatto); quando tocca a lui e nessuno lo attacca resta in guardia, o cammina se si sposta
 			if str(was.cell)==str(p.cell):continue
 			track.clip=_clip_for(i,"advance",bool(p.get("bow",false)));track.move="advance"
+		if id=="charge" and track.strike and str(was.cell)==str(p.cell):
+			track.clip=_clip_for(i,"thrust",bool(p.get("bow",false)))   # carica senza rincorsa (nemico già a tiro): un affondo, non una corsa sul posto
 		if id=="roll" and p.down:   # rotola restando a terra: disteso, scivola fino alla nuova cella senza rialzarsi
 			track.clip="A terra";track["lying"]=true;track["split"]=true;track["stay"]=true
 		if str(p.get("stepped",""))=="after" and str(was.cell)!=str(p.cell):track["step_after"]=true   # colpisce, poi il passo
@@ -594,18 +679,26 @@ func sync() -> void:
 			if int(la.get("actor",-1))==i and int(la.get("victim",-1))>=0:front=int(la.victim)   # il vero bersaglio (anche di lato o a due esagoni)
 			if front!=-1 and not front in victims and minis.has(front):
 				var fq=game.state.fighters[front];var defensive=fq.current in DEFENSIVE
-				var hit_at=minis[i].ap.get_animation(track.clip).length*.45 if minis[i].ap and minis[i].ap.has_animation(track.clip) else .5
-				var word="SCHIVATA!" if fq.current in ["dodge","roll"] else ({"parry_r":"PARATA DESTRA!","parry_l":"PARATA SINISTRA!"}.get(fq.current,"PARATA!") if defensive else "MANCATO")
-				step.append({"i":front,"clip":_clip_for(front,fq.current,bool(fq.get("bow",false))) if defensive and CLIP.has(fq.current) else _clip_for(front,"parry_r" if minis[front].ap and minis[front].ap.has_animation("Parata Dx") else "guard",bool(fq.get("bow",false))),
-					"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":maxf(.05,hit_at-.35),"move":fq.current,"strike":false,"parried":i,"parry_word":word})
-				if struck_now.has(front) and int(game.move(fq).get("riposte",0))>0 and _clip_for(front,"parry_counter",false)!="Contrattacco":   # contrattacco senza la sua clip: dopo la parata, l'affondo
+				var hit_at=_impact_of(minis[i],track.clip)
+				# la parata si vede dal lato da cui arriva il colpo (posizione dell'attaccante, o verso del suo taglio)
+				var pc=_parry_clip(front,i,str(id))
+				var word="SCHIVATA!" if fq.current in ["dodge","roll"] else (("PARATA A SINISTRA!" if pc[1]>0 else ("PARATA A DESTRA!" if pc[1]<0 else "PARATA!")) if defensive else "MANCATO")
+				step.append({"i":front,"clip":pc[0],
+					"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":maxf(.05,hit_at-_block_of(minis[front],pc[0])),"move":fq.current,"strike":false,"parried":i,"parry_word":word})
+				if struck_now.has(front) and int(game.move(fq).get("riposte",0))>0 and not _anim(minis[front],_clip_for(front,"parry_counter",false)).ends_with("Contrattacco"):   # contrattacco senza la sua clip: dopo la parata, l'affondo
 					step.append({"i":front,"clip":_clip_for(front,"thrust",false),"from":cell_pos(fq.cell),"to":cell_pos(fq.cell),"yaw":facing_yaw(int(fq.facing)),"facing":int(fq.facing),"delay":hit_at+.45,"move":"riposte","strike":true})
-	var strike_delay=0.0
+	var strike_delay=0.0;var hit_by={}   # chi ha colpito chi (corpo a corpo): la vittima che parava mostra la parata da quel lato
 	for t in step:
-		if t.get("strike",false) and minis[t.i].ap and minis[t.i].ap.has_animation(_anim(minis[t.i],t.clip)):strike_delay=maxf(strike_delay,minis[t.i].ap.get_animation(_anim(minis[t.i],t.clip)).length*.45)
+		if t.get("strike",false) and minis[t.i].ap and minis[t.i].ap.has_animation(_anim(minis[t.i],t.clip)):strike_delay=maxf(strike_delay,_impact_of(minis[t.i],t.clip))
+		if t.get("strike",false) and not t.has("arrow") and not SPELL_FX.has(str(t.get("move",""))):
+			for v in t.get("hits",[]):hit_by[int(v)]=[int(t.i),str(t.get("move",""))]
 	for i in victims:
 		var p=game.state.fighters[i]
 		var clip="A terra" if (p.down or not p.alive or p.get("pieces",false)) else _clip_for(i,"unbalanced",bool(p.get("bow",false)))
+		var tried={}   # ferito ma ancora in piedi con una parata in mano: si vede la parata (sfondata) dal lato del colpo, poi le ferite
+		if p.alive and not p.down and not p.unbalanced and not p.get("pieces",false) and hit_by.has(i) and p.current in ["parry_l","parry_r","guard"] and str(prev[i].cell)==str(p.cell) and minis.has(i):
+			var pc=_parry_clip(i,int(hit_by[i][0]),str(hit_by[i][1]))
+			if str(pc[0]).begins_with("g/"):clip=pc[0];tried={"parried":int(hit_by[i][0]),"parry_word":""}
 		if not p.alive and minis.has(i) and minis[i].ap and minis[i].ap.has_animation("Morte"):clip="Morte"   # caduto per sempre: disteso sulla schiena
 		var moved=step.any(func(t):return t.get("i",-1)==i)
 		if not moved and prev[i].cell!=p.cell:
@@ -620,7 +713,8 @@ func sync() -> void:
 			step.append({"i":i,"clip":CLIP[was_move],"from":cell_pos(prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":0.0,"move":was_move,"strike":false})
 			moved=true
 		# chi ha anche un suo movimento in questo passo prima lo completa, poi reagisce sul posto
-		step.append({"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after_strike":true,"after":moved,"move":"down" if clip in ["A terra","Morte"] else "unbalanced","strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive,"pieces":bool(p.get("pieces",false))})
+		var vt={"i":i,"clip":clip,"from":cell_pos(p.cell if moved else prev[i].cell),"to":cell_pos(p.cell),"yaw":facing_yaw(int(p.facing)),"facing":int(p.facing),"delay":strike_delay,"after_strike":true,"after":moved,"move":"down" if clip in ["A terra","Morte"] else ("unbalanced" if tried.is_empty() else str(p.current)),"strike":false,"hit":prev[i].hp-int(p.hp),"stay":p.down or not p.alive or p.get("pieces",false),"dead":not p.alive,"pieces":bool(p.get("pieces",false))}
+		vt.merge(tried);step.append(vt)
 	for i in game.state.fighters.size():
 		if game.state.fighters[i].cell!="":prev[i]=_view(game.state.fighters[i])
 	if not step.is_empty():
@@ -795,7 +889,7 @@ func _play_step(step: Array,fluid: bool) -> void:
 			var info=minis.get(t.i)
 			if info==null:continue
 			var mine=float(hit_at.get(int(t.i),impact))   # l'istante in cui arriva il colpo diretto a LUI
-			if mine>=0.0 and t.has("parried"):t.delay=maxf(.05,mine-.35)
+			if mine>=0.0 and t.has("parried"):t.delay=maxf(.05,mine-_block_of(info,t.clip))
 			elif mine>=0.0 and t.get("after_strike",false):t.delay=maxf(t.delay,mine)
 			if pass_after:t.delay=maxf(t.delay,ends.get(t.i,0.0))
 			var dur=_run_track(t,info,fluid)
@@ -806,7 +900,7 @@ func _play_step(step: Array,fluid: bool) -> void:
 		for t in step:
 			if t.has("labels") or not minis.has(t.i):continue
 			out.append("%s:%s@%.2f%s%s"%[str(game.state.fighters[t.i].name).left(8),t.clip,float(t.delay),(" imp %.2f"%float(t.impact_at)) if t.has("impact_at") else "",(" ->"+str(t.hits)) if t.has("hits") else ""])
-		print("PASSO ",out)
+		print("PASSO %.1fs durata %.2f "%[Time.get_ticks_msec()/1000.0*Engine.time_scale,longest],out)
 	await get_tree().create_timer(longest).timeout
 	for t in step:
 		if t.has("labels"):
@@ -882,7 +976,8 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 	# forced: durata imposta al movimento (replay fluido: tutti arrivano insieme)
 	var ap=info.ap;var root=info.root;var pivot=info.pivot
 	var pl=_plan(t,info)
-	if pl.mode=="lineare" and info.ap and info.ap.has_animation("Camminata") and not info.get("spirit",false) and not t.get("split",false) and not t.get("pushed",false) and not t.get("move","") in ["teleport","dematerialize"]:
+	var strafe=_strafe_side(t,info)   # passo laterale, in diagonale o indietro senza girarsi (1..5), 0 = cammina
+	if strafe==0 and pl.mode=="lineare" and info.ap and info.ap.has_animation("Camminata") and not info.get("spirit",false) and not t.get("split",false) and not t.get("pushed",false) and not t.get("move","") in ["teleport","dematerialize"]:
 		# si sposta con una clip che non cammina (es. Concentrarsi): prima cammina fino alla cella, poi la esegue lì
 		var walk=t.duplicate();walk.clip="Camminata";walk.split=true;walk.move="advance";walk.strike=false
 		for k in ["hit","arrow","targets","bow"]:walk.erase(k)
@@ -902,18 +997,31 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		return d1+d2
 	var anim: Animation=pl.anim;var length: float=pl.length;var turn: float=pl.turn
 	var dist: float=pl.dist;var m: Dictionary=pl.m;var mode: String=pl.mode;var loops: int=pl.loops
+	var clip_name=_anim(info,t.clip)
+	if strafe>0:
+		# resta rivolto dove guarderà alla fine e si sposta a passi laterali: due per esagono (la schivata è uno scarto rapido)
+		clip_name="g/Passo %d"%strafe;anim=ap.get_animation(clip_name);mode="scarto"
+		var cycles=maxi(1,roundi(dist/maxf(hex_step()*.5,.01)))
+		length=anim.length*cycles/(1.7 if str(t.get("move",""))=="dodge" else 1.0)
 	var natural=length;var rate=1.0
-	if forced>0 and mode!="fermo":rate=clampf(natural/forced,.35,2.5);length=forced
+	if strafe>0:rate=anim.length*maxi(1,roundi(dist/maxf(hex_step()*.5,.01)))/length
+	if forced>0 and mode!="fermo":rate=clampf(natural/forced,.35,2.5)*(rate if strafe>0 else 1.0);length=forced
 	if OS.get_environment("BM_DEBUG")=="1":print("TRACK ",game.state.fighters[t.i].character," ",t.clip," ",mode," dist %.2f len %.2f loops %d"%[dist,length,loops])
 	if t.get("strike",false) or t.has("hits"):   # istante in cui il colpo ARRIVA davvero sul bersaglio
 		var clip_len=(anim.length/rate if anim else 1.0)
 		if t.has("arrow"):t["impact_at"]=t.delay+turn+clip_len*.55+_arrow_flight(t,info)      # rilascio + volo della freccia
 		elif SPELL_FX.has(str(t.get("move",""))):t["impact_at"]=t.delay+turn+clip_len*.45+_spell_travel(t,info)   # lancio + viaggio della magia
-		else:t["impact_at"]=t.delay+turn+((length*.85) if mode in ["passi","profilo"] else clip_len*.45)   # a metà clip; in fondo alla corsa per le cariche
+		else:t["impact_at"]=t.delay+turn+((length*.85) if mode in ["passi","profilo"] else _impact_of(info,t.clip,rate))   # quando l'arma arriva; in fondo alla corsa per le cariche
 	# passi nella direzione del movimento: verso un esagono davanti (o diagonale davanti) si gira e cammina,
 	# verso uno dietro (o diagonale dietro) resta rivolto in avanti e cammina all'indietro; alla fine prende
 	# l'orientamento scelto. Così il corpo non si gira mai più di un lato rispetto a dove guardava.
-	var walking=mode in ["passi","lineare"] and dist>.05 and t.clip in WALK_CLIPS and not t.get("pushed",false) and not info.get("spirit",false)
+	var walking=strafe==0 and mode in ["passi","lineare"] and dist>.05 and t.clip in WALK_CLIPS and not t.get("pushed",false) and not info.get("spirit",false)
+	# rotolata: ci si tuffa verso l'esagono d'arrivo (anche di lato), poi si riprende l'orientamento scelto
+	var first_yaw: float=t.yaw;var roll_turn=false
+	if mode=="profilo" and t.clip=="Rotolare" and dist>.05 and t.get("path",[]).size()<=1:
+		var rv: Vector3=t.to-t.from
+		first_yaw=atan2(rv.x,rv.z);roll_turn=absf(angle_difference(first_yaw,t.yaw))>.05
+		turn=.16 if absf(angle_difference(pivot.rotation.y,first_yaw))>.05 else 0.0
 	var segs=[]
 	if walking:
 		var face0=pivot.rotation.y;var pts0: Array=[t.from]+t.get("path",[t.to])
@@ -926,7 +1034,7 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		else:turn=0.0
 	var tw=create_tween()
 	if t.delay>0:tw.tween_interval(t.delay)
-	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,t.yaw),turn)
+	if turn>0:tw.tween_property(pivot,"rotation:y",pivot.rotation.y+angle_difference(pivot.rotation.y,first_yaw),turn)
 	tw.tween_callback(func():
 		if t.get("move","")=="summon":   # l'evocato emerge dalla sabbia
 			root.position=t.from;pivot.rotation.y=t.yaw;pivot.scale=Vector3.ONE;pivot.visible=true
@@ -935,14 +1043,14 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 		_set_rim(t.i,t.move,t.get("facing",-1))
 		if anim:
 			if mode=="passi" or mode=="profilo":anim.loop_mode=Animation.LOOP_LINEAR
-			ap.play(_anim(info,t.clip),.12 if fluid else .18);ap.speed_scale=rate*(1.0-.3*float(info.get("fatigue_lvl",0.0)))   # stanco: più lento
-			if t.get("lying",false):ap.seek(ap.get_animation(_anim(info,t.clip)).length-.05,true)   # già disteso: niente caduta
+			ap.play(clip_name,.12 if fluid else .18);ap.speed_scale=rate*(1.0 if strafe>0 else 1.0-.3*float(info.get("fatigue_lvl",0.0)))   # stanco: più lento
+		if t.get("lying",false):ap.seek(ap.get_animation(clip_name).length-.05,true)   # già disteso: niente caduta
 		if t.has("bow"):_set_gear(t.i,t.bow,t.get("loaded",false))
 		if t.has("arrow"):_shoot(t,info,anim.length/rate if anim else 1.0)
 		if SPELL_FX.has(t.get("move","")):_cast_fx(t,info,anim.length/rate if anim else 1.0)
 		if info.get("spirit",false):_spirit_move(t,info)
 		if t.has("reach"):_reach_fx(root.position,t.reach,(anim.length/rate if anim else 1.0)*.35)
-		if t.has("parried") and minis.has(int(t.parried)):_parry_fx(info,minis[int(t.parried)],str(t.get("parry_word","PARATA!")))
+		if t.has("parried") and minis.has(int(t.parried)):_parry_fx(info,minis[int(t.parried)],str(t.get("parry_word","PARATA!")),_block_of(info,t.clip))
 		if t.get("dead",false) and str(game.state.fighters[t.i].character)=="golem":_shatter(info)
 		elif t.get("dead",false) and not str(game.state.fighters[t.i].character) in ["skelos","sketos","ziggy"]:_bury(info,(anim.length/rate if anim else 1.5)+1.0)
 		if str(game.state.fighters[t.i].character) in ["skelos","sketos"]:
@@ -993,22 +1101,35 @@ func _run_track(t: Dictionary,info: Dictionary,fluid: bool,forced:=-1.0) -> floa
 			tw.tween_property(root,"position",to,length)
 		if mode=="profilo" and anim and not t.clip in ["Carica"]:
 			tw.tween_callback(func():anim.loop_mode=Animation.LOOP_NONE)
+		if roll_turn:tw.tween_property(pivot,"rotation:y",first_yaw+angle_difference(first_yaw,t.yaw),.2)
 		# arrivato: smette di camminare e si mette in guardia (niente passi sul posto mentre aspetta)
 		if ap and not t.get("stay",false):
 			tw.tween_callback(func():
-				if anim:anim.loop_mode=Animation.LOOP_NONE
-				if ap.current_animation==t.clip and ap.has_animation("In guardia"):_rest_pose(t.i,.2))
+				if anim and strafe==0:anim.loop_mode=Animation.LOOP_NONE
+				if ap.current_animation==clip_name and ap.has_animation("In guardia"):_rest_pose(t.i,.2))
 		if rate!=1.0 and ap:tw.tween_callback(func():ap.speed_scale=1.0)
 	return turn+length
+## passo senza girarsi: verso quale lato dell'esagono ci si sposta rispetto all'orientamento finale (1..5); 0 = si cammina
+## in avanti come sempre. Vale per i passi di un esagono (avanzata, passo prima o dopo un colpo o una parata, schivata):
+## chi si sposta di lato o arretra tenendo d'occhio l'avversario non gli volta le spalle.
+func _strafe_side(t: Dictionary,info: Dictionary) -> int:
+	var ap: AnimationPlayer=info.get("ap")
+	if ap==null or not ap.has_animation("g/Passo 3") or info.get("spirit",false) or t.get("pushed",false) or t.get("lying",false):return 0
+	if not str(t.get("move","")) in ["advance","dodge"] or t.get("path",[]).size()>1:return 0
+	var dv: Vector3=(t.to as Vector3)-(t.from as Vector3);dv.y=0
+	if dv.length()<.05 or dv.length()>hex_step()*1.4:return 0
+	var deg=rad_to_deg(angle_difference(float(t.yaw),atan2(dv.x,dv.z)))   # positivo: verso la sinistra del personaggio
+	if absf(deg)<45.0:return 0
+	return posmod(roundi(-deg/60.0),6)
 
 # arco di luce sul lato del gesto: per i colpi una scia rosso-arancio che spazza dal fianco verso il
 # davanti, per le parate un arco-scudo azzurro fermo sul lato coperto. Figlio del pivot: gira con il fronte.
-func _side_fx(pivot: Node3D,sx: float,parry: bool,clip_time: float) -> void:
+func _side_fx(pivot: Node3D,sx: float,parry: bool,clip_time: float,gest: Animation=null) -> void:
 	var col=Color(.45,.8,1.0) if parry else Color(1.0,.45,.15)
 	var mi=MeshInstance3D.new();var im=ImmediateMesh.new();mi.mesh=im
 	var mat=_fx_mat(col,3.0);mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;mat.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;mat.cull_mode=BaseMaterial3D.CULL_DISABLED
 	mat.blend_mode=BaseMaterial3D.BLEND_MODE_MIX;mat.albedo_color=Color(col,.0);mi.material_override=mat;pivot.add_child(mi)   # pieno, non additivo: si vede anche sul pavimento chiaro
-	var r=.62;var h=.62;var w=.16 if parry else .07
+	var r=.62;var h=.62;var w=.1 if parry else .06
 	var a_side=deg_to_rad(105.0)*sx;var a_front=deg_to_rad(10.0)*sx
 	var draw=func(f: float):   # f: quanto dell'arco è disegnato (0..1)
 		im.clear_surfaces();im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
@@ -1020,12 +1141,16 @@ func _side_fx(pivot: Node3D,sx: float,parry: bool,clip_time: float) -> void:
 			var p=Vector3(sin(a)*r,y,cos(a)*r)
 			im.surface_add_vertex(p+Vector3(0,-w*(1.0-.6*absf(u-.5)),0));im.surface_add_vertex(p+Vector3(0,w*(1.0-.6*absf(u-.5)),0))
 		im.surface_end()
-	var start=clip_time*(.15 if parry else .3)
+	var start=clip_time*(.15 if parry else .3);var sweep=.18 if not parry else .12;var hold=.12 if not parry else clip_time*.45
+	if gest!=null:   # gesto costruito: l'arco si disegna mentre l'arma spazza, o resta finché la parata è alzata
+		var k=clip_time/maxf(gest.length,.01)
+		if parry:start=float(gest.get_meta("block"))*k*.6;hold=clip_time*.5
+		elif gest.has_meta("sweep"):start=float(gest.get_meta("sweep")[0])*k;sweep=maxf(.1,(float(gest.get_meta("sweep")[1])-float(gest.get_meta("sweep")[0]))*k)
 	var tw=mi.create_tween()
 	tw.tween_interval(start)
-	tw.tween_callback(func():mat.albedo_color=Color(col,.92))
-	tw.tween_method(draw,0.0,1.0,.18 if not parry else .12)
-	tw.tween_interval(.12 if not parry else clip_time*.45)
+	tw.tween_callback(func():mat.albedo_color=Color(col,.78))
+	tw.tween_method(draw,0.0,1.0,sweep)
+	tw.tween_interval(hold)
 	tw.tween_property(mat,"albedo_color:a",0.0,.3)
 	tw.tween_callback(mi.queue_free)
 func _along(pts: Array,f: float) -> Vector3:
@@ -1833,12 +1958,12 @@ func _bleed(at: Vector3,wounds: int) -> void:
 			q.position=Vector3(at.x+cos(a)*r,.046+k*.0004,at.z+sin(a)*r);q.rotation.y=randf_range(0,TAU)
 			viewport.add_child(q);blood_marks.append(q))
 # Colpo parato: scintille e lampo tra le armi, clangore, scritta e un piccolo arretramento del difensore
-func _parry_fx(defender: Dictionary,attacker: Dictionary,word: String) -> void:
-	await get_tree().create_timer(.33).timeout
+func _parry_fx(defender: Dictionary,attacker: Dictionary,word: String,wait:=.33) -> void:
+	await get_tree().create_timer(maxf(.05,wait)).timeout
 	if not is_instance_valid(defender.root) or not is_instance_valid(attacker.root):return
 	var a: Vector3=attacker.root.global_position;var d: Vector3=defender.root.global_position
 	var hit=d.lerp(a,.35)+Vector3(0,.75,0)
-	if word!="SCHIVATA!":
+	if word!="SCHIVATA!" and word!="MANCATO":
 		_one_shot(_sparks(70,3.5,Color(1,.9,.6)),hit,1.2)
 		var flash=MeshInstance3D.new();var sm=SphereMesh.new();sm.radius=.08;sm.height=.16;flash.mesh=sm;var fm=_fx_mat(Color(1,.95,.8),5.0);fm.blend_mode=BaseMaterial3D.BLEND_MODE_ADD;flash.material_override=fm
 		viewport.add_child(flash);flash.global_position=hit
@@ -1848,9 +1973,10 @@ func _parry_fx(defender: Dictionary,attacker: Dictionary,word: String) -> void:
 		for k in minis:
 			if minis[k]==defender:dc=str(game.state.fighters[k].character)
 		_sfx("shield_block" if dc in SHIELDED else "clash",hit,0.0,0.0)
-	var l=Label3D.new();l.text=word;l.font_size=64;l.outline_size=14;l.modulate=Color("9fd6ff") if word!="MANCATO" else Color("d0d0d0");l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
-	viewport.add_child(l);l.global_position=d+Vector3(0,1.45,0)
-	var t=create_tween();t.tween_property(l,"global_position:y",l.global_position.y+.5,1.0);t.parallel().tween_property(l,"modulate:a",0.0,1.0).set_delay(.4);t.tween_callback(l.queue_free)
+	if word!="":
+		var l=Label3D.new();l.text=word;l.font_size=64;l.outline_size=14;l.modulate=Color("9fd6ff") if word!="MANCATO" else Color("d0d0d0");l.billboard=BaseMaterial3D.BILLBOARD_ENABLED;l.no_depth_test=true
+		viewport.add_child(l);l.global_position=d+Vector3(0,1.45,0)
+		var t=create_tween();t.tween_property(l,"global_position:y",l.global_position.y+.5,1.0);t.parallel().tween_property(l,"modulate:a",0.0,1.0).set_delay(.4);t.tween_callback(l.queue_free)
 	var fig: Node3D=defender.pivot;var back=(d-a);back.y=0
 	if back.length()>.01 and word!="MANCATO":   # il difensore cede un passo all'impatto e torna
 		back=back.normalized()*.12;var p0=fig.position
@@ -1898,53 +2024,36 @@ func replay() -> void:
 		if is_instance_valid(pickup_nodes[key]):pickup_nodes[key].queue_free()
 	pickup_nodes={};_show_pickups(initial_pickups)
 	await get_tree().create_timer(.6).timeout
-	# Replay fluido: per ogni turno tutti i movimenti partono insieme e arrivano insieme
-	# (ognuno alla sua velocità), poi attacchi e difese; il turno dopo parte subito.
-	var turns=[];var cur=[];var cur_turn=-1
+	# Replay nello stesso ordine della partita: ogni pedina estratta è un passo, e dentro il passo valgono gli
+	# stessi tempi (prima chi si sposta, poi i colpi uno alla volta, ognuno seguito dalla parata o dalla reazione
+	# di chi lo riceve). Prima tutti gli spostamenti del turno partivano insieme e i colpi venivano dopo: chi
+	# attaccava colpiva nel vuoto, perché il bersaglio era già andato dove sarebbe arrivato solo più tardi.
+	# Per non rallentare, gli spostamenti consecutivi di personaggi diversi che non colpiscono nessuno partono insieme.
+	var batch=[];var batch_who={}
 	for step in history:
-		var tn=-1
-		for t in step:
-			if t.has("labels"):tn=int(t.get("turn",-1))
-		if (tn!=cur_turn or tn<0) and not cur.is_empty():turns.append(cur);cur=[]   # senza turno registrato: un passo alla volta
-		cur_turn=tn;cur.append(step)
-	if not cur.is_empty():turns.append(cur)
-	for group in turns:
-		await _play_turn(group)
+		if not replaying:break
+		if _pure_move(step):
+			var who=[]
+			for t in step:
+				if t.has("i"):who.append(int(t.i))
+			if who.any(func(w):return batch_who.has(w)):
+				await _play_step(batch,true);batch=[];batch_who={}
+			batch+=step
+			for w in who:batch_who[w]=true
+			continue
+		if not batch.is_empty():
+			await _play_step(batch,true);batch=[];batch_who={}
+		await _play_step(step,true)
+	if not batch.is_empty():await _play_step(batch,true)
 	replaying=false;playing=false;Engine.time_scale=1.0;_refresh_tokens()
-
-func _play_turn(group: Array) -> void:
-	var moves={};var acts=[];var labels={};var sn=0
-	for step in group:
-		sn+=1
-		for t in step:
-			if t.has("labels"):labels=t.labels;continue
-			if not minis.has(t.i):continue
-			if t.from.distance_to(t.to)>.05 and not t.get("after",false) and not t.get("pushed",false):
-				if moves.has(t.i):moves[t.i].to=t.to;moves[t.i].yaw=t.yaw;moves[t.i].facing=t.get("facing",-1)   # più spostamenti nello stesso turno: un solo tragitto
-				else:moves[t.i]=t.duplicate();moves[t.i].delay=0.0
-			else:t["_step"]=sn;acts.append(t)
-	# tutti partono insieme, ognuno alla sua velocità naturale (prima si allungavano tutti sul tragitto più
-	# lungo del turno: chi faceva un esagono andava al rallentatore mentre chi correva sembrava velocissimo)
-	var longest=0.0
-	for i in moves:longest=maxf(longest,_run_track(moves[i],minis[i],true))
-	if longest>0:await get_tree().create_timer(longest).timeout
-	# poi gli scontri, un passo alla volta con la stessa sequenza della partita (colpi uno dopo l'altro)
-	for k in range(1,sn+1):
-		var part=acts.filter(func(t):return int(t.get("_step",0))==k)
-		var moved_fx=false
-		for t in group[k-1]:   # gli effetti di quel passo (gorgo e fuoco vivente si spostano lì)
-			if t.has("labels") and t.has("effects"):part.append(t);moved_fx=true
-		if not part.is_empty():await _play_step(part,true)
-	for step in group:
-		for t in step:
-			if t.has("effects"):_show_effects(t.effects)
-			if t.has("pickups"):_show_pickups(t.pickups)
-			if t.has("states"):_apply_states(t.states)
-	for i in labels:
-		if minis.has(i):_set_status(i,labels[i][0],labels[i][1],labels[i][2],labels[i][3] if labels[i].size()>3 else -1)
-	for t in moves.values()+acts:
-		var info=minis.get(t.i)
-		if info and info.ap and not t.get("stay",false) and not t.clip in ["A terra","Morte"]:_end_pose(t.i)
+## passo di soli spostamenti: nessuno colpisce, para o subisce
+func _pure_move(step: Array) -> bool:
+	var moves=false
+	for t in step:
+		if t.has("labels"):continue
+		if t.get("strike",false) or t.has("hits") or t.has("parried") or t.get("after_strike",false) or t.get("after",false) or int(t.get("hit",0))>0 or str(t.get("move",""))=="summon" or t.get("rebuild",false):return false
+		if (t.from as Vector3).distance_to(t.to)>.05:moves=true
+	return moves
 
 # ---------------------------------------------------------------- celle evidenziate
 func _draw_overlay() -> void:

@@ -353,7 +353,7 @@
         "green": [],
         "blue": [],
         "fatigue": 0,
-        "rest": false,
+        "rest": true,
         "imbalance": null,
         "secondary": 0,
         "texture": "res://assets/tokens/zenyo_meditate.webp"
@@ -1637,7 +1637,7 @@
         "fatigue": 0,
         "rest": false,
         "imbalance": null,
-        "secondary": -1,
+        "secondary": 0,
         "texture": "res://assets/tokens/kylvia_again.webp"
       },
       "parry_r": {
@@ -4240,7 +4240,6 @@
         "attack": 8,
         "defense": 1,
         "red": [
-          5,
           0,
           1
         ],
