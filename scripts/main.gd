@@ -381,17 +381,18 @@ func _menu_battle(v: VBoxContainer,w: float,h: float) -> void:
 			if grp[2]==o[0]:desc=o[2]
 		gv.add_child(wrap_label(desc,13,MUTED,220))
 	v.add_child(_rule())
-	var hint="Freccia a sinistra: Ordine della Lama · freccia a destra: Ordine dell'Ombra · i maghi con chiunque"+(", i combattenti nel loro Ordine" if scenario=="frontale" else ", in questo scenario anche i combattenti")+" · tocca una carta per la scheda e le pedine"
+	var lama=roster.filter(func(r):return int(r.team)==0).size()
+	var hint="Tocca una carta per farla partecipare: si accende di blu (Ordine della Lama) o di rosso (Ordine dell'Ombra); toccala ancora per toglierla. "+("Nello scontro libero scegli la squadra con le frecce." if scenario=="libero" else "I maghi stanno con chiunque: per loro scegli la squadra con le frecce.")+"  In campo: Lama %d, Ombra %d."%[lama,roster.size()-lama]
 	v.add_child(wrap_label(hint,12,MUTED,300))
 	# carte: ogni Ordine su due colonne (4 + 3), i maghi insieme nell'ultima riga
 	var ratio=2.05
 	var forged=_selectable().filter(func(x):return _forged(x))
-	var free_h=h-(150.0 if wide else 250.0)-150.0-(70.0 if not forged.is_empty() else 34.0)
-	var cw=clampf(minf((w-40.0-3*8.0-16.0)/4.0,(free_h-3*8.0)/4.0*ratio),118.0,420.0)
+	var free_h=h-(150.0 if wide else 250.0)-40.0-(70.0 if not forged.is_empty() else 34.0)
+	var cw=clampf(minf((w-40.0-3*14.0-16.0)/4.0,(free_h-3*14.0)/4.0*ratio),118.0,420.0)
 	var two=HBoxContainer.new();two.alignment=BoxContainer.ALIGNMENT_CENTER;two.add_theme_constant_override("separation",40);v.add_child(two)
 	var order=_pool_order()
 	for half in 2:
-		var g=GridContainer.new();g.columns=2;g.add_theme_constant_override("h_separation",8);g.add_theme_constant_override("v_separation",8);two.add_child(g)
+		var g=GridContainer.new();g.columns=2;g.add_theme_constant_override("h_separation",14);g.add_theme_constant_override("v_separation",14);two.add_child(g)
 		var ids: Array=order.slice(half*7,half*7+7)
 		var fighters=ids.filter(func(x):return not _free_agent(x));var mages=ids.filter(func(x):return _free_agent(x))
 		for id in fighters:g.add_child(_pool_card(id,cw))
@@ -404,28 +405,6 @@ func _menu_battle(v: VBoxContainer,w: float,h: float) -> void:
 		for id in forged:forge_row.add_child(_pool_card(id,cw*.72))
 	elif not forged.is_empty():forge_row.add_child(label("Eroi forgiati e varianti: non ancora nelle partite online",12,MUTED))
 	var fb=_bar_button("Forgia un eroe o una variante",func():_show_forge(),"Crea un personaggio da tratti, armi e armatura, o ritocca un personaggio del gioco");fb.size_flags_vertical=Control.SIZE_SHRINK_CENTER;forge_row.add_child(fb)
-	v.add_child(_rule())
-	for team in 2:_team_strip(v,team,w)
-func _team_strip(parent: Node,team: int,w: float) -> void:
-	# la squadra in una riga: volto, nome, chi lo muove (Persona o IA) e la croce per toglierlo
-	var row=HBoxContainer.new();row.add_theme_constant_override("separation",8);parent.add_child(row)
-	var tag=label(["LAMA","OMBRA"][team],13,TEAM_COLOR[team]);tag.custom_minimum_size.x=62;tag.size_flags_vertical=Control.SIZE_SHRINK_CENTER;row.add_child(tag)
-	var flow=HFlowContainer.new();flow.size_flags_horizontal=Control.SIZE_EXPAND_FILL;flow.add_theme_constant_override("h_separation",6);flow.add_theme_constant_override("v_separation",6);row.add_child(flow)
-	var any=false
-	for i in roster.size():
-		if int(roster[i].team)!=team:continue
-		any=true
-		var id: String=roster[i].character
-		var chip=PanelContainer.new();chip.add_theme_stylebox_override("panel",flat(Color(TEAM_COLOR[team],.14),Color(TEAM_COLOR[team],.8),7,1,6,4));flow.add_child(chip)
-		var h=HBoxContainer.new();h.add_theme_constant_override("separation",6);chip.add_child(h)
-		var f=TextureRect.new();var fp=face_path(id)
-		if ResourceLoader.exists(fp):f.texture=load(fp)
-		f.expand_mode=TextureRect.EXPAND_IGNORE_SIZE;f.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_COVERED;f.custom_minimum_size=Vector2(32,32);h.add_child(f)
-		var nm=label(str(game.catalog[id].name),14,INK);nm.clip_text=true;nm.custom_minimum_size.x=84;nm.size_flags_vertical=Control.SIZE_SHRINK_CENTER;h.add_child(nm)
-		h.add_child(_bar_button("Persona" if roster[i].controller=="human" else "IA",func():roster[i].controller="ai" if roster[i].controller=="human" else "human";_show_menu(),"Chi muove questo personaggio: tocca per cambiare"))
-		h.add_child(icon_button("cross",func():_remove_from_team(i),"Togli dalla squadra"))
-	if not any:
-		var e=label("nessuno: scegli una carta con la freccia",13,Color(TEAM_COLOR[team],.7));e.clip_text=true;e.custom_minimum_size=Vector2(minf(300.0,w-90.0),40);e.vertical_alignment=VERTICAL_ALIGNMENT_CENTER;flow.add_child(e)
 func _menu_house(v: VBoxContainer,w: float) -> void:
 	var head=HFlowContainer.new();head.add_theme_constant_override("h_separation",10);head.add_theme_constant_override("v_separation",6);v.add_child(head)
 	var title=label("REGOLE DELLA CASA",22,GOLD);title.custom_minimum_size.x=280;head.add_child(title)
@@ -477,38 +456,59 @@ func _pool_order() -> Array:
 		else:mages.append(id)
 	var half=ceili(mages.size()/2.0)
 	return lama+mages.slice(0,half)+ombra+mages.slice(half)
+# colori dell'alone nella scelta dei personaggi: blu l'Ordine della Lama, rosso l'Ordine dell'Ombra
+const GLOW=[Color("3f9bff"),Color("ff4a3d")]
+var _grey_shader: Shader
+func _grey_material() -> ShaderMaterial:
+	if _grey_shader==null:
+		_grey_shader=Shader.new()
+		_grey_shader.code="shader_type canvas_item;\nvoid fragment(){vec4 c=texture(TEXTURE,UV);float l=dot(c.rgb,vec3(.299,.587,.114));COLOR=vec4(vec3(l)*.62,c.a);}"
+	var m=ShaderMaterial.new();m.shader=_grey_shader;return m
 func _pool_card(id: String,width: float) -> Control:
-	# carta piccola con due frecce larghe ai lati: ◀ Lama, ▶ Ombra; già scelta = bordo e etichetta della squadra
+	# Carta grigia = non partecipa. Toccandola si accende con l'alone della sua squadra (blu Lama, rosso Ombra) e
+	# partecipa; toccandola di nuovo si spegne. Chi può stare in tutte e due le squadre (tutti nello scontro libero,
+	# i maghi sempre) ha le frecce: sinistra Lama, destra Ombra.
 	var picked=-1
 	for i in roster.size():
 		if roster[i].character==id:picked=i
-	var box_c=PanelContainer.new()
-	var sb=box(Color(0,0,0,0),6);sb.set_border_width_all(3);sb.border_color=TEAM_COLOR[int(roster[picked].team)] if picked>=0 else Color(0,0,0,0)
-	box_c.add_theme_stylebox_override("panel",sb)
-	var card=_card_widget(id,width,func(_x):_show_detail(id))
-	if picked>=0:card.modulate=Color(1,1,1,.5)
-	box_c.add_child(card)
 	var own=int(game.catalog[id].team);var locked=_locked(id)
-	var ch=card.custom_minimum_size;var aw=clampf(width*.13,24.0,46.0);var ah=clampf(ch.y*.5,26.0,60.0)
-	for team in 2:
-		if locked and team!=own:continue                      # combattente legato al suo Ordine
-		if picked>=0 and int(roster[picked].team)==team:continue   # è già lì
-		var ar=Button.new();ar.draw.connect(func():_draw_icon(ar,"left" if team==0 else "right",DARK_INK))   # freccia disegnata
-		ar.tooltip_text=("Nell'Ordine della Lama" if team==0 else "Nell'Ordine dell'Ombra")+(" (sposta)" if picked>=0 else "")
-		var st=box(TEAM_COLOR[team].darkened(.15),8);st.set_border_width_all(2);st.border_color=Color(1,1,1,.55)
-		var sth=box(TEAM_COLOR[team].lightened(.15),8);sth.set_border_width_all(2);sth.border_color=Color.WHITE
-		ar.add_theme_stylebox_override("normal",st);ar.add_theme_stylebox_override("hover",sth);ar.add_theme_stylebox_override("pressed",sth)
-		ar.add_theme_color_override("font_color",DARK_INK);ar.add_theme_color_override("font_hover_color",DARK_INK)
-		ar.custom_minimum_size=Vector2(aw,ah);ar.size=Vector2(aw,ah);ar.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
-		ar.position=Vector2(0.0 if team==0 else ch.x-aw,(ch.y-ah)*.5)
-		ar.pressed.connect(func():
-			if picked>=0:roster[picked].team=team;message="";_show_menu()
-			else:_add_to_team(id,team))
-		card.add_child(ar)
+	var box_c=PanelContainer.new()
+	var sb=box(Color(0,0,0,0),6);sb.set_border_width_all(3);sb.border_color=Color(0,0,0,0)
 	if picked>=0:
-		var tag=label(("LAMA" if int(roster[picked].team)==0 else "OMBRA"),11,DARK_INK)
-		var tp=PanelContainer.new();tp.add_theme_stylebox_override("panel",box(TEAM_COLOR[int(roster[picked].team)],4));tp.add_child(tag);card.add_child(tp);tp.position=Vector2(4,4)
-		var x=icon_button("cross",func():_remove_from_team(picked),"Togli dalla squadra",26.0);card.add_child(x);x.position=Vector2(ch.x-32,3)
+		var gc: Color=GLOW[int(roster[picked].team)]
+		sb.border_color=gc.lightened(.25);sb.shadow_color=Color(gc,.85);sb.shadow_size=int(clampf(width*.07,9.0,18.0))
+	box_c.add_theme_stylebox_override("panel",sb)
+	var card=_card_widget(id,width,func(_x):
+		if picked>=0:_remove_from_team(picked)
+		else:_add_to_team(id,own))
+	if picked<0:card.material=_grey_material()
+	card.tooltip_text+="\n"+("Partecipa: tocca per toglierlo" if picked>=0 else "Tocca per farlo partecipare")
+	box_c.add_child(card)
+	var ch=card.custom_minimum_size;var aw=clampf(width*.13,24.0,46.0);var ah=clampf(ch.y*.5,26.0,60.0)
+	if not locked:
+		for team in 2:
+			if picked>=0 and int(roster[picked].team)==team:continue   # è già lì
+			var ar=Button.new();ar.draw.connect(func():_draw_icon(ar,"left" if team==0 else "right",Color.WHITE))   # freccia disegnata
+			ar.tooltip_text=("Nell'Ordine della Lama" if team==0 else "Nell'Ordine dell'Ombra")+(" (sposta)" if picked>=0 else "")
+			var st=box(GLOW[team].darkened(.25),8);st.set_border_width_all(2);st.border_color=Color(1,1,1,.55)
+			var sth=box(GLOW[team],8);sth.set_border_width_all(2);sth.border_color=Color.WHITE
+			ar.add_theme_stylebox_override("normal",st);ar.add_theme_stylebox_override("hover",sth);ar.add_theme_stylebox_override("pressed",sth)
+			ar.custom_minimum_size=Vector2(aw,ah);ar.size=Vector2(aw,ah);ar.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND
+			ar.position=Vector2(0.0 if team==0 else ch.x-aw,(ch.y-ah)*.5)
+			ar.pressed.connect(func():
+				if picked>=0:roster[picked].team=team;message="";_show_menu()
+				else:_add_to_team(id,team))
+			card.add_child(ar)
+	var small=func(text: String,cb: Callable,tip: String) -> Button:
+		var b=Button.new();b.text=text;b.tooltip_text=tip;b.add_theme_font_size_override("font_size",11);b.pressed.connect(cb)
+		for st in ["normal","hover","pressed"]:b.add_theme_stylebox_override(st,flat(Color(.08,.06,.05,.86) if st=="normal" else Color(.2,.15,.1,.95),Color(1,1,1,.35),5,1,6,2))
+		b.mouse_default_cursor_shape=Control.CURSOR_POINTING_HAND;return b
+	# la scheda con le pedine: prima si apriva toccando la carta, ora da qui
+	var info: Button=small.call("Scheda",func():_show_detail(id),"Scheda del personaggio e pedine")
+	card.add_child(info);info.position=Vector2(ch.x-info.get_combined_minimum_size().x-4,ch.y-info.get_combined_minimum_size().y-4)
+	if picked>=0:   # chi lo muove: era nella riga delle squadre, ora sta sulla carta
+		var who: Button=small.call("Persona" if roster[picked].controller=="human" else "IA",func():roster[picked].controller="ai" if roster[picked].controller=="human" else "human";_show_menu(),"Chi muove questo personaggio: tocca per cambiare")
+		card.add_child(who);who.position=Vector2(4,ch.y-who.get_combined_minimum_size().y-4)
 	return box_c
 func _show_detail(id: String) -> void:
 	# finestra sopra il menu con scheda e tessere; si chiude cliccando fuori o su Chiudi
