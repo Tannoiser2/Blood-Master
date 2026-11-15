@@ -1,14 +1,17 @@
-"""Chiude a pugno le mani di un modello (i modelli non hanno le ossa delle dita: la mano è scolpita aperta).
-Lavora sul GLB così com'è, spostando solo i vertici della mano: scheletro, pesi, animazioni e texture non cambiano.
-Le dita (i vertici oltre le nocche, lungo l'asse della mano) si avvolgono in un arco continuo attorno all'impugnatura
-dell'arma, là dove l'arma sta davvero nel modello: così il lato del palmo e il raggio della presa non si indovinano.
-La mano senza arma prende, specchiate, le misure dell'altra.
+"""Chiude le mani di un modello seguendo la curva che le dita hanno già.
 
-uso: python3 tools/hands/fist.py assets/models/nuchra/nuchra.glb [--out file.glb] [--right 1.0] [--left 1.0] [--flip-right] [--flip-left]
-  --right/--left: quanto chiudere (0 = lascia aperta, 1 = pugno pieno, 0.75 = presa attorno a un'impugnatura)
-  --flip-*: se la mano si chiude dal lato sbagliato (il palmo non è stato riconosciuto)
-Tenere sempre l'originale (git): lo script riparte dal file che gli si dà."""
-import sys, argparse, struct
+I modelli non hanno le ossa delle dita e le mani sono scolpite: spesso con le quattro dita fuse in un blocco, già
+piegate ad artiglio, e con pochi vertici. Arrotolarle come se fossero tese le accartoccia. Qui invece:
+ 1. oltre la linea delle nocche si separano il blocco delle dita e il pollice (pezzi non collegati fra loro);
+ 2. di ogni pezzo si misura la distanza lungo la superficie dalla base alla punta: dà la linea di mezzo anche se
+    il dito è curvo, quanto piega già e da che parte (il palmo è dal lato interno della curva);
+ 3. si aggiunge solo la piega che manca per arrivare a una mano da presa, su tre articolazioni.
+Lavora sul GLB spostando solo i vertici della mano: scheletro, pesi, animazioni e texture non cambiano.
+Messo a punto guardando il risultato in Blender (scena ProvaMani); controllare sempre con tools/hands/handcam.gd.
+
+uso: python3 tools/hands/fist.py modello.glb [--out file.glb] [--right 1] [--left 1] [--total 195]
+  --right/--left 0 lascia quella mano com'è; --total: gradi complessivi di piega delle dita a mano chiusa"""
+import argparse, heapq
 import numpy as np
 import pygltflib
 
@@ -16,124 +19,135 @@ CT = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.u
 NC = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
 
 def view(g, blob, acc_i):
-    """vista scrivibile sui dati di un accessor (rispetta byteStride)"""
     a = g.accessors[acc_i]; bv = g.bufferViews[a.bufferView]
     dt = np.dtype(CT[a.componentType]); n = NC[a.type]
-    off = (bv.byteOffset or 0) + (a.byteOffset or 0)
-    stride = bv.byteStride or dt.itemsize * n
+    off = (bv.byteOffset or 0) + (a.byteOffset or 0); stride = bv.byteStride or dt.itemsize * n
     return np.ndarray((a.count, n), dtype=dt, buffer=blob, offset=off, strides=(stride, dt.itemsize)), a
 
-def smooth(e0, e1, x):
+def _comps(n, edges, keep):
+    par = np.arange(n)
+    def find(a):
+        while par[a] != a:
+            par[a] = par[par[a]]; a = par[a]
+        return a
+    for a, b in edges:
+        if keep[a] and keep[b]:
+            ra, rb = find(a), find(b)
+            if ra != rb: par[ra] = rb
+    return np.array([find(i) if keep[i] else -1 for i in range(n)])
+
+def _rot(P, piv, axis, ang):
+    v = P - piv; c = np.cos(ang)[:, None]; s = np.sin(ang)[:, None]
+    return piv + v * c + np.cross(axis, v) * s + axis * (v @ axis)[:, None] * (1 - c)
+
+def _smooth(e0, e1, x):
     t = np.clip((x - e0) / max(e1 - e0, 1e-9), 0, 1); return t * t * (3 - 2 * t)
 
-def rot(points, pivot, axis, ang):
-    """ruota i punti attorno a un asse (per punto: angolo diverso)"""
-    v = points - pivot; c = np.cos(ang)[:, None]; s = np.sin(ang)[:, None]
-    return pivot + v * c + np.cross(axis, v) * s + axis * (v @ axis)[:, None] * (1 - c)
+def geodesic(n, edges, P, seeds, mask):
+    adj = [[] for _ in range(n)]
+    for a, b in edges:
+        if mask[a] and mask[b]:
+            w = float(np.linalg.norm(P[a] - P[b])); adj[a].append((b, w)); adj[b].append((a, w))
+    g = np.full(n, np.inf); h = []
+    for s in seeds: g[s] = 0.0; heapq.heappush(h, (0.0, int(s)))
+    while h:
+        dd, a = heapq.heappop(h)
+        if dd > g[a]: continue
+        for b, w in adj[a]:
+            if dd + w < g[b]: g[b] = dd + w; heapq.heappush(h, (g[b], b))
+    return g
 
-def node_matrix(nd):
-    if nd.matrix: return np.array(nd.matrix, dtype=np.float64).reshape(4, 4).T
-    m = np.eye(4)
-    if nd.scale: m = m @ np.diag(list(nd.scale) + [1.0])
-    if nd.rotation:
-        x, y, z, w = nd.rotation
-        r = np.array([[1-2*(y*y+z*z), 2*(x*y-z*w), 2*(x*z+y*w)], [2*(x*y+z*w), 1-2*(x*x+z*z), 2*(y*z-x*w)], [2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y)]])
-        rm = np.eye(4); rm[:3, :3] = r; m = rm @ m
-    if nd.translation: tm = np.eye(4); tm[:3, 3] = nd.translation; m = tm @ m
-    return m
-
-def haft_line(g, bind_hand, hand_node):
-    """retta dell'impugnatura dell'arma tenuta da questa mano, nello spazio della mesh: (punto, direzione) o None"""
-    for want in ("ArmaAzione", "Spada", "SpadaSinistra", "Arma"):
-        for k in (g.nodes[hand_node].children or []):
-            nd = g.nodes[k]
-            if nd.name != want or nd.mesh is None: continue
-            lo = np.array([np.inf] * 3); hi = -lo
-            for pr in g.meshes[nd.mesh].primitives:
-                a = g.accessors[pr.attributes.POSITION]; lo = np.minimum(lo, a.min); hi = np.maximum(hi, a.max)
-            ax = np.zeros(3); ax[np.argmax(hi - lo)] = 1.0; cen = (lo + hi) / 2; half = (hi - lo).max() / 2
-            m = bind_hand @ node_matrix(nd)
-            p0 = (m @ np.append(cen - ax * half, 1.0))[:3]; p1 = (m @ np.append(cen + ax * half, 1.0))[:3]
-            return p0, (p1 - p0) / np.linalg.norm(p1 - p0)
-    return None
+def close_geo(P, edges, W, F, thr=.45, total=195.0, thumb_total=95.0, amount=1.0, joints=(.2, .5, .78), split=(.3, .4, .3), log=print):
+    """P: vertici saldati della mano, edges: spigoli, W polso, F gomito -> nuove posizioni"""
+    d0 = (W - F) / np.linalg.norm(W - F); t = (P - W) @ d0; L = np.percentile(t, 99.5); n = len(P)
+    lab = _comps(n, edges, t > thr * L); ids, cnt = np.unique(lab[lab >= 0], return_counts=True)
+    out = P.copy(); order = np.argsort(-cnt)
+    big = cnt[order[0]] if len(order) else 0
+    for rank, oi in enumerate(order[:5]):
+        if cnt[oi] < max(8, .04 * n): continue
+        m = lab == ids[oi]; idx = np.nonzero(m)[0]
+        is_thumb = rank > 0 and cnt[oi] < .45 * big   # il pezzo piccolo accanto al blocco delle dita
+        seeds = set()
+        for a, b in edges:
+            if m[a] and not m[b]: seeds.add(a)
+            if m[b] and not m[a]: seeds.add(b)
+        if not seeds: continue
+        g = geodesic(n, edges, P, seeds, m)[idx]; g[~np.isfinite(g)] = 0.0
+        Q = P[idx]; K = 10; qs = np.quantile(g, np.linspace(0, 1, K + 1))
+        sl = [(g >= qs[j]) & (g <= qs[j + 1]) for j in range(K)]
+        if any(s.sum() == 0 for s in sl): continue
+        line = np.array([Q[s].mean(0) for s in sl]); gm = np.array([g[s].mean() for s in sl])
+        seg = np.linalg.norm(np.diff(line, axis=0), axis=1)
+        if np.linalg.norm(line[2] - line[0]) < 1e-9 or np.linalg.norm(line[-1] - line[-3]) < 1e-9: log("   pezzo troppo piccolo per misurarlo: lasciato"); continue
+        arc = np.concatenate([[0], np.cumsum(seg)]); Ln = arc[-1]; s = np.interp(g, gm, arc)
+        chord = line[-1] - line[0]; chord /= np.linalg.norm(chord)
+        bow = (line[0] + line[-1]) / 2 - line[K // 2]; bow -= chord * (bow @ chord); bl = np.linalg.norm(bow)
+        t0 = line[2] - line[0]; t0 /= np.linalg.norm(t0); t1 = line[-1] - line[-3]; t1 /= np.linalg.norm(t1)
+        have = float(np.degrees(np.arccos(np.clip(t0 @ t1, -1, 1))))
+        name = "pollice" if is_thumb else "dita"
+        if bl < .03 * Ln: log(f"   {name}: {len(idx)} vertici, quasi dritto: non si capisce dov'è il palmo, lasciato"); continue
+        fpalm = bow / bl; add = max(0.0, (thumb_total if is_thumb else total) * amount - have)
+        for jf, fr in zip(joints, split):
+            js = jf * Ln; j = min(max(int(np.searchsorted(arc, js)), 1), K - 1)
+            w = (js - arc[j - 1]) / max(arc[j] - arc[j - 1], 1e-9); piv = line[j - 1] + w * (line[j] - line[j - 1])
+            while j < K - 1 and np.linalg.norm(line[j] - line[j - 1]) < 1e-9: j += 1
+            tang = line[j] - line[j - 1]; tang /= max(np.linalg.norm(tang), 1e-12)
+            axis = np.cross(tang, fpalm); axis /= np.linalg.norm(axis)
+            ang = np.radians(add * fr); band = .1 * Ln
+            Q = _rot(Q, piv, axis, ang * _smooth(js - band, js + band, s))
+            far = arc > js
+            if far.any(): line[far] = _rot(line[far], piv, axis, np.full(far.sum(), ang))
+            fpalm = _rot(fpalm[None, :], np.zeros(3), axis, np.array([ang]))[0]
+        out[idx] = Q
+        log(f"   {name}: {len(idx)} vertici, piegava già {have:.0f} gradi, aggiunti {add:.0f}")
+    return out
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("glb"); ap.add_argument("--out")
     ap.add_argument("--right", type=float, default=1.0); ap.add_argument("--left", type=float, default=1.0)
-    ap.add_argument("--flip-right", action="store_true"); ap.add_argument("--flip-left", action="store_true")
-    ap.add_argument("--wrap", type=float, default=205.0, help="gradi di avvolgimento delle dita a pugno pieno")
+    ap.add_argument("--total", type=float, default=195.0)
     o = ap.parse_args()
     g = pygltflib.GLTF2().load(o.glb); blob = bytearray(g.binary_blob())
     skin = g.skins[0]; names = [g.nodes[j].name for j in skin.joints]
     ibm, _ = view(g, blob, skin.inverseBindMatrices)
-    bind = [np.linalg.inv(m.reshape(4, 4).T.astype(np.float64)) for m in ibm]   # matrice globale dell'osso a riposo
-    measured = None   # misure della mano con l'arma: palmo (vettore), nocche (frazione), raggio (frazione)
-    for side, amount, flip in (("Right", o.right, o.flip_right), ("Left", o.left, o.flip_left)):
-        hj = names.index(side + "Hand"); fj = names.index(side + "ForeArm")
-        W = bind[hj][:3, 3]; F = bind[fj][:3, 3]
-        parts = []
+    bind = [np.linalg.inv(m.reshape(4, 4).T.astype(np.float64)) for m in ibm]
+    for side, amount in (("Right", o.right), ("Left", o.left)):
+        if amount <= 0: continue
+        hj = names.index(side + "Hand"); W = bind[hj][:3, 3]; F = bind[names.index(side + "ForeArm")][:3, 3]
+        parts = []; allp = []; tris = []; base = 0
         for mesh in g.meshes:
             for pr in mesh.primitives:
                 at = pr.attributes
-                if at.JOINTS_0 is None or at.POSITION is None: continue
-                J, _ = view(g, blob, at.JOINTS_0); Wt, wa = view(g, blob, at.WEIGHTS_0)
-                wt = Wt.astype(np.float64)
+                if at.JOINTS_0 is None or at.POSITION is None or pr.indices is None: continue
+                J, _ = view(g, blob, at.JOINTS_0); Wt, wa = view(g, blob, at.WEIGHTS_0); wt = Wt.astype(np.float64)
                 if wa.componentType == 5121: wt /= 255.0
                 elif wa.componentType == 5123: wt /= 65535.0
-                idx = np.nonzero((wt * (J == hj)).sum(1) > .5)[0]
-                if len(idx) == 0: continue
-                P, pacc = view(g, blob, at.POSITION)
-                N = view(g, blob, at.NORMAL)[0] if at.NORMAL is not None else None
-                T = view(g, blob, at.TANGENT)[0] if at.TANGENT is not None else None
-                parts.append((P, pacc, N, T, idx))
-        if not parts: print(side, "mano: nessun vertice"); continue
-        pts = np.concatenate([p[0][p[4]].astype(np.float64) for p in parts])
-        # assi della mano misurati sulla sua forma: d lungo le dita dal polso, n attraverso il palmo (lo spessore), s di lato
-        d0 = W - F; d0 /= np.linalg.norm(d0)
-        c = pts.mean(0); _, _, vt = np.linalg.svd(pts - c, full_matrices=False)
-        d = vt[0] if vt[0] @ d0 > 0 else -vt[0]
-        if abs(d @ d0) < .6: d = d0
-        n = vt[2] - d * (vt[2] @ d); n /= np.linalg.norm(n); s = np.cross(d, n)
-        t = (pts - W) @ d; L = np.percentile(t, 99.5); u = (pts - W) @ n; v = (pts - W) @ s
-        palm = (t > .15 * L) & (t < .45 * L); umid = np.median(u[palm])
-        hl = haft_line(g, bind[hj], skin.joints[hj])
-        if hl is not None:
-            # l'impugnatura passa nel palmo: dice da che parte è il palmo, dove cominciano le dita e quanto è larga la presa
-            p0, hd = hl; q = p0 + hd * ((W + d * .5 * L - p0) @ hd)   # punto dell'asta più vicino al centro della mano
-            sign = 1.0 if (q - W) @ n > umid else -1.0
-            t1 = np.clip((q - W) @ d / L - .08, .38, .6); rb = np.clip(abs((q - W) @ n - umid) / L, .1, .2)
-            measured = (sign * n, t1, rb)
-            src = "dall'arma"
-        elif measured is not None:
-            pv = measured[0] * np.array([-1.0, 1.0, 1.0])   # specchio sul piano di simmetria del corpo
-            sign = 1.0 if pv @ n > 0 else -1.0; t1 = measured[1]; rb = measured[2]; src = "specchio dell'altra"
-        else:
-            tips = t > .78 * L; sign = 1.0 if u[tips].mean() - umid > 0 else -1.0; t1 = .5; rb = .14; src = "dalla forma"
-        if flip: sign = -sign
-        print(f"{side}: {len(pts)} vertici, lunga {L:.3f}, palmo verso {np.round(sign*n,2)} ({src}), nocche a {t1:.2f}, raggio {rb:.2f}")
-        if amount <= 0: continue
-        T1 = t1 * L; RB = rb * L; e_out = -sign * n            # dal centro della presa verso il dorso delle dita
-        fing = t > T1 + .1 * L
-        uf = np.median(u[fing]) if fing.sum() > 10 else umid   # metà spessore delle dita
-        C = W + d * T1 + n * uf - e_out * RB                    # asse della presa (parallelo a s)
-        cap = np.radians(o.wrap) * amount
-        for P, pacc, N, T, idx in parts:
-            p = P[idx].astype(np.float64); tt = (p - W) @ d - T1; sel = tt > 0
-            if not sel.any(): continue
-            rel = p[sel] - C; r = np.maximum(rel @ e_out, .15 * RB); vv = rel @ s; x = tt[sel]
-            th = np.minimum(x / RB, cap); extra = x - th * RB       # oltre l'arco le dita proseguono dritte
-            tang = d[None, :] * np.cos(th)[:, None] - e_out[None, :] * np.sin(th)[:, None]
-            rad = e_out[None, :] * np.cos(th)[:, None] + d[None, :] * np.sin(th)[:, None]
-            p[sel] = C + rad * r[:, None] + tang * extra[:, None] + s[None, :] * vv[:, None]
-            P[idx] = p.astype(np.float32)
-            for A, cols in ((N, slice(None)), (T, slice(0, 3))):
-                if A is None: continue
-                a = A[idx][:, cols].astype(np.float64); b = a[sel]
-                b = (b @ d)[:, None] * tang + (b @ e_out)[:, None] * rad + (b @ s)[:, None] * s[None, :]
-                a[sel] = b / np.maximum(np.linalg.norm(b, axis=1, keepdims=True), 1e-9)
-                if cols == slice(None): A[idx] = a.astype(np.float32)
-                else:
-                    full = A[idx]; full[:, :3] = a.astype(np.float32); A[idx] = full
-            allp = P.astype(np.float64); pacc.min = [float(x) for x in allp.min(0)]; pacc.max = [float(x) for x in allp.max(0)]
-    g.set_binary_blob(bytes(blob)); g.save(o.out or o.glb); print("scritto", o.out or o.glb)
+                hand = (wt * (J == hj)).sum(1) > .5
+                if not hand.any(): continue
+                P, pacc = view(g, blob, at.POSITION); N = view(g, blob, at.NORMAL)[0] if at.NORMAL is not None else None
+                idx = np.nonzero(hand)[0]; local = -np.ones(len(P), dtype=np.int64); local[idx] = base + np.arange(len(idx))
+                I = view(g, blob, pr.indices)[0].reshape(-1, 3).astype(np.int64)
+                ok = hand[I].all(1); tris.append(local[I[ok]])
+                parts.append((P, pacc, N, idx, base)); allp.append(P[idx].astype(np.float64)); base += len(idx)
+        if not parts: print(side, "nessun vertice"); continue
+        allp = np.concatenate(allp); tris = np.concatenate(tris)
+        key = np.round(allp / max(np.ptp(allp), 1e-9), 5); uniq, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel()
+        Pw = np.zeros((len(uniq), 3)); np.add.at(Pw, inv, allp); Pw /= np.bincount(inv)[:, None]   # doppioni delle cuciture saldati
+        tw = inv[tris]; ed = np.concatenate([tw[:, [0, 1]], tw[:, [1, 2]], tw[:, [2, 0]]]); ed = ed[ed[:, 0] != ed[:, 1]]
+        edges = np.unique(np.sort(ed, axis=1), axis=0)
+        print(f"{side}: {len(Pw)} vertici")
+        out = close_geo(Pw, edges, W, F, total=o.total, amount=amount)
+        moved = np.linalg.norm(out - Pw, axis=1) > 1e-9
+        if not moved.any(): continue
+        # normali rifatte dalle facce (pesate sull'area) per i vertici spostati
+        fn = np.cross(out[tw[:, 1]] - out[tw[:, 0]], out[tw[:, 2]] - out[tw[:, 0]]); vn = np.zeros_like(out)
+        for k in range(3): np.add.at(vn, tw[:, k], fn)
+        vn /= np.maximum(np.linalg.norm(vn, axis=1, keepdims=True), 1e-12)
+        delta = out - Pw
+        for P, pacc, N, idx, b in parts:
+            w = inv[b:b + len(idx)]; mv = moved[w]
+            P[idx[mv]] = (P[idx[mv]].astype(np.float64) + delta[w[mv]]).astype(np.float32)
+            if N is not None: N[idx[mv]] = vn[w[mv]].astype(np.float32)
+            a = P.astype(np.float64); pacc.min = [float(x) for x in a.min(0)]; pacc.max = [float(x) for x in a.max(0)]
+    g.set_binary_blob(bytes(blob)); g.save(o.out or o.glb)
 main()
