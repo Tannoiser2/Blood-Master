@@ -99,9 +99,12 @@ func _ready() -> void:
 	viewport.msaa_3d=Viewport.MSAA_2X;add_child(viewport)
 	var env=WorldEnvironment.new();env.environment=Environment.new()
 	env.environment.background_mode=Environment.BG_COLOR;env.environment.background_color=Color("140e0a")
-	env.environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;env.environment.ambient_light_color=Color("c4d6dc");env.environment.ambient_light_energy=.7
-	env.environment.tonemap_mode=Environment.TONE_MAPPER_FILMIC;viewport.add_child(env)
-	for cfg in [[Vector3(-4,9,6),Color("fff0d0"),2.2,true],[Vector3(6,5,-3),Color("a8dce8"),1.0,false]]:
+	# Luci: una luce principale calda che fa le ombre, un controluce freddo tenue e poca luce d'ambiente. Prima la somma
+	# (2,2 + 1,0 + ambiente 0,7 chiaro) bruciava i colori: miniature slavate, senza volume, con le texture appiattite.
+	env.environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;env.environment.ambient_light_color=Color("8f9aa8");env.environment.ambient_light_energy=.42
+	env.environment.tonemap_mode=Environment.TONE_MAPPER_FILMIC;env.environment.tonemap_white=1.6
+	env.environment.adjustment_enabled=true;env.environment.adjustment_contrast=1.08;env.environment.adjustment_saturation=1.1;viewport.add_child(env)
+	for cfg in [[Vector3(-4,9,6),Color("ffe9c4"),1.35,true],[Vector3(6,5,-3),Color("9fc8e0"),.4,false],[Vector3(2,3,-8),Color("ffd9a0"),.3,false]]:
 		var l=DirectionalLight3D.new();viewport.add_child(l);l.position=cfg[0];l.look_at(Vector3.ZERO);l.light_color=cfg[1];l.light_energy=cfg[2];l.shadow_enabled=cfg[3]
 	viewport.add_child(_ground())
 	overlay=MeshInstance3D.new();overlay.mesh=ImmediateMesh.new();var om=StandardMaterial3D.new();om.vertex_color_use_as_albedo=true;om.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;om.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;om.no_depth_test=false;overlay.material_override=om;viewport.add_child(overlay)
