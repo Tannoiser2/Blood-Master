@@ -28,6 +28,8 @@ var chest:=Vector3.ZERO             # centro delle spalle nella posa di guardia
 var axisR:=Vector3.ZERO             # direzione della lama nell'osso della mano destra (zero: mano vuota)
 var axisL:=Vector3.ZERO
 var kind:="one"                     # one, shield, dual, two, none
+var stock_guard:=[]                 # la guardia di libreria, prima di ridisegnarla
+var hand_ref:={}                    # polso della guardia di libreria (mano rispetto all'avambraccio): l'impugnatura che sembra giusta
 var guard_ctrl:={}                  # guardia ridisegnata (comandi come in solve); vuoto: quella della clip di libreria
 var guard:=[]                       # posa di guardia (trasformazioni locali)
 var guard_g:=[]                     # la stessa, globale
@@ -47,7 +49,7 @@ func setup(model: Node3D,ap: AnimationPlayer,weapon_kind: String,guard_clip: Str
 		var p=str(ga.track_get_path(t))
 		if p.ends_with(":Hips"):prefix=p.trim_suffix(":Hips");break
 	if prefix=="":return false
-	guard=sample(ga,0.0);guard_g=globals(guard)
+	guard=sample(ga,0.0);guard_g=globals(guard);stock_guard=guard.duplicate()
 	var rg=globals(rest)
 	AL=rg[idx.RightArm].origin.distance_to(rg[idx.RightForeArm].origin)+rg[idx.RightForeArm].origin.distance_to(rg[idx.RightHand].origin)
 	chest=(guard_g[idx.RightArm].origin+guard_g[idx.LeftArm].origin)*.5
@@ -55,6 +57,7 @@ func setup(model: Node3D,ap: AnimationPlayer,weapon_kind: String,guard_clip: Str
 	if kind in ["one","shield","two","dual"] and axisR==Vector3.ZERO:kind="none"
 	if kind=="dual" and axisL==Vector3.ZERO:kind="one"
 	left_rel=guard_g[idx.RightHand].affine_inverse()*guard_g[idx.LeftHand]
+	hand_ref={"Right":(guard[idx.RightHand] as Transform3D).basis.orthonormalized(),"Left":(guard[idx.LeftHand] as Transform3D).basis.orthonormalized()}
 	if not guard_ctrl.is_empty():   # la presa a due mani resta misurata sulla clip; la guardia diventa quella ridisegnata
 		guard=solve(guard,guard_ctrl);guard_g=globals(guard)
 	return true
@@ -156,29 +159,59 @@ func solve(base: Array,c: Dictionary,frame:=Transform3D(),use_frame:=false) -> A
 		if s=="Left" and c.get("follow",false):continue
 		if not c.has(key) or float(c.get(key+"w",1.0))<=0.0:continue
 		var a: Array=c[key];var before=p.duplicate()
+		_reset_arm(p,s)
 		var hand_pos=chest+dir_az(a[0])*float(a[1])*AL+Vector3.UP*float(a[2])*AL
 		var blade=dir_az(a[3],a[4])
 		if use_frame:hand_pos=frame*hand_pos;blade=frame.basis*blade
 		var out=Vector3(-1,0,0) if s=="Right" else Vector3(1,0,0)
 		if use_frame:out=frame.basis*out
 		_ik(p,idx[s+"Arm"],idx[s+"ForeArm"],idx[s+"Hand"],hand_pos,out*.7+Vector3.DOWN+(frame.basis*Vector3(0,0,-.35) if use_frame else Vector3(0,0,-.35)))
-		var ax: Vector3=axisR if s=="Right" else axisL
-		var hb: int=idx[s+"Hand"];var g=globals(p)
-		if ax!=Vector3.ZERO:_set_basis(p,g,hb,_arc(g[hb].basis*ax,blade)*g[hb].basis)
-		else:_set_basis(p,g,hb,_arc(g[hb].origin-g[idx[s+"ForeArm"]].origin,blade)*g[hb].basis)   # mano vuota: le dita puntano lì
+		_wrist(p,s,blade)
 		var w=float(c.get(key+"w",1.0))
 		if w<1.0:
 			for part in ARMS:
 				var bi: int=idx.get(s+part,-1)
 				if bi>=0:p[bi]=(before[bi] as Transform3D).interpolate_with(p[bi],w)
 	if c.get("follow",false):   # arma a due mani: la sinistra segue la destra lungo l'asta
+		_reset_arm(p,"Left")
 		var g=globals(p);var want: Transform3D=g[idx.RightHand]*left_rel
 		_ik(p,idx.LeftArm,idx.LeftForeArm,idx.LeftHand,want.origin,Vector3(.7,-1,-.35))
-		_set_basis(p,globals(p),idx.LeftHand,want.basis)
+		var gl=globals(p)
+		var h0: Basis=gl[idx.LeftForeArm].basis.orthonormalized()*hand_ref.Left   # polso naturale: non oltre un radiante da lì
+		var q=(want.basis.orthonormalized()*h0.inverse()).get_rotation_quaternion()
+		_set_basis(p,gl,idx.LeftHand,(Basis(q.get_axis(),1.0)*h0) if q.get_angle()>1.0 else want.basis)
 	var w0=float(c.get("w",1.0))
 	if w0<1.0:
 		for i in n:p[i]=(base[i] as Transform3D).interpolate_with(p[i],w0)
 	return p
+
+## il braccio riparte sempre da com'è nella guardia di libreria: la torsione dell'avambraccio non dipende dalla
+## clip su cui si lavora (camminando a due mani il braccio è girato in tutt'altro modo, e l'arma finiva all'indietro)
+func _reset_arm(p: Array,s: String) -> void:
+	for part in ["Arm","ForeArm","Hand"]:
+		var bi: int=idx[s+part];var x: Transform3D=p[bi];x.basis=(stock_guard[bi] as Transform3D).basis;p[bi]=x
+## Il polso. I modelli non hanno le ossa delle dita: la mano è scolpita già chiusa sull'impugnatura, e sembra giusta
+## solo se resta orientata rispetto all'avambraccio più o meno come nella guardia di libreria. Prima la mano veniva
+## girata quanto serviva per puntare la lama, anche di 90 gradi: polso spezzato e mano aperta di traverso.
+## Ora: si parte dal polso della guardia, si ruota l'avambraccio sul suo asse (come si gira davvero il polso, metà
+## rotazione all'avambraccio e metà alla mano) per avvicinare la lama alla direzione voluta, e il resto lo fa il polso
+## ma non oltre MAX_WRIST. Se non basta, la lama punta un po' diversa dal previsto: la mano resta una mano.
+const MAX_WRIST:=deg_to_rad(42.0)
+func _wrist(p: Array,s: String,blade: Vector3) -> void:
+	var hb: int=idx[s+"Hand"];var fb: int=idx[s+"ForeArm"];var g=globals(p)
+	var f: Vector3=(g[hb].origin-g[fb].origin).normalized()
+	var h0: Basis=g[fb].basis.orthonormalized()*hand_ref[s]
+	var ax: Vector3=axisR if s=="Right" else axisL
+	if ax==Vector3.ZERO:_set_basis(p,g,hb,h0);return   # mano vuota: polso a riposo
+	var b0: Vector3=h0*ax
+	var pa=b0-f*b0.dot(f);var pb=blade-f*blade.dot(f);var phi=0.0
+	if pa.length()>.05 and pb.length()>.05:phi=clampf(pa.signed_angle_to(pb,f),-2.0,2.0)
+	_set_basis(p,g,fb,Basis(f,phi*.5)*g[fb].basis);g=globals(p)
+	var h1: Basis=Basis(f,phi)*h0
+	var q=_arc(h1*ax,blade).get_rotation_quaternion()
+	var arc=Basis(q)
+	if q.get_angle()>MAX_WRIST:arc=Basis(q.get_axis(),MAX_WRIST)
+	_set_basis(p,g,hb,arc*h1)
 
 # ------------------------------------------------------------------ chiavi -> comandi interpolati
 static func _lerp_any(a,b,f: float):
@@ -291,7 +324,11 @@ func overlay(src: Animation,c: Dictionary) -> Animation:
 		var time=src.length*float(f)/frames
 		var base=sample(src,time);var g=globals(base)
 		# come si è spostato il busto rispetto alla guardia: il braccio lo segue
-		var fr: Transform3D=g[top]*(guard_g[top] as Transform3D).affine_inverse()
+		# il braccio segue le spalle (dove sono e verso dove sono girate), ma non l'inclinazione del busto:
+		# un'arma portata bassa resta bassa anche se la clip cammina più dritta o più curva della guardia
+		var v0: Vector3=guard_g[idx.LeftArm].origin-guard_g[idx.RightArm].origin;var v1: Vector3=g[idx.LeftArm].origin-g[idx.RightArm].origin
+		var yb=Basis(Vector3.UP,Vector2(v0.z,v0.x).angle_to(Vector2(v1.z,v1.x)))
+		var fr=Transform3D(yb,(g[idx.LeftArm].origin+g[idx.RightArm].origin)*.5-yb*chest)
 		var p=solve(base,c,fr,true)
 		for b in bones:anim.rotation_track_insert_key(tracks[b],time,(p[b] as Transform3D).basis.get_rotation_quaternion())
 	return anim
@@ -506,6 +543,7 @@ func k_step(side: int,dist: float,hop:=false) -> Array:
 
 # ------------------------------------------------------------------ libreria completa di una miniatura
 const DUAL_OVERLAY=["In guardia","Avanzare","Camminata","Correre","Carica","Calcio","Schivata","Sbilanciato","Sgambetto","Riposo"]
+const CARRY_OVERLAY=["Avanzare","Camminata","Correre","Sbilanciato"]
 const CUT_LEN:=1.15
 const PARRY_LEN:=1.1
 ## crea la libreria "g" sull'AnimationPlayer; step_dist = centimetri (dello scheletro) di mezzo esagono
@@ -515,6 +553,14 @@ func build(ap: AnimationPlayer,step_dist: float,sfx:="") -> void:
 	var armed=kind in ["one","shield","dual","two"]
 	if not guard_ctrl.is_empty():   # guardia ridisegnata, con un respiro appena accennato
 		add.call("In guardia",bake([[0.0,{"hips":Vector3.ZERO}],[.5,{"hips":Vector3(0,-.012,0),"lean":1.5}],[1.0,{"hips":Vector3.ZERO}]],2.4,{},true))
+		# camminata, corsa e barcollamento: gambe e busto della clip, ma l'arma portata come in guardia (una mano sola)
+		var carry={}
+		for k in ["R","L"]:
+			if guard_ctrl.has(k):carry[k]=guard_ctrl[k]
+		for name in CARRY_OVERLAY:
+			if ap.has_animation(name+sfx):
+				var a=overlay(ap.get_animation(name+sfx),carry)
+				a.loop_mode=ap.get_animation(name+sfx).loop_mode;add.call(name,a)
 	if armed:
 		var cut=k_cut_right()
 		add.call("Colpo destro",bake(cut,CUT_LEN,{"impact":CUT_LEN*.5,"sweep":[CUT_LEN*.36,CUT_LEN*.62],"side":-1.0}))

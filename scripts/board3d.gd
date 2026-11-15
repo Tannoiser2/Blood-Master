@@ -56,9 +56,11 @@ const KICKS=["Calcio","Sgambetto","Calcio volante"]
 # come combatte ogni corpo: una mano, con lo scudo, due armi, arma a due mani, mani nude
 const KIND_BY_LOOK={"gascor":"shield","anteos":"shield","skelos":"shield","sketos":"shield","ut":"two","nuchra":"two","shannon":"two","ramok":"two","zenyo":"two",
 	"kylvia":"one","zak":"one","gandy":"one","sanguinaria":"one","shaara":"none","thorn":"none"}
-# guardie ridisegnate. Nuchra: l'ascia in una mano sola, testa in alto sopra la spalla destra, la sinistra libera
-# e avanzata (la guardia di libreria la stringeva al petto con due mani); per colpire la riprende a due mani.
-const GUARD_POSE={"nuchra":{"twist":12.0,"R":[72.0,.52,-.52,100.0,66.0],"L":[-30.0,.58,-.72,-10.0,-40.0]}}
+# guardie ridisegnate. Nuchra e Ut: l'arma in una mano sola, tenuta bassa lungo la gamba destra con la testa (o la
+# punta) verso terra e la sinistra libera; la guardia di libreria la stringeva al petto con due mani. Camminano,
+# corrono e barcollano portandola allo stesso modo; per colpire e parare la riprendono a due mani.
+const GUARD_POSE={"nuchra":{"twist":8.0,"R":[84.0,.56,-.92,26.0,-52.0],"L":[-46.0,.5,-.86,-20.0,-62.0]},
+	"ut":{"twist":8.0,"R":[84.0,.56,-.9,24.0,-46.0],"L":[-46.0,.5,-.86,-20.0,-62.0]}}
 const REST_GRIP=["Riposo","In guardia","Camminata","Correre","Avanzare","Carica","Schivata","Sbilanciato","A terra","Rialzarsi"]
 const MOVING=["advance","run","charge","roll","dodge","rise"]
 const DEFENSIVE=["parry_l","parry_r","parry_counter","dodge","guard"]
