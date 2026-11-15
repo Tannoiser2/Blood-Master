@@ -406,7 +406,7 @@ func _band() -> void:
 		ob.item_selected.connect(func(n):if n>0:_open(ids[n-1]));ob.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(ob)
 		var cur=str(var_info.get("id","")) if base_id!="" else str(traits.get("id",""))
 		if cur!="" and saved.has(cur):
-			band.add_child(ui._bar_button("Elimina",func():BloodForge.delete_hero(cur);ui.game.catalog.erase(cur);BloodRules.extra_defs.erase(cur);traits.erase("id");var_info["id"]="";_rebuild(false),"Elimina questo salvataggio"))
+			var del=ui._bar_button("Elimina",func():BloodForge.delete_hero(cur);ui.game.catalog.erase(cur);BloodRules.extra_defs.erase(cur);traits.erase("id");var_info["id"]="";_rebuild(false),"Elimina questo salvataggio");del.size_flags_vertical=Control.SIZE_SHRINK_CENTER;band.add_child(del)
 func _open(id: String) -> void:
 	var saved=BloodForge.load_saved()
 	if not saved.has(id):return
